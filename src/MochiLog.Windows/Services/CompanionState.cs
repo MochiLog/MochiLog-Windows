@@ -23,8 +23,13 @@ public sealed class CompanionState
 
 public static class StateStore
 {
+    #if MOCHILOG_PROTOCOL_TEST
+    public static string Root { get; } = Path.Combine(Path.GetTempPath(),
+        "MochiLog-Windows-Protocol-Test", Guid.NewGuid().ToString("N"));
+    #else
     public static string Root { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MochiLog Windows");
+    #endif
     private static string FileName => Path.Combine(Root, "state.bin");
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private static readonly object Gate = new();

@@ -29,7 +29,11 @@ internal sealed class PairingSession
 
 public sealed class TransferServer : IDisposable
 {
+    #if MOCHILOG_PROTOCOL_TEST
+    public const int Port = 54566;
+    #else
     public const int Port = 54556;
+    #endif
     private const int MaximumLogBytes = 64 * 1024 * 1024;
     private readonly object _gate = new();
     private readonly CompanionState _state;
