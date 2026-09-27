@@ -60,7 +60,10 @@
     "win_collection_result": "{0}: {1} battery log(s) queued, {2} excluded, {3} failed.",
     "win_mail_body": "Please describe the issue and attach the support report saved here:",
     "win_version": "Version {0} (alpha)",
-    "win_startup": "Start MochiLog when I sign in to Windows"
+    "win_startup": "Start MochiLog when I sign in to Windows",
+    "win_tray": "Keep MochiLog in the taskbar tray when I close the window",
+    "win_tray_open": "Open MochiLog",
+    "win_tray_exit": "Quit MochiLog"
   },
   "ja": {
     "win_home": "概要",
@@ -123,7 +126,10 @@
     "win_collection_result": "{0}：バッテリーログ{1}件を保存、対象外{2}件、失敗{3}件。",
     "win_mail_body": "問題の内容を記入し、次の場所に保存したサポート情報を添付してください：",
     "win_version": "バージョン {0}（アルファ版）",
-    "win_startup": "Windowsへのサインイン時にMochiLogを起動"
+    "win_startup": "Windowsへのサインイン時にMochiLogを起動",
+    "win_tray": "ウィンドウを閉じても通知領域でMochiLogを動かす",
+    "win_tray_open": "MochiLogを開く",
+    "win_tray_exit": "MochiLogを終了"
   },
   "de": {
     "win_home": "Übersicht",
@@ -186,7 +192,10 @@
     "win_collection_result": "{0}: {1} Batterieprotokoll(e) vorgemerkt, {2} ausgeschlossen, {3} fehlgeschlagen.",
     "win_mail_body": "Beschreiben Sie das Problem und fügen Sie den hier gespeicherten Supportbericht an:",
     "win_version": "Version {0} (Alpha)",
-    "win_startup": "MochiLog bei der Windows-Anmeldung starten"
+    "win_startup": "MochiLog bei der Windows-Anmeldung starten",
+    "win_tray": "MochiLog beim Schließen im Infobereich weiter ausführen",
+    "win_tray_open": "MochiLog öffnen",
+    "win_tray_exit": "MochiLog beenden"
   },
   "es": {
     "win_home": "Resumen",
@@ -249,7 +258,10 @@
     "win_collection_result": "{0}: {1} registro(s) de batería preparados, {2} excluidos, {3} fallidos.",
     "win_mail_body": "Describe el problema y adjunta el informe de soporte guardado aquí:",
     "win_version": "Versión {0} (alfa)",
-    "win_startup": "Iniciar MochiLog al iniciar sesión en Windows"
+    "win_startup": "Iniciar MochiLog al iniciar sesión en Windows",
+    "win_tray": "Mantener MochiLog en el área de notificación al cerrar la ventana",
+    "win_tray_open": "Abrir MochiLog",
+    "win_tray_exit": "Salir de MochiLog"
   },
   "fr": {
     "win_home": "Vue d’ensemble",
@@ -312,7 +324,10 @@
     "win_collection_result": "{0} : {1} journal(aux) de batterie en attente, {2} exclus, {3} échecs.",
     "win_mail_body": "Décrivez le problème et joignez le rapport enregistré ici :",
     "win_version": "Version {0} (alpha)",
-    "win_startup": "Lancer MochiLog à l’ouverture de session Windows"
+    "win_startup": "Lancer MochiLog à l’ouverture de session Windows",
+    "win_tray": "Garder MochiLog dans la zone de notification après fermeture",
+    "win_tray_open": "Ouvrir MochiLog",
+    "win_tray_exit": "Quitter MochiLog"
   },
   "ko": {
     "win_home": "개요",
@@ -375,7 +390,10 @@
     "win_collection_result": "{0}: 배터리 로그 {1}개 대기, {2}개 제외, {3}개 실패.",
     "win_mail_body": "문제를 설명하고 다음 위치에 저장된 지원 보고서를 첨부하세요:",
     "win_version": "버전 {0} (알파)",
-    "win_startup": "Windows 로그인 시 MochiLog 시작"
+    "win_startup": "Windows 로그인 시 MochiLog 시작",
+    "win_tray": "창을 닫아도 알림 영역에서 MochiLog 실행",
+    "win_tray_open": "MochiLog 열기",
+    "win_tray_exit": "MochiLog 종료"
   },
   "zh-Hans": {
     "win_home": "概览",
@@ -438,7 +456,10 @@
     "win_collection_result": "{0}：已暂存 {1} 份电池日志，排除 {2} 份，失败 {3} 份。",
     "win_mail_body": "请描述问题，并附上保存在以下位置的支持报告：",
     "win_version": "版本 {0}（Alpha）",
-    "win_startup": "登录 Windows 时启动 MochiLog"
+    "win_startup": "登录 Windows 时启动 MochiLog",
+    "win_tray": "关闭窗口后仍在通知区域运行 MochiLog",
+    "win_tray_open": "打开 MochiLog",
+    "win_tray_exit": "退出 MochiLog"
   },
   "zh-Hant": {
     "win_home": "總覽",
@@ -501,6 +522,9 @@
     "win_collection_result": "{0}：已暫存 {1} 份電池日誌，排除 {2} 份，失敗 {3} 份。",
     "win_mail_body": "請描述問題，並附上儲存在以下位置的支援報告：",
     "win_version": "版本 {0}（Alpha）",
-    "win_startup": "登入 Windows 時啟動 MochiLog"
+    "win_startup": "登入 Windows 時啟動 MochiLog",
+    "win_tray": "關閉視窗後仍在通知區域執行 MochiLog",
+    "win_tray_open": "開啟 MochiLog",
+    "win_tray_exit": "結束 MochiLog"
   }
 }

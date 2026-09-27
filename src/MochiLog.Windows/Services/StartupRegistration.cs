@@ -21,7 +21,9 @@ public static class StartupRegistration
     {
         using var key = Registry.CurrentUser.CreateSubKey(Path, writable: true)
             ?? throw new IOException("The Windows startup setting is unavailable.");
-        if (enabled) key.SetValue(Name, $"\"{Environment.ProcessPath}\"", RegistryValueKind.String);
+        if (enabled) key.SetValue(Name,
+            $"\"{Environment.ProcessPath}\"{(TrayPreferences.Enabled ? " --background" : "")}",
+            RegistryValueKind.String);
         else key.DeleteValue(Name, throwOnMissingValue: false);
     }
 }

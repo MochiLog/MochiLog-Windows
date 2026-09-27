@@ -6,7 +6,10 @@
         <StackPanel MaxWidth="920" Padding="28" Spacing="22">
             <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}" />
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
-                <ToggleSwitch x:Name="StartupToggle" />
+                <StackPanel Spacing="12">
+                    <ToggleSwitch x:Name="StartupToggle" />
+                    <ToggleSwitch x:Name="TrayToggle" />
+                </StackPanel>
             </Border>
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="12">

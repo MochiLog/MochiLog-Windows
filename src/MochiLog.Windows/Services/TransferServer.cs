@@ -272,7 +272,12 @@ public sealed class TransferServer : IDisposable
             if (_nonces.ContainsKey(nonce)) return null;
             var ack = Get(request, "ack") ?? "";
             var message = $"v2|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}|{ack}";
-            if (!CryptographicOperations.FixedTimeEquals(supplied, Hmac(phone.Secret, message))) return null;
+            var backgroundNotice = Get(request, "presence") == "background" && ack.Length == 0 &&
+                CryptographicOperations.FixedTimeEquals(supplied, Hmac(phone.Secret,
+                    $"v2|background|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}"));
+            if (!backgroundNotice &&
+                !CryptographicOperations.FixedTimeEquals(supplied, Hmac(phone.Secret, message)))
+                return null;
             _nonces[nonce] = now;
             if (ValidPeerAddress(peer) && phone.LastKnownAddress != peer)
             {
@@ -280,6 +285,7 @@ public sealed class TransferServer : IDisposable
                 StateStore.Save(_state);
                 PhoneAddressChanged?.Invoke(phone);
             }
+            if (backgroundNotice) return null;
             if (Get(request, "presence") == "foreground" &&
                 TryHex(Get(request, "presenceMAC"), out var presence) &&
                 CryptographicOperations.FixedTimeEquals(presence,

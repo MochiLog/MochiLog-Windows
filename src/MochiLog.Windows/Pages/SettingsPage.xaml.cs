@@ -17,6 +17,9 @@ public sealed partial class SettingsPage : Page
         StartupToggle.Header = UiText.Get("win_startup");
         StartupToggle.IsOn = StartupRegistration.Enabled;
         StartupToggle.Toggled += StartupToggled;
+        TrayToggle.Header = UiText.Get("win_tray");
+        TrayToggle.IsOn = TrayPreferences.Enabled;
+        TrayToggle.Toggled += TrayToggled;
         SupportTitle.Text = UiText.Get("win_support");
         SupportIntro.Text = UiText.Get("win_support_intro");
         PrivacyNote.Text = UiText.Get("win_privacy");
@@ -49,6 +52,21 @@ public sealed partial class SettingsPage : Page
     {
         try { StartupRegistration.SetEnabled(StartupToggle.IsOn); }
         catch (Exception error) { await ShowErrorAsync(error.Message); }
+    }
+
+    private async void TrayToggled(object sender, RoutedEventArgs args)
+    {
+        try {
+            TrayPreferences.Enabled = TrayToggle.IsOn;
+            ((App)Microsoft.UI.Xaml.Application.Current).MainWindow?.UpdateTrayPreference();
+            if (StartupRegistration.Enabled) StartupRegistration.SetEnabled(true);
+        }
+        catch (Exception error) {
+            TrayToggle.Toggled -= TrayToggled;
+            TrayToggle.IsOn = TrayPreferences.Enabled;
+            TrayToggle.Toggled += TrayToggled;
+            await ShowErrorAsync(error.Message);
+        }
     }
 
     private async Task<string> ExportReportAsync()

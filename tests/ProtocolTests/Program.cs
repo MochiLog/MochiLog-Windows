@@ -119,6 +119,19 @@ static class Program
         Check(first.Name == "Host::" + name && first.Content.SequenceEqual(payload),
             "Encrypted battery log transfer failed.");
         Check((await Pull(firstNonce)).Length == 0, "Repeated nonce was accepted.");
+        var backgroundNonce = Guid.NewGuid();
+        var backgroundNotice = new {
+            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
+            nonce = Upper(backgroundNonce), ack = "", presence = "background",
+            mac = Hex(Hmac(key,
+                $"v2|background|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(backgroundNonce)}"))
+        };
+        Check((await ExchangeAsync(backgroundNotice)).Length == 0,
+            "Authenticated background notice returned log data.");
+        Check((await ExchangeAsync(backgroundNotice)).Length == 0,
+            "Repeated background notice returned log data.");
+        Check((await Pull(backgroundNonce)).Length == 0,
+            "Background nonce was not recorded for replay rejection.");
         var ackNonce = Guid.NewGuid();
         var final = Open(await Pull(ackNonce, first.Name), key,
             invitation.HostId, physical, ackNonce);

@@ -18,8 +18,11 @@ public partial class App : Application
 {
     private static readonly Mutex Instance = new(false,
         @"Local\MochiLog-Windows-9F56A495-2D39-440B-A51B-DC9E26763C35");
+    private static readonly EventWaitHandle ShowRequest = new(false, EventResetMode.AutoReset,
+        @"Local\MochiLog-Windows-Show-9F56A495-2D39-440B-A51B-DC9E26763C35");
     private Window? _window;
     private bool _ownsInstance;
+    public MainWindow? MainWindow => _window as MainWindow;
     
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -38,13 +41,23 @@ public partial class App : Application
     {
         try { _ownsInstance = Instance.WaitOne(0); }
         catch (AbandonedMutexException) { _ownsInstance = true; }
-        if (!_ownsInstance) { Exit(); return; }
+        if (!_ownsInstance) { ShowRequest.Set(); Exit(); return; }
         CompanionRuntime.Shared.Start();
         _window = new MainWindow();
         _window.Closed += (_, _) => {
             CompanionRuntime.Shared.Dispose();
             if (_ownsInstance) { Instance.ReleaseMutex(); _ownsInstance = false; }
+            ShowRequest.Set();
         };
         _window.Activate();
+        if (TrayPreferences.Enabled && Environment.GetCommandLineArgs().Contains("--background"))
+            _window.AppWindow.Hide();
+        _ = Task.Run(() => {
+            while (_ownsInstance) {
+                ShowRequest.WaitOne();
+                if (_ownsInstance)
+                    _window.DispatcherQueue.TryEnqueue(() => MainWindow?.Restore());
+            }
+        });
     }
 }
