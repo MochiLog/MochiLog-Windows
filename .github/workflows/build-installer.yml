@@ -1,0 +1,32 @@
+name: Build Windows alpha installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Verify encrypted transfer protocol
+        run: dotnet run --project tests/ProtocolTests/ProtocolTests.csproj -c Release
+      - name: Install installer compiler
+        run: choco install innosetup --yes --no-progress
+      - name: Build self-contained installer
+        shell: pwsh
+        run: |
+          ./scripts/build-installer.ps1 -Python python `
+            -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MochiLog-Windows-Alpha-Setup
+          path: Build/MochiLog-Windows-Alpha-Setup.exe
+          if-no-files-found: error

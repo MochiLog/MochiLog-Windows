@@ -10,38 +10,38 @@
         <StackPanel MaxWidth="920" Padding="28" Spacing="22">
             <StackPanel Spacing="5">
                 <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}" />
-                <TextBlock Text="iPhone・iPadの解析ログを収集し、端末上のMochiLogへ安全に転送します。" TextWrapping="Wrap" Opacity="0.72" />
+                <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Opacity="0.72" />
             </StackPanel>
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="14">
-                    <TextBlock Text="接続の状態" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="StatusTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
                     <TextBlock x:Name="CollectionText" TextWrapping="Wrap" Opacity="0.72" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Button x:Name="RefreshButton" Content="端末を再検索" Click="RefreshClicked" />
-                        <Button x:Name="CollectButton" Content="今すぐログを収集" Click="CollectClicked" />
+                        <Button x:Name="RefreshButton" Click="RefreshClicked" />
+                        <Button x:Name="CollectButton" Click="CollectClicked" />
                     </StackPanel>
                 </StackPanel>
             </Border>
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="14">
-                    <TextBlock Text="初回設定" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock Text="1. iPhoneまたはiPadをロック解除し、Windowsと同じWi-Fiへ接続します。初回のOS信頼設定だけはUSB接続が必要です。Developer Modeは不要です。" TextWrapping="Wrap" />
-                    <TextBlock Text="2. USBで信頼を登録し、ケーブルを外して無線接続を確認します。Apple Devicesまたは従来のiTunes、どちらの環境でも利用できる経路を試します。" TextWrapping="Wrap" />
-                    <TextBlock Text="3. 下の端末を選び、QRコードをMochiLogの「設定 → 高度な設定 → PC連携」で読み取ります。6桁コードで双方を確認します。" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="SetupStep1" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SetupStep2" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SetupStep3" TextWrapping="Wrap" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Button Content="USBで信頼を登録" Click="UsbClicked" />
-                        <Button Content="無線接続を確認" Click="VerifyClicked" />
+                        <Button x:Name="UsbButton" Click="UsbClicked" />
+                        <Button x:Name="VerifyButton" Click="VerifyClicked" />
                     </StackPanel>
-                    <ListView x:Name="DeviceList" Header="検出した端末" Height="160" SelectionMode="Single" />
-                    <Button Content="選択した端末のペアリングQRを表示" Click="PairClicked" />
+                    <ListView x:Name="DeviceList" Height="160" SelectionMode="Single" />
+                    <Button x:Name="PairButton" Click="PairClicked" />
                 </StackPanel>
             </Border>
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="連携中の端末" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <ListView x:Name="PairedList" Height="130" SelectionMode="None" />
-                    <TextBlock Text="解析と記録はiPhone・iPad側で行います。PC同士は同期しません。iCloud同期は任意です。" TextWrapping="Wrap" Opacity="0.72" />
+                    <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.72" />
                 </StackPanel>
             </Border>
         </StackPanel>

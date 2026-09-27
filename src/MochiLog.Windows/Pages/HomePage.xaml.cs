@@ -15,6 +15,20 @@ public sealed partial class HomePage : Page
     public HomePage()
     {
         InitializeComponent();
+        SubtitleText.Text = UiText.Get("win_subtitle");
+        StatusTitle.Text = UiText.Get("win_status_title");
+        RefreshButton.Content = UiText.Get("mt_015");
+        CollectButton.Content = UiText.Get("win_collect_now");
+        SetupTitle.Text = UiText.Get("win_setup_title");
+        SetupStep1.Text = UiText.Get("win_step_1");
+        SetupStep2.Text = UiText.Get("win_step_2");
+        SetupStep3.Text = UiText.Get("win_step_3");
+        UsbButton.Content = UiText.Get("win_usb");
+        VerifyButton.Content = UiText.Get("win_verify");
+        DeviceList.Header = UiText.Get("win_found");
+        PairButton.Content = UiText.Get("win_pair");
+        PairedTitle.Text = UiText.Get("win_paired");
+        ProcessingNote.Text = UiText.Get("win_note");
         Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); };
         Unloaded += (_, _) => _runtime.Changed -= RuntimeChanged;
     }
@@ -31,7 +45,8 @@ public sealed partial class HomePage : Page
         if (selected >= 0 && selected < _runtime.Available.Count) DeviceList.SelectedIndex = selected;
         PairedList.ItemsSource = _runtime.State.Phones.Select(phone =>
             $"{phone.Name} · {phone.Model} · " +
-            (phone.ConfirmedAt is null ? "アプリで確認待ち" : "接続済み")).ToArray();
+            (phone.ConfirmedAt is null ? UiText.Get("win_waiting_app") :
+                UiText.Get("win_connected"))).ToArray();
         CollectButton.IsEnabled = _runtime.State.Phones.Count > 0;
     }
 
@@ -45,9 +60,9 @@ public sealed partial class HomePage : Page
         try
         {
             _usbDevice = await _runtime.PrepareUsbAsync();
-            await ShowMessageAsync("USBでの信頼設定", "完了しました。ケーブルを外し、同じWi-Fiで「無線接続を確認」を押してください。");
+            await ShowMessageAsync(UiText.Get("win_usb_done"), UiText.Get("win_usb_done_detail"));
         }
-        catch (Exception error) { await ShowMessageAsync("設定できませんでした", error.Message); }
+        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
     }
 
     private async void VerifyClicked(object sender, RoutedEventArgs args)
@@ -55,15 +70,15 @@ public sealed partial class HomePage : Page
         var device = SelectedDevice() ?? _usbDevice;
         if (device is null)
         {
-            await ShowMessageAsync("端末を選択", "USBで信頼を登録するか、検出した端末を選択してください。");
+            await ShowMessageAsync(UiText.Get("win_select"), UiText.Get("win_select_usb"));
             return;
         }
         try
         {
             await _runtime.VerifyWirelessAsync(device);
-            await ShowMessageAsync("無線接続を確認", "診断ログへの接続を確認しました。次にQRコードでMochiLogとペアリングしてください。");
+            await ShowMessageAsync(UiText.Get("win_verify_done"), UiText.Get("win_verify_done_detail"));
         }
-        catch (Exception error) { await ShowMessageAsync("無線接続を確認できません", error.Message); }
+        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_verify_failed"), error.Message); }
     }
 
     private ConnectedDevice? SelectedDevice() => DeviceList.SelectedIndex is >= 0 and var index &&
@@ -72,7 +87,7 @@ public sealed partial class HomePage : Page
     private async void PairClicked(object sender, RoutedEventArgs args)
     {
         var device = SelectedDevice() ?? _usbDevice;
-        if (device is null) { await ShowMessageAsync("端末を選択", "先に端末を検出して無線接続を確認してください。"); return; }
+        if (device is null) { await ShowMessageAsync(UiText.Get("win_select"), UiText.Get("win_select_pair")); return; }
         try
         {
             var invite = _runtime.BeginPairing(device);
@@ -88,19 +103,19 @@ public sealed partial class HomePage : Page
             var image = new BitmapImage();
             await image.SetSourceAsync(memory);
             var detail = new StackPanel { Spacing = 12 };
-            detail.Children.Add(new TextBlock { Text = "MochiLogのPC連携画面で読み取ってください。QRは3分間有効です。", TextWrapping = TextWrapping.Wrap });
+            detail.Children.Add(new TextBlock { Text = UiText.Get("win_qr_instruction"), TextWrapping = TextWrapping.Wrap });
             detail.Children.Add(new Image { Source = image, Width = 280, Height = 280 });
-            detail.Children.Add(new TextBlock { Text = $"確認コード: {invite.Code}", FontSize = 24 });
+            detail.Children.Add(new TextBlock { Text = UiText.Format("win_code", invite.Code), FontSize = 24 });
             await new ContentDialog
             {
-                XamlRoot = XamlRoot, Title = $"{device.Name} とペアリング",
-                Content = detail, CloseButtonText = "閉じる"
+                XamlRoot = XamlRoot, Title = UiText.Format("win_pair_title", device.Name),
+                Content = detail, CloseButtonText = UiText.Get("win_close")
             }.ShowAsync();
         }
-        catch (Exception error) { await ShowMessageAsync("ペアリングを開始できません", error.Message); }
+        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_pair_failed"), error.Message); }
     }
 
     private async Task ShowMessageAsync(string title, string message) =>
         await new ContentDialog { XamlRoot = XamlRoot, Title = title,
-            Content = message, CloseButtonText = "閉じる" }.ShowAsync();
+            Content = message, CloseButtonText = UiText.Get("win_close") }.ShowAsync();
 }

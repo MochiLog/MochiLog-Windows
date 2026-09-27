@@ -48,3 +48,10 @@ Name: "{group}\Uninstall MochiLog Windows"; Filename: "{uninstallexe}"
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,MochiLog Windows}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'MochiLog Windows');
+end;

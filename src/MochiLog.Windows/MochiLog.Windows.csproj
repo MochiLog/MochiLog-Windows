@@ -33,6 +33,8 @@
 
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
+    <Content Include="..\..\resources\Shared.xcstrings" Link="resources\Shared.xcstrings" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\resources\WindowsStrings.json" Link="resources\WindowsStrings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!--

@@ -8,7 +8,7 @@ public sealed class CompanionRuntime : IDisposable
     public CompanionState State { get; }
     public TransferServer Server { get; }
     public IReadOnlyList<ConnectedDevice> Available { get; private set; } = [];
-    public string Status { get; private set; } = "Starting…";
+    public string Status { get; private set; } = UiText.Get("win_searching");
     public string CollectionStatus { get; private set; } = "";
     public event Action? Changed;
     private readonly SemaphoreSlim _collection = new(1, 1);
@@ -44,12 +44,11 @@ public sealed class CompanionRuntime : IDisposable
     {
         try
         {
-            Status = "Searching for trusted iPhone and iPad devices…";
+            Status = UiText.Get("win_searching");
             Changed?.Invoke();
             Available = await Collector.BrowseAsync(State.Phones, _lifetime.Token);
-            Status = Available.Count == 0 ?
-                "No unlocked trusted device was found. Connect once by USB or check Wi-Fi." :
-                $"{Available.Count} device(s) available";
+            Status = Available.Count == 0 ? UiText.Get("win_none_found") :
+                UiText.Format("win_devices_available", Available.Count);
         }
         catch (Exception error) { Status = "Device search: " + error.Message; }
         Record(Status);
@@ -57,20 +56,20 @@ public sealed class CompanionRuntime : IDisposable
 
     public async Task<ConnectedDevice> PrepareUsbAsync()
     {
-        Status = "Waiting for USB trust and wireless pairing…";
+        Status = UiText.Get("win_usb_wait");
         Changed?.Invoke();
         var device = await Collector.PrepareUsbPairingAsync(_lifetime.Token);
-        Status = $"{device.Name}: USB trust recorded. Disconnect USB and verify Wi-Fi.";
+        Status = UiText.Format("win_usb_ready", device.Name);
         Record(Status);
         return device;
     }
 
     public async Task VerifyWirelessAsync(ConnectedDevice device)
     {
-        Status = $"Checking {device.Name} over Wi-Fi…";
+        Status = UiText.Format("win_checking", device.Name);
         Changed?.Invoke();
         await Collector.VerifyWirelessAsync(device.Udid, _lifetime.Token);
-        Status = $"{device.Name}: wireless diagnostics connection verified.";
+        Status = UiText.Format("win_wireless_ready", device.Name);
         Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
         Record(Status);
     }
@@ -89,17 +88,19 @@ public sealed class CompanionRuntime : IDisposable
         if (!await _collection.WaitAsync(0)) return;
         try
         {
-            foreach (var phone in selected is null ? State.Phones.ToArray() : [selected])
+            PairedPhone[] phones;
+            lock (State) { phones = selected is null ? State.Phones.ToArray() : [selected]; }
+            foreach (var phone in phones)
             {
-                CollectionStatus = $"{phone.Name}: reading diagnostics…";
+                CollectionStatus = UiText.Format("win_reading", phone.Name);
                 Changed?.Invoke();
                 try
                 {
                     var result = await Collector.CollectAsync(phone, State,
-                        (done, total) => { CollectionStatus = $"{phone.Name}: {done}/{total} checked";
+                        (done, total) => { CollectionStatus = UiText.Format("win_progress", phone.Name, done, total);
                             Changed?.Invoke(); }, _lifetime.Token);
-                    CollectionStatus = $"{phone.Name}: {result.Saved} battery log(s) queued, " +
-                        $"{result.Skipped} excluded, {result.Failed} failed.";
+                    CollectionStatus = UiText.Format("win_collection_result", phone.Name,
+                        result.Saved, result.Skipped, result.Failed);
                     if (result.LastError is not null) CollectionStatus += " " + result.LastError;
                     Record(CollectionStatus);
                 }
@@ -122,6 +123,30 @@ public sealed class CompanionRuntime : IDisposable
     public string DebugLog
     {
         get { lock (_events) return string.Join(Environment.NewLine, _events); }
+    }
+
+    public string LatestPhoneDiagnosticsText => State.PhoneDiagnostics.Values.LastOrDefault() is { } report
+        ? System.Text.Encoding.UTF8.GetString(report) : UiText.Get("win_no_phone_report");
+
+    public byte[] SupportDiagnosticsData()
+    {
+        JsonElement? latestPhone = null;
+        if (State.PhoneDiagnostics.Values.LastOrDefault() is { } report)
+        {
+            try { latestPhone = JsonSerializer.Deserialize<JsonElement>(report); }
+            catch (JsonException) { /* Invalid reports are omitted from support exports. */ }
+        }
+        return JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
+            appVersion = typeof(CompanionRuntime).Assembly.GetName().Version?.ToString(),
+            osVersion = Environment.OSVersion.VersionString,
+            pairedDevices = State.Phones.Select(phone => new {
+                phone.Name, phone.Model, phone.ConfirmedAt
+            }).ToArray(),
+            recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(40).ToArray(),
+            mobileDiagnostics = latestPhone
+        }, new JsonSerializerOptions { WriteIndented = true });
     }
 
     private void Record(string message)

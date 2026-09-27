@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:MochiLog_Windows"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Title="MochiLog.Windows"
+    Title="MochiLog Windows"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -20,7 +20,7 @@
 
         <TitleBar
             x:Name="AppTitleBar"
-            Title="MochiLog.Windows"
+            Title="MochiLog Windows"
             BackRequested="TitleBar_BackRequested"
             IsBackButtonVisible="{x:Bind NavFrame.CanGoBack, Mode=OneWay}"
             IsPaneToggleButtonVisible="True"

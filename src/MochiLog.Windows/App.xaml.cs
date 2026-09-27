@@ -16,7 +16,10 @@ namespace MochiLog_Windows;
 /// </summary>
 public partial class App : Application
 {
+    private static readonly Mutex Instance = new(false,
+        @"Local\MochiLog-Windows-9F56A495-2D39-440B-A51B-DC9E26763C35");
     private Window? _window;
+    private bool _ownsInstance;
     
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -33,8 +36,15 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
+        try { _ownsInstance = Instance.WaitOne(0); }
+        catch (AbandonedMutexException) { _ownsInstance = true; }
+        if (!_ownsInstance) { Exit(); return; }
         CompanionRuntime.Shared.Start();
         _window = new MainWindow();
+        _window.Closed += (_, _) => {
+            CompanionRuntime.Shared.Dispose();
+            if (_ownsInstance) { Instance.ReleaseMutex(); _ownsInstance = false; }
+        };
         _window.Activate();
     }
 }

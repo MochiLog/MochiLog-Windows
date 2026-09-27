@@ -55,14 +55,17 @@ public static class StateStore
 
     public static void Save(CompanionState state)
     {
-        lock (Gate)
+        lock (state)
         {
-            Directory.CreateDirectory(Root);
-            var plain = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
-            var encrypted = ProtectedData.Protect(plain, null, DataProtectionScope.CurrentUser);
-            var temporary = FileName + ".new";
-            File.WriteAllBytes(temporary, encrypted);
-            File.Move(temporary, FileName, true);
+            lock (Gate)
+            {
+                Directory.CreateDirectory(Root);
+                var plain = JsonSerializer.SerializeToUtf8Bytes(state, JsonOptions);
+                var encrypted = ProtectedData.Protect(plain, null, DataProtectionScope.CurrentUser);
+                var temporary = FileName + ".new";
+                File.WriteAllBytes(temporary, encrypted);
+                File.Move(temporary, FileName, true);
+            }
         }
     }
 }

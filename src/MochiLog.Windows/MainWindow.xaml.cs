@@ -2,6 +2,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using MochiLog_Windows.Pages;
+using MochiLog_Windows.Services;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -13,6 +14,9 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        ((NavigationViewItem)NavView.MenuItems[0]).Content = UiText.Get("win_home");
+        ((NavigationViewItem)NavView.MenuItems[1]).Content = UiText.Get("win_about");
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);

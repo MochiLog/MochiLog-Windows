@@ -24,6 +24,8 @@ if ($LASTEXITCODE -ne 0) { throw "Collector bundling failed." }
 if ($LASTEXITCODE -ne 0) { throw "Bundled collector cannot start." }
 & $venvPython scripts\collect-licenses.py Build\Licenses
 if ($LASTEXITCODE -ne 0) { throw "License collection failed." }
+& $venvPython scripts\make-assets.py
+if ($LASTEXITCODE -ne 0) { throw "Windows icon conversion failed." }
 
 dotnet publish src\MochiLog.Windows\MochiLog.Windows.csproj -c Release -r win-x64 `
     -p:Platform=x64 -p:Version=$Version --self-contained true -o Build\Publish

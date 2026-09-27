@@ -1,19 +1,45 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<Page
-    x:Class="MochiLog_Windows.Pages.SettingsPage"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:MochiLog_Windows.Pages"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
-
-    <Grid Padding="24,16,24,16" RowSpacing="24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Settings" />
-        <TextBlock Grid.Row="1" Text="This is the Settings page" />
-    </Grid>
+<Page x:Class="MochiLog_Windows.Pages.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer>
+        <StackPanel MaxWidth="920" Padding="28" Spacing="22">
+            <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}" />
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <ToggleSwitch x:Name="StartupToggle" />
+            </Border>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock x:Name="SupportTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="SupportIntro" TextWrapping="Wrap" />
+                    <TextBlock x:Name="PrivacyNote" TextWrapping="Wrap" Opacity="0.72" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="ExportButton" Click="ExportClicked" />
+                        <Button x:Name="MailButton" Click="MailClicked" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock x:Name="DebugTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBox x:Name="DebugText" IsReadOnly="True" AcceptsReturn="True"
+                             TextWrapping="Wrap" Height="190" FontFamily="Consolas" />
+                    <Button x:Name="CopyButton" Click="CopyClicked" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock x:Name="PhoneTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBox x:Name="PhoneText" IsReadOnly="True" AcceptsReturn="True"
+                             TextWrapping="Wrap" Height="140" FontFamily="Consolas" />
+                </StackPanel>
+            </Border>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="HelpTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="HelpContent" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </Page>

@@ -215,10 +215,12 @@ public sealed class TransferServer : IDisposable
                     Model = session.Device.Model, PhysicalDeviceId = physicalId,
                     Secret = session.Secret
                 };
-                _state.Phones.RemoveAll(existing => existing.Udid == phone.Udid ||
-                    existing.PhysicalDeviceId == phone.PhysicalDeviceId);
-                _state.Phones.Add(phone);
-                StateStore.Save(_state);
+                lock (_state) {
+                    _state.Phones.RemoveAll(existing => existing.Udid == phone.Udid ||
+                        existing.PhysicalDeviceId == phone.PhysicalDeviceId);
+                    _state.Phones.Add(phone);
+                    StateStore.Save(_state);
+                }
                 session.Confirmed = true;
                 PhoneConfirmed?.Invoke(phone);
             }
@@ -274,8 +276,10 @@ public sealed class TransferServer : IDisposable
                         diagnosticBox.AsSpan(12 + report.Length, 16), report, context);
                     if (report.Length <= 8_192)
                     {
-                        _state.PhoneDiagnostics[Upper(physicalId)] = report;
-                        StateStore.Save(_state);
+                        lock (_state) {
+                            _state.PhoneDiagnostics[Upper(physicalId)] = report;
+                            StateStore.Save(_state);
+                        }
                     }
                 }
                 catch (CryptographicException) { return null; }
@@ -285,8 +289,10 @@ public sealed class TransferServer : IDisposable
                 var file = Path.Combine(QueuePath(phone), ack.Replace("::", Path.DirectorySeparatorChar.ToString()));
                 if (File.Exists(file))
                 {
-                    _state.Delivered.Add(Upper(phone.PhysicalDeviceId) + "|" + ack);
-                    StateStore.Save(_state);
+                    lock (_state) {
+                        _state.Delivered.Add(Upper(phone.PhysicalDeviceId) + "|" + ack);
+                        StateStore.Save(_state);
+                    }
                     File.Delete(file);
                 }
             }

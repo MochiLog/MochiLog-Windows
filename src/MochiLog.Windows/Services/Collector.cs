@@ -40,11 +40,16 @@ public static partial class Collector
         catch (OperationCanceledException) { process.Kill(true); throw new TimeoutException("Device collection timed out."); }
         var stdout = await output;
         var stderr = await errors;
-        if (process.ExitCode != 0)
+        // The collector sometimes reports a failed device connection as a
+        // coloured ERROR line while still returning exit code 0. Do not treat
+        // that diagnostic as a directory listing or a completed download.
+        var cleanOutput = Regex.Replace(stdout + "\n" + stderr, "\\x1B\\[[0-9;]*m", "");
+        var toolError = cleanOutput.Split('\n').LastOrDefault(line =>
+            Regex.IsMatch(line, @"\bERROR\b", RegexOptions.IgnoreCase));
+        if (process.ExitCode != 0 || toolError is not null)
         {
-            var detail = stderr.Split('\n').LastOrDefault(line =>
-                line.Contains("Error", StringComparison.OrdinalIgnoreCase))?.Trim();
-            throw new IOException($"Collector exited {process.ExitCode}: {detail ?? stderr.Trim()}");
+            var detail = toolError?.Trim() ?? stderr.Trim();
+            throw new IOException($"Collector exited {process.ExitCode}: {detail}");
         }
         return stdout;
     }
@@ -54,7 +59,7 @@ public static partial class Collector
     {
         var discovered = new Dictionary<string, ConnectedDevice>();
         Exception? nativeFailure = null;
-        try
+        if (!OperatingSystem.IsWindows()) try
         {
             var output = await RunAsync(["remote", "browse", "--native", "--timeout", "4"],
                 TimeSpan.FromSeconds(25), cancellation);
@@ -90,6 +95,52 @@ public static partial class Collector
             }
         }
         catch { /* Apple Devices may omit Wi-Fi devices from usbmux; try known pair records. */ }
+        try
+        {
+            var list = await RunAsync(["usbmux", "list", "--usb", "--simple"],
+                TimeSpan.FromSeconds(20), cancellation);
+            foreach (var id in JsonSerializer.Deserialize<string[]>(list) ?? [])
+            {
+                if (discovered.ContainsKey(id)) continue;
+                try
+                {
+                    var info = await RunAsync(["lockdown", "info", "--udid", id],
+                        TimeSpan.FromSeconds(20), cancellation);
+                    var json = JsonSerializer.Deserialize<JsonElement>(info);
+                    var model = json.GetProperty("ProductType").GetString() ?? "";
+                    if (SupportedModel(model)) discovered[id] = new ConnectedDevice(id,
+                        json.TryGetProperty("DeviceName", out var name) ? name.GetString() ?? model : model,
+                        model);
+                }
+                catch { /* Continue past an attached but locked or untrusted device. */ }
+            }
+        }
+        catch { /* USB is optional after initial pairing. */ }
+        // The Microsoft Store Apple Devices service does not enumerate paired
+        // Wi-Fi devices through usbmux. Bonjour still advertises them, and an
+        // explicit mobdev2 connection can use the pair record made over USB.
+        if (OperatingSystem.IsWindows()) try
+        {
+            var list = await RunAsync(["bonjour", "mobdev2", "--timeout", "4"],
+                TimeSpan.FromSeconds(15), cancellation);
+            foreach (var device in JsonSerializer.Deserialize<JsonElement>(list).EnumerateArray())
+            {
+                var id = device.GetProperty("UniqueDeviceID").GetString() ?? "";
+                if (id.Length == 0 || discovered.ContainsKey(id)) continue;
+                try
+                {
+                    var info = await RunAsync(["lockdown", "info", "--mobdev2", "--udid", id],
+                        TimeSpan.FromSeconds(20), cancellation);
+                    var json = JsonSerializer.Deserialize<JsonElement>(info);
+                    var model = json.GetProperty("ProductType").GetString() ?? "";
+                    if (SupportedModel(model)) discovered[id] = new ConnectedDevice(id,
+                        json.TryGetProperty("DeviceName", out var name) ? name.GetString() ?? model : model,
+                        model);
+                }
+                catch { /* An advertised but unpaired device is not usable yet. */ }
+            }
+        }
+        catch { /* Retain devices found through other transports. */ }
         // Apple Devices from the Microsoft Store does not place Wi-Fi devices in
         // usbmux. Explicit mobdev2 uses its USB-created pair record instead.
         foreach (var phone in known ?? [])
@@ -138,7 +189,10 @@ public static partial class Collector
 
     public static async Task VerifyWirelessAsync(string udid, CancellationToken cancellation = default)
     {
-        _ = await RootListingAsync(udid, cancellation);
+        var listing = await RunAsync(["crash", "ls", "--mobdev2", "--udid", udid,
+            "--remote-file", "/", "--depth", "1"], TimeSpan.FromSeconds(45), cancellation);
+        if (!listing.Contains("/Retired", StringComparison.Ordinal))
+            throw new IOException("The device's wireless diagnostics service did not return a file listing.");
     }
 
     private static async Task<(string Root, string[] Connection)> RootListingAsync(string udid,
@@ -146,17 +200,34 @@ public static partial class Collector
     {
         var network = new[] { "--mobdev2", "--udid", udid };
         var native = new[] { "--native", "--udid", udid };
+        Exception? wirelessError = null;
         try
         {
             var listing = await RunAsync(["crash", "ls", ..network,
                 "--remote-file", "/", "--depth", "1"], TimeSpan.FromSeconds(45), cancellation);
             if (!string.IsNullOrWhiteSpace(listing)) return (listing, network);
         }
-        catch { }
-        var root = await RunAsync(["crash", "ls", ..native,
-            "--remote-file", "/", "--depth", "1"], TimeSpan.FromSeconds(45), cancellation);
-        if (string.IsNullOrWhiteSpace(root)) throw new IOException("No wireless diagnostics listing was returned.");
-        return (root, native);
+        catch (Exception error) { wirelessError = error; }
+        if (!OperatingSystem.IsWindows())
+        {
+            var root = await RunAsync(["crash", "ls", ..native,
+                "--remote-file", "/", "--depth", "1"], TimeSpan.FromSeconds(45), cancellation);
+            if (root.Contains("/Retired", StringComparison.Ordinal)) return (root, native);
+        }
+        // An attached device can still be collected when wireless discovery is
+        // temporarily unavailable. This is an explicit fallback, never reported
+        // as a successful wireless connection by VerifyWirelessAsync.
+        var attached = JsonSerializer.Deserialize<string[]>(await RunAsync(
+            ["usbmux", "list", "--usb", "--simple"], TimeSpan.FromSeconds(20), cancellation)) ?? [];
+        if (attached.Contains(udid))
+        {
+            var usb = new[] { "--udid", udid };
+            var root = await RunAsync(["crash", "ls", ..usb, "--remote-file", "/", "--depth", "1"],
+                TimeSpan.FromSeconds(45), cancellation);
+            if (root.Contains("/Retired", StringComparison.Ordinal)) return (root, usb);
+        }
+        throw new IOException("The device's diagnostics service is unavailable over Wi-Fi or USB. " +
+            wirelessError?.Message, wirelessError);
     }
 
     public static async Task<CollectionResult> CollectAsync(PairedPhone phone,
@@ -199,8 +270,11 @@ public static partial class Collector
             var tokenPrefix = item.Source is null ? "Host::" : $"Watch::{item.Source}::";
             var token = tokenPrefix + name;
             progress?.Invoke(index, files.Count);
-            if (state.Delivered.Contains(phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token) ||
-                Directory.EnumerateFiles(queue, name, SearchOption.AllDirectories).Any()) continue;
+            var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
+            lock (state) { if (state.Delivered.Contains(deliveredKey)) continue; }
+            var sourceFolder = item.Source ?? "";
+            if (new[] { "Host", "Watch" }.Any(kind => File.Exists(
+                System.IO.Path.Combine(queue, kind, sourceFolder, name)))) continue;
             var staging = System.IO.Path.Combine(queue, ".staging-" + Guid.NewGuid().ToString("N"));
             try
             {
@@ -209,8 +283,10 @@ public static partial class Collector
                     TimeSpan.FromMinutes(3), cancellation);
                 var downloaded = System.IO.Path.Combine(staging, name);
                 var kind = BatteryLogKind(downloaded);
-                if (kind is null) { skipped++; state.Delivered.Add(
-                    phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token); StateStore.Save(state); }
+                if (kind is null) {
+                    skipped++;
+                    lock (state) { state.Delivered.Add(deliveredKey); StateStore.Save(state); }
+                }
                 else
                 {
                     var folder = System.IO.Path.Combine(queue, kind,
@@ -231,7 +307,9 @@ public static partial class Collector
     {
         if (!File.Exists(file) || new FileInfo(file).Length > 64 * 1024 * 1024) return null;
         var bytes = File.ReadAllBytes(file);
-        if (bytes.Count(b => b == 10) < 100) return null;
+        var lines = 0;
+        foreach (var value in bytes) if (value == 10 && ++lines >= 100) break;
+        if (lines < 100) return null;
         var text = Encoding.UTF8.GetString(bytes);
         if (!text.Contains("last_value_CycleCount", StringComparison.Ordinal) ||
             !text.Contains("last_value_NominalChargeCapacity", StringComparison.Ordinal) ||
