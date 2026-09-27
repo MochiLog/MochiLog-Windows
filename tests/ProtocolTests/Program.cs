@@ -104,6 +104,10 @@ static class Program
         var name = "Analytics-2026-09-27-test.ips.ca.synced";
         var payload = Encoding.UTF8.GetBytes("diagnostic transport fixture");
         await File.WriteAllBytesAsync(Path.Combine(queue, name), payload);
+        var unfinished = Path.Combine(TransferServer.QueuePath(state.Phones[0]), ".staging-test");
+        Directory.CreateDirectory(unfinished);
+        await File.WriteAllBytesAsync(Path.Combine(unfinished,
+            "Analytics-2026-09-01-unclassified.ips.ca.synced"), payload);
         async Task<byte[]> Pull(Guid nonce, string ack = "") => await ExchangeAsync(new {
             version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
             nonce = Upper(nonce), ack,

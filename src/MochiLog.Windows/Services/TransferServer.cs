@@ -325,10 +325,15 @@ public sealed class TransferServer : IDisposable
                     File.Delete(file);
                 }
             }
-            var next = Directory.Exists(QueuePath(phone))
-                ? Directory.EnumerateFiles(QueuePath(phone), "Analytics-*.ips.ca.synced",
-                    SearchOption.AllDirectories).Order(StringComparer.Ordinal).FirstOrDefault()
-                : null;
+            // Only completed, classified files are transferable. A batch
+            // collector may be writing into .staging-* under this queue.
+            var queueRoot = QueuePath(phone);
+            var next = new[] { "Host", "Watch" }
+                .SelectMany(kind => Directory.Exists(Path.Combine(queueRoot, kind))
+                    ? Directory.EnumerateFiles(Path.Combine(queueRoot, kind),
+                        "Analytics-*.ips.ca.synced", SearchOption.AllDirectories)
+                    : [])
+                .Order(StringComparer.Ordinal).FirstOrDefault();
             var token = next is null ? "" : Path.GetRelativePath(QueuePath(phone), next)
                 .Replace(Path.DirectorySeparatorChar.ToString(), "::");
             if (next is not null && (!ValidToken(token) || new FileInfo(next).Length > MaximumLogBytes))
