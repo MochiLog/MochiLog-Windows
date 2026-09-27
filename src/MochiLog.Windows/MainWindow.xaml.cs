@@ -38,11 +38,9 @@ public sealed partial class MainWindow : Window
 
     public void UpdateTrayPreference()
     {
-        if (!TrayPreferences.Enabled) {
-            if (!AppWindow.IsVisible) Restore();
-            DisposeTray();
-            return;
-        }
+        // The notification-area icon is available whenever the app is running.
+        // The preference controls only whether closing the window keeps it running.
+        if (!TrayPreferences.Enabled && !AppWindow.IsVisible) Restore();
         if (_tray is not null) return;
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
         _tray = new TrayIcon(WinRT.Interop.WindowNative.GetWindowHandle(this), iconPath,

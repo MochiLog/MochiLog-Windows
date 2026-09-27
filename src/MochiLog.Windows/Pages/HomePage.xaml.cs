@@ -23,6 +23,8 @@ public sealed partial class HomePage : Page
         SetupRequirement.Text = UiText.Get("win_setup_requirement");
         AppleDevicesLink.Content = UiText.Get("win_get_apple_devices");
         ITunesLink.Content = UiText.Get("win_get_itunes");
+        SoftwareRefreshButton.Content = UiText.Get("win_check_apple_software");
+        SoftwareStatus.Text = UiText.Get("win_software_checking");
         ICloudNote.Text = UiText.Get("win_icloud_note");
         SetupStep1.Text = UiText.Get("win_step_1");
         SetupStep2.Text = UiText.Get("win_step_2");
@@ -40,11 +42,37 @@ public sealed partial class HomePage : Page
                 index < _runtime.State.Phones.Count)
                 ManualAddressBox.Text = _runtime.State.Phones[index].ManualAddress ?? "";
         };
-        Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); };
+        Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); _ = CheckAppleSoftwareAsync(); };
         Unloaded += (_, _) => _runtime.Changed -= RuntimeChanged;
     }
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(Render);
+
+    private async Task CheckAppleSoftwareAsync()
+    {
+        SoftwareRefreshButton.IsEnabled = false;
+        SoftwareStatus.Text = UiText.Get("win_software_checking");
+        try
+        {
+            var installed = await Task.Run(AppleDeviceSoftwareDetector.Detect);
+            SoftwareStatus.Text = UiText.Get(installed switch
+            {
+                { AppleDevices: true, ClassicITunes: true } => "win_software_both",
+                { AppleDevices: true } => "win_software_apple_devices",
+                { ClassicITunes: true } => "win_software_itunes",
+                { AppleDevicesCheckFailed: true } => "win_software_unknown",
+                _ => "win_software_missing"
+            });
+            var needed = !installed.AppleDevices && !installed.ClassicITunes;
+            AppleDevicesLink.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
+            ITunesLink.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
+            ICloudNote.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
+        }
+        finally { SoftwareRefreshButton.IsEnabled = true; }
+    }
+
+    private async void SoftwareRefreshClicked(object sender, RoutedEventArgs args) =>
+        await CheckAppleSoftwareAsync();
 
     private void Render()
     {
@@ -83,7 +111,7 @@ public sealed partial class HomePage : Page
     {
         try
         {
-            _usbDevice = await _runtime.PrepareUsbAsync();
+            _usbDevice = await _runtime.PrepareUsbAsync(SelectedDevice()?.Udid);
             await ShowMessageAsync(UiText.Get("win_usb_done"), UiText.Get("win_usb_done_detail"));
         }
         catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }

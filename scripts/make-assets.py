@@ -1,10 +1,17 @@
 """Convert the existing MochiLog icon to Windows icon formats without redesigning it."""
 
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageChops, ImageDraw
 
 root = Path(__file__).resolve().parents[1]
 source = Image.open(root / "assets" / "MochiLogIcon.png").convert("RGBA")
+# iOS clips the square artwork to the app icon silhouette. Apply the same
+# silhouette to Windows so the taskbar, tray and installer show the same mark.
+mask = Image.new("L", source.size)
+ImageDraw.Draw(mask).rounded_rectangle(
+    (0, 0, source.width - 1, source.height - 1),
+    radius=round(source.width * 0.22), fill=255)
+source.putalpha(ImageChops.multiply(source.getchannel("A"), mask))
 destination = root / "src" / "MochiLog.Windows" / "Assets"
 source.save(destination / "AppIcon.ico", sizes=[
     (16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)

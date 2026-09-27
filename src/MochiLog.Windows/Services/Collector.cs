@@ -165,15 +165,19 @@ public static partial class Collector
         return discovered.Values.ToArray();
     }
 
-    public static async Task<ConnectedDevice> PrepareUsbPairingAsync(CancellationToken cancellation = default)
+    public static async Task<ConnectedDevice> PrepareUsbPairingAsync(
+        string? selectedUdid = null, CancellationToken cancellation = default)
     {
         var output = await RunAsync(["usbmux", "list", "--usb", "--simple"],
             TimeSpan.FromSeconds(20), cancellation);
         var ids = JsonSerializer.Deserialize<string[]>(output) ?? [];
-        if (ids.Length != 1) throw new InvalidOperationException(ids.Length == 0
-            ? "Connect and unlock one iPhone or iPad with a data-capable USB cable."
-            : "Disconnect other Apple devices and try again.");
-        var id = ids[0];
+        if (ids.Length == 0)
+            throw new InvalidOperationException(UiText.Get("win_usb_missing"));
+        if (selectedUdid is not null && !ids.Contains(selectedUdid, StringComparer.OrdinalIgnoreCase))
+            throw new InvalidOperationException(UiText.Get("win_usb_not_connected"));
+        if (selectedUdid is null && ids.Length > 1)
+            throw new InvalidOperationException(UiText.Get("win_usb_select_multiple"));
+        var id = selectedUdid ?? ids[0];
         try { await RunAsync(["lockdown", "info", "--udid", id], TimeSpan.FromSeconds(20), cancellation); }
         catch { await RunAsync(["lockdown", "pair", "--udid", id], TimeSpan.FromSeconds(90), cancellation); }
         var info = JsonSerializer.Deserialize<JsonElement>(await RunAsync(

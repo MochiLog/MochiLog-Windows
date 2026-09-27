@@ -67,7 +67,17 @@
     "win_startup": "Start MochiLog when I sign in to Windows",
     "win_tray": "Keep MochiLog in the taskbar tray when I close the window",
     "win_tray_open": "Open MochiLog",
-    "win_tray_exit": "Quit MochiLog"
+    "win_tray_exit": "Quit MochiLog",
+    "win_check_apple_software": "Check again",
+    "win_software_checking": "Checking Apple device software…",
+    "win_software_apple_devices": "Apple Devices is installed. Continue with USB trust.",
+    "win_software_itunes": "Classic iTunes is installed. Continue with USB trust.",
+    "win_software_both": "Apple Devices and classic iTunes are both installed. You can continue with USB trust.",
+    "win_software_missing": "Neither Apple Devices nor classic iTunes was found. Install one of the two below; iCloud for Windows alone is not enough.",
+    "win_software_unknown": "Could not confirm whether Apple Devices is installed. If it is already installed, continue; otherwise install one option below.",
+    "win_usb_missing": "Connect and unlock an iPhone or iPad with a USB data cable.",
+    "win_usb_not_connected": "The selected device is not connected by USB. Select a connected device and try again.",
+    "win_usb_select_multiple": "Multiple Apple devices are connected. Select the one to set up in the device list, then try again."
   },
   "ja": {
     "win_home": "概要",
@@ -137,7 +147,17 @@
     "win_startup": "Windowsへのサインイン時にMochiLogを起動",
     "win_tray": "ウィンドウを閉じても通知領域でMochiLogを動かす",
     "win_tray_open": "MochiLogを開く",
-    "win_tray_exit": "MochiLogを終了"
+    "win_tray_exit": "MochiLogを終了",
+    "win_check_apple_software": "再確認",
+    "win_software_checking": "Appleの端末接続アプリを確認中…",
+    "win_software_apple_devices": "Apple Devicesを検出しました。USBの信頼設定へ進めます。",
+    "win_software_itunes": "従来版iTunesを検出しました。USBの信頼設定へ進めます。",
+    "win_software_both": "Apple Devicesと従来版iTunesを検出しました。USBの信頼設定へ進めます。",
+    "win_software_missing": "Apple Devicesも従来版iTunesも見つかりません。下からどちらか1つを導入してください。iCloud for Windowsだけでは不足です。",
+    "win_software_unknown": "Apple Devicesの導入状態を確認できませんでした。導入済みならそのまま進み、未導入なら下から選んでください。",
+    "win_usb_missing": "iPhoneまたはiPadをデータ対応USBケーブルで接続し、ロックを解除してください。",
+    "win_usb_not_connected": "選択中の端末はUSB接続されていません。接続中の端末を選び直してください。",
+    "win_usb_select_multiple": "複数のApple端末がUSB接続されています。下の一覧で初回設定する端末を選んでから、もう一度押してください。"
   },
   "de": {
     "win_home": "Übersicht",
@@ -207,7 +227,17 @@
     "win_startup": "MochiLog bei der Windows-Anmeldung starten",
     "win_tray": "MochiLog beim Schließen im Infobereich weiter ausführen",
     "win_tray_open": "MochiLog öffnen",
-    "win_tray_exit": "MochiLog beenden"
+    "win_tray_exit": "MochiLog beenden",
+    "win_check_apple_software": "Erneut prüfen",
+    "win_software_checking": "Apple-Gerätesoftware wird geprüft…",
+    "win_software_apple_devices": "Apple Devices ist installiert. Mit USB-Vertrauen fortfahren.",
+    "win_software_itunes": "Klassisches iTunes ist installiert. Mit USB-Vertrauen fortfahren.",
+    "win_software_both": "Apple Devices und klassisches iTunes sind installiert. Mit USB-Vertrauen fortfahren.",
+    "win_software_missing": "Weder Apple Devices noch klassisches iTunes wurde gefunden. Installieren Sie eine der beiden Optionen. iCloud für Windows reicht nicht aus.",
+    "win_software_unknown": "Apple Devices konnte nicht überprüft werden. Wenn es installiert ist, fahren Sie fort; andernfalls wählen Sie unten eine Option.",
+    "win_usb_missing": "Verbinden und entsperren Sie ein iPhone oder iPad mit einem USB-Datenkabel.",
+    "win_usb_not_connected": "Das ausgewählte Gerät ist nicht per USB verbunden. Wählen Sie ein verbundenes Gerät.",
+    "win_usb_select_multiple": "Mehrere Apple-Geräte sind per USB verbunden. Wählen Sie das gewünschte Gerät in der Liste und versuchen Sie es erneut."
   },
   "es": {
     "win_home": "Resumen",
@@ -277,7 +307,17 @@
     "win_startup": "Iniciar MochiLog al iniciar sesión en Windows",
     "win_tray": "Mantener MochiLog en el área de notificación al cerrar la ventana",
     "win_tray_open": "Abrir MochiLog",
-    "win_tray_exit": "Salir de MochiLog"
+    "win_tray_exit": "Salir de MochiLog",
+    "win_check_apple_software": "Comprobar de nuevo",
+    "win_software_checking": "Comprobando el software de dispositivos Apple…",
+    "win_software_apple_devices": "Apple Devices está instalado. Continúa con la confianza USB.",
+    "win_software_itunes": "iTunes clásico está instalado. Continúa con la confianza USB.",
+    "win_software_both": "Apple Devices e iTunes clásico están instalados. Continúa con la confianza USB.",
+    "win_software_missing": "No se encontró Apple Devices ni iTunes clásico. Instala una de las opciones siguientes; iCloud para Windows no basta.",
+    "win_software_unknown": "No se pudo comprobar Apple Devices. Si ya está instalado, continúa; si no, elige una opción abajo.",
+    "win_usb_missing": "Conecta y desbloquea un iPhone o iPad con un cable USB de datos.",
+    "win_usb_not_connected": "El dispositivo seleccionado no está conectado por USB. Selecciona uno conectado.",
+    "win_usb_select_multiple": "Hay varios dispositivos Apple conectados por USB. Selecciona el que quieras configurar en la lista y vuelve a intentarlo."
   },
   "fr": {
     "win_home": "Vue d’ensemble",
@@ -347,7 +387,17 @@
     "win_startup": "Lancer MochiLog à l’ouverture de session Windows",
     "win_tray": "Garder MochiLog dans la zone de notification après fermeture",
     "win_tray_open": "Ouvrir MochiLog",
-    "win_tray_exit": "Quitter MochiLog"
+    "win_tray_exit": "Quitter MochiLog",
+    "win_check_apple_software": "Vérifier à nouveau",
+    "win_software_checking": "Vérification du logiciel Apple…",
+    "win_software_apple_devices": "Apple Devices est installé. Poursuivez la confiance USB.",
+    "win_software_itunes": "iTunes classique est installé. Poursuivez la confiance USB.",
+    "win_software_both": "Apple Devices et iTunes classique sont installés. Poursuivez la confiance USB.",
+    "win_software_missing": "Ni Apple Devices ni iTunes classique n’a été trouvé. Installez l’un des deux ci-dessous ; iCloud pour Windows ne suffit pas.",
+    "win_software_unknown": "Impossible de vérifier Apple Devices. S’il est installé, continuez ; sinon, choisissez une option ci-dessous.",
+    "win_usb_missing": "Connectez et déverrouillez un iPhone ou iPad avec un câble USB de données.",
+    "win_usb_not_connected": "L’appareil sélectionné n’est pas connecté en USB. Sélectionnez un appareil connecté.",
+    "win_usb_select_multiple": "Plusieurs appareils Apple sont connectés en USB. Sélectionnez celui à configurer dans la liste puis réessayez."
   },
   "ko": {
     "win_home": "개요",
@@ -417,7 +467,17 @@
     "win_startup": "Windows 로그인 시 MochiLog 시작",
     "win_tray": "창을 닫아도 알림 영역에서 MochiLog 실행",
     "win_tray_open": "MochiLog 열기",
-    "win_tray_exit": "MochiLog 종료"
+    "win_tray_exit": "MochiLog 종료",
+    "win_check_apple_software": "다시 확인",
+    "win_software_checking": "Apple 기기 소프트웨어 확인 중…",
+    "win_software_apple_devices": "Apple Devices가 설치되어 있습니다. USB 신뢰 설정을 진행하세요.",
+    "win_software_itunes": "기존 iTunes가 설치되어 있습니다. USB 신뢰 설정을 진행하세요.",
+    "win_software_both": "Apple Devices와 기존 iTunes가 모두 설치되어 있습니다. USB 신뢰 설정을 진행하세요.",
+    "win_software_missing": "Apple Devices와 기존 iTunes가 없습니다. 아래에서 하나를 설치하세요. Windows용 iCloud만으로는 충분하지 않습니다.",
+    "win_software_unknown": "Apple Devices 설치 여부를 확인할 수 없습니다. 이미 설치했다면 진행하고, 아니라면 아래에서 선택하세요.",
+    "win_usb_missing": "데이터용 USB 케이블로 iPhone 또는 iPad를 연결하고 잠금을 해제하세요.",
+    "win_usb_not_connected": "선택한 기기가 USB로 연결되어 있지 않습니다. 연결된 기기를 선택하세요.",
+    "win_usb_select_multiple": "여러 Apple 기기가 USB로 연결되어 있습니다. 아래 목록에서 설정할 기기를 선택하고 다시 시도하세요."
   },
   "zh-Hans": {
     "win_home": "概览",
@@ -487,7 +547,17 @@
     "win_startup": "登录 Windows 时启动 MochiLog",
     "win_tray": "关闭窗口后仍在通知区域运行 MochiLog",
     "win_tray_open": "打开 MochiLog",
-    "win_tray_exit": "退出 MochiLog"
+    "win_tray_exit": "退出 MochiLog",
+    "win_check_apple_software": "重新检查",
+    "win_software_checking": "正在检查 Apple 设备软件…",
+    "win_software_apple_devices": "已安装 Apple Devices。可以继续 USB 信任设置。",
+    "win_software_itunes": "已安装传统版 iTunes。可以继续 USB 信任设置。",
+    "win_software_both": "已安装 Apple Devices 和传统版 iTunes。可以继续 USB 信任设置。",
+    "win_software_missing": "未找到 Apple Devices 或传统版 iTunes。请从下方任选一个安装；仅安装 Windows 版 iCloud 不够。",
+    "win_software_unknown": "无法确认 Apple Devices 是否已安装。若已安装可继续，否则请从下方选择。",
+    "win_usb_missing": "请用 USB 数据线连接并解锁 iPhone 或 iPad。",
+    "win_usb_not_connected": "所选设备未通过 USB 连接。请选择已连接的设备。",
+    "win_usb_select_multiple": "有多台 Apple 设备通过 USB 连接。请在下方列表中选择要设置的设备后重试。"
   },
   "zh-Hant": {
     "win_home": "總覽",
@@ -557,6 +627,16 @@
     "win_startup": "登入 Windows 時啟動 MochiLog",
     "win_tray": "關閉視窗後仍在通知區域執行 MochiLog",
     "win_tray_open": "開啟 MochiLog",
-    "win_tray_exit": "結束 MochiLog"
+    "win_tray_exit": "結束 MochiLog",
+    "win_check_apple_software": "重新檢查",
+    "win_software_checking": "正在檢查 Apple 裝置軟體…",
+    "win_software_apple_devices": "已安裝 Apple Devices。可以繼續 USB 信任設定。",
+    "win_software_itunes": "已安裝傳統版 iTunes。可以繼續 USB 信任設定。",
+    "win_software_both": "已安裝 Apple Devices 和傳統版 iTunes。可以繼續 USB 信任設定。",
+    "win_software_missing": "找不到 Apple Devices 或傳統版 iTunes。請從下方選擇一個安裝；只有 Windows 版 iCloud 並不足夠。",
+    "win_software_unknown": "無法確認 Apple Devices 是否已安裝。若已安裝可繼續，否則請從下方選擇。",
+    "win_usb_missing": "請用 USB 資料線連接並解鎖 iPhone 或 iPad。",
+    "win_usb_not_connected": "所選裝置未透過 USB 連接。請選擇已連接的裝置。",
+    "win_usb_select_multiple": "有多台 Apple 裝置透過 USB 連接。請在下方清單選擇要設定的裝置後重試。"
   }
 }

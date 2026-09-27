@@ -63,11 +63,11 @@ public sealed class CompanionRuntime : IDisposable
         Record(Status);
     }
 
-    public async Task<ConnectedDevice> PrepareUsbAsync()
+    public async Task<ConnectedDevice> PrepareUsbAsync(string? selectedUdid = null)
     {
         Status = UiText.Get("win_usb_wait");
         Changed?.Invoke();
-        var device = await Collector.PrepareUsbPairingAsync(_lifetime.Token);
+        var device = await Collector.PrepareUsbPairingAsync(selectedUdid, _lifetime.Token);
         Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
         Status = UiText.Format("win_usb_ready", device.Name);
         Record(Status);
