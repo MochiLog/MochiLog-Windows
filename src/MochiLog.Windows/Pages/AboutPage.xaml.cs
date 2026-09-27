@@ -15,6 +15,8 @@ public sealed partial class AboutPage : Page
         AboutText.Text = UiText.Get("win_note");
         RepositoryButton.Content = UiText.Get("win_repo");
         LicenseButton.Content = UiText.Get("win_license");
+        PrivacyLink.Content = UiText.Get("mt_l_07");
+        TermsLink.Content = UiText.Get("mt_l_08");
     }
 
     private void RepositoryClicked(object sender, RoutedEventArgs args) =>
@@ -22,12 +24,6 @@ public sealed partial class AboutPage : Page
             UseShellExecute = true
         });
 
-    private void LicenseClicked(object sender, RoutedEventArgs args)
-    {
-        var path = Path.Combine(AppContext.BaseDirectory, "Licenses");
-        if (Directory.Exists(path))
-            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") {
-                UseShellExecute = true
-            });
-    }
+    private void LicenseClicked(object sender, RoutedEventArgs args) =>
+        Frame.Navigate(typeof(LicensesPage));
 }

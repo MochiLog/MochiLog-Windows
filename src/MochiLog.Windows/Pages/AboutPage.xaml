@@ -11,6 +11,8 @@
                     <TextBlock x:Name="AboutText" TextWrapping="Wrap" />
                     <Button x:Name="RepositoryButton" Click="RepositoryClicked" HorizontalAlignment="Left" />
                     <Button x:Name="LicenseButton" Click="LicenseClicked" HorizontalAlignment="Left" />
+                    <HyperlinkButton x:Name="PrivacyLink" NavigateUri="https://mochilog.ryuya-dev.net/privacy" />
+                    <HyperlinkButton x:Name="TermsLink" NavigateUri="https://mochilog.ryuya-dev.net/terms" />
                 </StackPanel>
             </Border>
         </StackPanel>

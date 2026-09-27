@@ -89,7 +89,8 @@
     "win_support_device": "Device for diagnostics",
     "win_support_nickname": "Nickname",
     "win_support_email": "Email address",
-    "win_support_message": "Describe the issue"
+    "win_support_message": "Describe the issue",
+    "win_license_missing": "License files were not found. Reinstall MochiLog Windows."
   },
   "ja": {
     "win_home": "概要",
@@ -181,7 +182,8 @@
     "win_support_device": "診断対象の端末",
     "win_support_nickname": "ニックネーム",
     "win_support_email": "メールアドレス",
-    "win_support_message": "発生したこと"
+    "win_support_message": "発生したこと",
+    "win_license_missing": "ライセンスファイルが見つかりません。MochiLog Windowsを再インストールしてください。"
   },
   "de": {
     "win_home": "Übersicht",
@@ -273,7 +275,8 @@
     "win_support_device": "Gerät für Diagnose",
     "win_support_nickname": "Spitzname",
     "win_support_email": "E-Mail-Adresse",
-    "win_support_message": "Problem beschreiben"
+    "win_support_message": "Problem beschreiben",
+    "win_license_missing": "Lizenzdateien wurden nicht gefunden. Installieren Sie MochiLog Windows erneut."
   },
   "es": {
     "win_home": "Resumen",
@@ -365,7 +368,8 @@
     "win_support_device": "Dispositivo para diagnóstico",
     "win_support_nickname": "Apodo",
     "win_support_email": "Correo electrónico",
-    "win_support_message": "Describe el problema"
+    "win_support_message": "Describe el problema",
+    "win_license_missing": "No se encontraron los archivos de licencias. Reinstala MochiLog Windows."
   },
   "fr": {
     "win_home": "Vue d’ensemble",
@@ -457,7 +461,8 @@
     "win_support_device": "Appareil à diagnostiquer",
     "win_support_nickname": "Surnom",
     "win_support_email": "Adresse e-mail",
-    "win_support_message": "Décrivez le problème"
+    "win_support_message": "Décrivez le problème",
+    "win_license_missing": "Fichiers de licence introuvables. Réinstallez MochiLog Windows."
   },
   "ko": {
     "win_home": "개요",
@@ -549,7 +554,8 @@
     "win_support_device": "진단 대상 기기",
     "win_support_nickname": "닉네임",
     "win_support_email": "이메일 주소",
-    "win_support_message": "문제 설명"
+    "win_support_message": "문제 설명",
+    "win_license_missing": "라이선스 파일을 찾을 수 없습니다. MochiLog Windows를 다시 설치하세요."
   },
   "zh-Hans": {
     "win_home": "概览",
@@ -641,7 +647,8 @@
     "win_support_device": "诊断设备",
     "win_support_nickname": "昵称",
     "win_support_email": "邮箱地址",
-    "win_support_message": "描述问题"
+    "win_support_message": "描述问题",
+    "win_license_missing": "找不到许可文件。请重新安装 MochiLog Windows。"
   },
   "zh-Hant": {
     "win_home": "總覽",
@@ -733,6 +740,7 @@
     "win_support_device": "診斷裝置",
     "win_support_nickname": "暱稱",
     "win_support_email": "電郵地址",
-    "win_support_message": "描述問題"
+    "win_support_message": "描述問題",
+    "win_license_missing": "找不到授權檔案。請重新安裝 MochiLog Windows。"
   }
 }

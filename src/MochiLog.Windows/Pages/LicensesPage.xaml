@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page x:Class="MochiLog_Windows.Pages.LicensesPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="28" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}" />
+        <Grid Grid.Row="1" ColumnSpacing="14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ListView x:Name="DocumentList" SelectionChanged="DocumentChanged" />
+            <TextBox x:Name="DocumentText" Grid.Column="1" IsReadOnly="True"
+                     AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" />
+        </Grid>
+    </Grid>
+</Page>
