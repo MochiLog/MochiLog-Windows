@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "MochiLog.Windows (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "MochiLog.Windows (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
