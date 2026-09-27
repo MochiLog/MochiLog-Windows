@@ -104,6 +104,10 @@ static class Program
             "Pairing completion MAC was wrong.");
         Check(state.Phones.Count == 1 && state.Phones[0].PhysicalDeviceId == physical,
             "Windows changed the mobile device's physical ID.");
+        var encryptedState = File.ReadAllBytes(Path.Combine(StateStore.Root, "state.bin"));
+        Check(!Encoding.UTF8.GetString(encryptedState).Contains("PhysicalDeviceId") &&
+            StateStore.Load().Phones[0].Secret.SequenceEqual(key),
+            "Pairing keys were not protected and recoverable through Windows DPAPI.");
 
         var queue = Path.Combine(TransferServer.QueuePath(state.Phones[0]), "Host");
         Directory.CreateDirectory(queue);
