@@ -201,6 +201,7 @@ public static partial class Collector
             TimeSpan.FromSeconds(60), cancellation);
         return new ConnectedDevice(id,
             info.TryGetProperty("DeviceName", out var name) ? name.GetString() ?? model : model,
+            model,
             UsbConnected: true, UsbTrusted: true);
     }
 
