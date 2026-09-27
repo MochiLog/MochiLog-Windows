@@ -24,7 +24,6 @@ public sealed partial class HomePage : Page
         SetupStep2.Text = UiText.Get("win_step_2");
         SetupStep3.Text = UiText.Get("win_step_3");
         UsbButton.Content = UiText.Get("win_usb");
-        VerifyButton.Content = UiText.Get("win_verify");
         DeviceList.Header = UiText.Get("win_found");
         PairButton.Content = UiText.Get("win_pair");
         PairedTitle.Text = UiText.Get("win_paired");
@@ -63,22 +62,6 @@ public sealed partial class HomePage : Page
             await ShowMessageAsync(UiText.Get("win_usb_done"), UiText.Get("win_usb_done_detail"));
         }
         catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
-    }
-
-    private async void VerifyClicked(object sender, RoutedEventArgs args)
-    {
-        var device = SelectedDevice() ?? _usbDevice;
-        if (device is null)
-        {
-            await ShowMessageAsync(UiText.Get("win_select"), UiText.Get("win_select_usb"));
-            return;
-        }
-        try
-        {
-            await _runtime.VerifyWirelessAsync(device);
-            await ShowMessageAsync(UiText.Get("win_verify_done"), UiText.Get("win_verify_done_detail"));
-        }
-        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_verify_failed"), error.Message); }
     }
 
     private ConnectedDevice? SelectedDevice() => DeviceList.SelectedIndex is >= 0 and var index &&

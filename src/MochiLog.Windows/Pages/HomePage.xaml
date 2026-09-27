@@ -31,7 +31,6 @@
                     <TextBlock x:Name="SetupStep3" TextWrapping="Wrap" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button x:Name="UsbButton" Click="UsbClicked" />
-                        <Button x:Name="VerifyButton" Click="VerifyClicked" />
                     </StackPanel>
                     <ListView x:Name="DeviceList" Height="160" SelectionMode="Single" />
                     <Button x:Name="PairButton" Click="PairClicked" />

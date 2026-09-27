@@ -59,6 +59,7 @@ public sealed class CompanionRuntime : IDisposable
         Status = UiText.Get("win_usb_wait");
         Changed?.Invoke();
         var device = await Collector.PrepareUsbPairingAsync(_lifetime.Token);
+        Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
         Status = UiText.Format("win_usb_ready", device.Name);
         Record(Status);
         return device;
@@ -77,7 +78,7 @@ public sealed class CompanionRuntime : IDisposable
     public PairingInvitation BeginPairing(ConnectedDevice device)
     {
         if (!Available.Any(item => item.Udid == device.Udid))
-            throw new InvalidOperationException("Verify this device's wireless connection first.");
+            throw new InvalidOperationException("Set up USB trust or select a discovered device first.");
         var invitation = Server.BeginPairing(device);
         Record($"{device.Name}: pairing QR generated (expires after 3 minutes)");
         return invitation;
