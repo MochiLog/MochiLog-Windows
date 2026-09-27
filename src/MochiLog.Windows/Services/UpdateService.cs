@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace MochiLog_Windows.Services;
@@ -112,14 +113,26 @@ public static class UpdateService
             StringComparison.OrdinalIgnoreCase);
     }
 
-    public static void LaunchInstaller(string path)
+    public static void LaunchInstallerAfterExit(string path)
     {
-        var start = new ProcessStartInfo(path) { UseShellExecute = true };
-        start.ArgumentList.Add("/SILENT");
-        start.ArgumentList.Add("/NORESTART");
-        start.ArgumentList.Add("/CLOSEAPPLICATIONS");
-        start.ArgumentList.Add("/RESTARTAPPLICATIONS");
+        // The installer cannot replace the self-contained .NET runtime while this process
+        // still has its DLLs open. A detached Windows PowerShell process waits for exit.
+        var escapedPath = path.Replace("'", "''", StringComparison.Ordinal);
+        var script = $"$app = Get-Process -Id {Environment.ProcessId} -ErrorAction SilentlyContinue; " +
+            "if ($app) { $app.WaitForExit() }; " +
+            $"Start-Process -FilePath '{escapedPath}' " +
+            "-ArgumentList '/SILENT /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS'";
+        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+        var start = new ProcessStartInfo("powershell.exe") {
+            UseShellExecute = false, CreateNoWindow = true
+        };
+        start.ArgumentList.Add("-NoProfile");
+        start.ArgumentList.Add("-NonInteractive");
+        start.ArgumentList.Add("-WindowStyle");
+        start.ArgumentList.Add("Hidden");
+        start.ArgumentList.Add("-EncodedCommand");
+        start.ArgumentList.Add(encoded);
         if (Process.Start(start) is null)
-            throw new IOException("The update installer did not start.");
+            throw new IOException("The updater helper did not start.");
     }
 }

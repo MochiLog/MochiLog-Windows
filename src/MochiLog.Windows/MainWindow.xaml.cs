@@ -93,7 +93,7 @@ public sealed partial class MainWindow : Window
             _pendingUpdate = null;
             AppWindow.Title = UiText.Get("win_update_downloading");
             var installer = await UpdateService.DownloadAsync(update);
-            UpdateService.LaunchInstaller(installer);
+            UpdateService.LaunchInstallerAfterExit(installer);
             Quit();
         }
         catch (Exception error)
