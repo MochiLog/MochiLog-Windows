@@ -14,6 +14,7 @@ public sealed partial class MainWindow : Window
     private TrayIcon? _tray;
     private bool _quitting;
     public bool IsTrayReady => _tray is not null;
+    public string? TrayError { get; private set; }
 
     public MainWindow()
     {
@@ -32,8 +33,7 @@ public sealed partial class MainWindow : Window
             AppWindow.Hide();
         };
         Closed += (_, _) => DisposeTray();
-        try { UpdateTrayPreference(); }
-        catch { DisposeTray(); } // A missing shell icon must not hide the only window.
+        // The shell icon is registered after Activate(), when the HWND is ready.
     }
 
     public void UpdateTrayPreference()
@@ -46,7 +46,10 @@ public sealed partial class MainWindow : Window
         _tray = new TrayIcon(WinRT.Interop.WindowNative.GetWindowHandle(this), iconPath,
             UiText.Get("win_tray_open"), UiText.Get("win_tray_exit"), Restore,
             () => DispatcherQueue.TryEnqueue(Quit));
+        TrayError = null;
     }
+
+    public void ReportTrayError(Exception error) => TrayError = error.Message;
 
     public void Restore()
     {

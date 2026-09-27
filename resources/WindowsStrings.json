@@ -77,7 +77,10 @@
     "win_software_unknown": "Could not confirm whether Apple Devices is installed. If it is already installed, continue; otherwise install one option below.",
     "win_usb_missing": "Connect and unlock an iPhone or iPad with a USB data cable.",
     "win_usb_not_connected": "The selected device is not connected by USB. Select a connected device and try again.",
-    "win_usb_select_multiple": "Multiple Apple devices are connected. Select the one to set up in the device list, then try again."
+    "win_usb_select_multiple": "Multiple Apple devices are connected. Select the one to set up in the device list, then try again.",
+    "win_tray_status_ready": "The MochiLog icon is shown in the notification area while the app is running. The switch above controls whether it stays running after closing the window.",
+    "win_tray_status_failed": "Could not add the notification-area icon: {0}",
+    "win_tray_status_unavailable": "The notification-area icon is not ready."
   },
   "ja": {
     "win_home": "概要",
@@ -157,7 +160,10 @@
     "win_software_unknown": "Apple Devicesの導入状態を確認できませんでした。導入済みならそのまま進み、未導入なら下から選んでください。",
     "win_usb_missing": "iPhoneまたはiPadをデータ対応USBケーブルで接続し、ロックを解除してください。",
     "win_usb_not_connected": "選択中の端末はUSB接続されていません。接続中の端末を選び直してください。",
-    "win_usb_select_multiple": "複数のApple端末がUSB接続されています。下の一覧で初回設定する端末を選んでから、もう一度押してください。"
+    "win_usb_select_multiple": "複数のApple端末がUSB接続されています。下の一覧で初回設定する端末を選んでから、もう一度押してください。",
+    "win_tray_status_ready": "アプリの起動中は通知領域にMochiLogのアイコンを表示します。上のスイッチはウィンドウを閉じた後も動かすかを切り替えます。",
+    "win_tray_status_failed": "通知領域にアイコンを追加できませんでした：{0}",
+    "win_tray_status_unavailable": "通知領域のアイコンは準備中です。"
   },
   "de": {
     "win_home": "Übersicht",
@@ -237,7 +243,10 @@
     "win_software_unknown": "Apple Devices konnte nicht überprüft werden. Wenn es installiert ist, fahren Sie fort; andernfalls wählen Sie unten eine Option.",
     "win_usb_missing": "Verbinden und entsperren Sie ein iPhone oder iPad mit einem USB-Datenkabel.",
     "win_usb_not_connected": "Das ausgewählte Gerät ist nicht per USB verbunden. Wählen Sie ein verbundenes Gerät.",
-    "win_usb_select_multiple": "Mehrere Apple-Geräte sind per USB verbunden. Wählen Sie das gewünschte Gerät in der Liste und versuchen Sie es erneut."
+    "win_usb_select_multiple": "Mehrere Apple-Geräte sind per USB verbunden. Wählen Sie das gewünschte Gerät in der Liste und versuchen Sie es erneut.",
+    "win_tray_status_ready": "Das MochiLog-Symbol erscheint während der Ausführung im Infobereich. Der Schalter steuert, ob die App nach dem Schließen des Fensters weiterläuft.",
+    "win_tray_status_failed": "Symbol konnte nicht zum Infobereich hinzugefügt werden: {0}",
+    "win_tray_status_unavailable": "Das Symbol im Infobereich ist noch nicht bereit."
   },
   "es": {
     "win_home": "Resumen",
@@ -317,7 +326,10 @@
     "win_software_unknown": "No se pudo comprobar Apple Devices. Si ya está instalado, continúa; si no, elige una opción abajo.",
     "win_usb_missing": "Conecta y desbloquea un iPhone o iPad con un cable USB de datos.",
     "win_usb_not_connected": "El dispositivo seleccionado no está conectado por USB. Selecciona uno conectado.",
-    "win_usb_select_multiple": "Hay varios dispositivos Apple conectados por USB. Selecciona el que quieras configurar en la lista y vuelve a intentarlo."
+    "win_usb_select_multiple": "Hay varios dispositivos Apple conectados por USB. Selecciona el que quieras configurar en la lista y vuelve a intentarlo.",
+    "win_tray_status_ready": "El icono de MochiLog aparece en el área de notificación mientras se ejecuta. El interruptor controla si sigue activo al cerrar la ventana.",
+    "win_tray_status_failed": "No se pudo añadir el icono al área de notificación: {0}",
+    "win_tray_status_unavailable": "El icono del área de notificación aún no está listo."
   },
   "fr": {
     "win_home": "Vue d’ensemble",
@@ -397,7 +409,10 @@
     "win_software_unknown": "Impossible de vérifier Apple Devices. S’il est installé, continuez ; sinon, choisissez une option ci-dessous.",
     "win_usb_missing": "Connectez et déverrouillez un iPhone ou iPad avec un câble USB de données.",
     "win_usb_not_connected": "L’appareil sélectionné n’est pas connecté en USB. Sélectionnez un appareil connecté.",
-    "win_usb_select_multiple": "Plusieurs appareils Apple sont connectés en USB. Sélectionnez celui à configurer dans la liste puis réessayez."
+    "win_usb_select_multiple": "Plusieurs appareils Apple sont connectés en USB. Sélectionnez celui à configurer dans la liste puis réessayez.",
+    "win_tray_status_ready": "L’icône MochiLog apparaît dans la zone de notification pendant l’exécution. L’interrupteur décide si l’app continue après la fermeture de la fenêtre.",
+    "win_tray_status_failed": "Impossible d’ajouter l’icône à la zone de notification : {0}",
+    "win_tray_status_unavailable": "L’icône de la zone de notification n’est pas prête."
   },
   "ko": {
     "win_home": "개요",
@@ -477,7 +492,10 @@
     "win_software_unknown": "Apple Devices 설치 여부를 확인할 수 없습니다. 이미 설치했다면 진행하고, 아니라면 아래에서 선택하세요.",
     "win_usb_missing": "데이터용 USB 케이블로 iPhone 또는 iPad를 연결하고 잠금을 해제하세요.",
     "win_usb_not_connected": "선택한 기기가 USB로 연결되어 있지 않습니다. 연결된 기기를 선택하세요.",
-    "win_usb_select_multiple": "여러 Apple 기기가 USB로 연결되어 있습니다. 아래 목록에서 설정할 기기를 선택하고 다시 시도하세요."
+    "win_usb_select_multiple": "여러 Apple 기기가 USB로 연결되어 있습니다. 아래 목록에서 설정할 기기를 선택하고 다시 시도하세요.",
+    "win_tray_status_ready": "앱 실행 중 MochiLog 아이콘이 알림 영역에 표시됩니다. 위 스위치는 창을 닫은 뒤에도 계속 실행할지 정합니다.",
+    "win_tray_status_failed": "알림 영역에 아이콘을 추가하지 못했습니다: {0}",
+    "win_tray_status_unavailable": "알림 영역 아이콘을 준비 중입니다."
   },
   "zh-Hans": {
     "win_home": "概览",
@@ -557,7 +575,10 @@
     "win_software_unknown": "无法确认 Apple Devices 是否已安装。若已安装可继续，否则请从下方选择。",
     "win_usb_missing": "请用 USB 数据线连接并解锁 iPhone 或 iPad。",
     "win_usb_not_connected": "所选设备未通过 USB 连接。请选择已连接的设备。",
-    "win_usb_select_multiple": "有多台 Apple 设备通过 USB 连接。请在下方列表中选择要设置的设备后重试。"
+    "win_usb_select_multiple": "有多台 Apple 设备通过 USB 连接。请在下方列表中选择要设置的设备后重试。",
+    "win_tray_status_ready": "应用运行时，MochiLog 图标会显示在通知区域。上方开关控制关闭窗口后是否继续运行。",
+    "win_tray_status_failed": "无法将图标添加到通知区域：{0}",
+    "win_tray_status_unavailable": "通知区域图标尚未就绪。"
   },
   "zh-Hant": {
     "win_home": "總覽",
@@ -637,6 +658,9 @@
     "win_software_unknown": "無法確認 Apple Devices 是否已安裝。若已安裝可繼續，否則請從下方選擇。",
     "win_usb_missing": "請用 USB 資料線連接並解鎖 iPhone 或 iPad。",
     "win_usb_not_connected": "所選裝置未透過 USB 連接。請選擇已連接的裝置。",
-    "win_usb_select_multiple": "有多台 Apple 裝置透過 USB 連接。請在下方清單選擇要設定的裝置後重試。"
+    "win_usb_select_multiple": "有多台 Apple 裝置透過 USB 連接。請在下方清單選擇要設定的裝置後重試。",
+    "win_tray_status_ready": "應用程式執行時，MochiLog 圖示會顯示在通知區域。上方開關控制關閉視窗後是否繼續執行。",
+    "win_tray_status_failed": "無法將圖示加入通知區域：{0}",
+    "win_tray_status_unavailable": "通知區域圖示尚未準備好。"
   }
 }

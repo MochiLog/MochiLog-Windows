@@ -50,6 +50,8 @@ public partial class App : Application
             ShowRequest.Set();
         };
         _window.Activate();
+        try { MainWindow?.UpdateTrayPreference(); }
+        catch (Exception error) { MainWindow?.ReportTrayError(error); }
         if (MainWindow?.IsTrayReady == true &&
             Environment.GetCommandLineArgs().Contains("--background"))
             _window.AppWindow.Hide();

@@ -20,6 +20,7 @@ public sealed partial class SettingsPage : Page
         TrayToggle.Header = UiText.Get("win_tray");
         TrayToggle.IsOn = TrayPreferences.Enabled;
         TrayToggle.Toggled += TrayToggled;
+        UpdateTrayStatus();
         SupportTitle.Text = UiText.Get("win_support");
         SupportIntro.Text = UiText.Get("win_support_intro");
         PrivacyNote.Text = UiText.Get("win_privacy");
@@ -35,6 +36,14 @@ public sealed partial class SettingsPage : Page
     }
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(Render);
+    private void UpdateTrayStatus()
+    {
+        var window = ((App)Microsoft.UI.Xaml.Application.Current).MainWindow;
+        TrayStatus.Text = window?.TrayError is { } error
+            ? UiText.Format("win_tray_status_failed", error)
+            : UiText.Get(window?.IsTrayReady == true
+                ? "win_tray_status_ready" : "win_tray_status_unavailable");
+    }
     private void Render()
     {
         DebugText.Text = _runtime.DebugLog;
@@ -59,6 +68,7 @@ public sealed partial class SettingsPage : Page
         try {
             TrayPreferences.Enabled = TrayToggle.IsOn;
             ((App)Microsoft.UI.Xaml.Application.Current).MainWindow?.UpdateTrayPreference();
+            UpdateTrayStatus();
             if (StartupRegistration.Enabled) StartupRegistration.SetEnabled(true);
         }
         catch (Exception error) {

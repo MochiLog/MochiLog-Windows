@@ -9,6 +9,7 @@
                 <StackPanel Spacing="12">
                     <ToggleSwitch x:Name="StartupToggle" />
                     <ToggleSwitch x:Name="TrayToggle" />
+                    <TextBlock x:Name="TrayStatus" TextWrapping="Wrap" Opacity="0.72" />
                 </StackPanel>
             </Border>
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
