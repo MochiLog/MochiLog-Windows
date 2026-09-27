@@ -12,6 +12,7 @@ public sealed class PairedPhone
     public byte[] Secret { get; set; } = [];
     public DateTimeOffset? ConfirmedAt { get; set; }
     public string? LastKnownAddress { get; set; }
+    public string? ManualAddress { get; set; }
 }
 
 public sealed class CompanionState

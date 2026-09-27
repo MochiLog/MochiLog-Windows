@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Net;
+using System.Net.Sockets;
 
 namespace MochiLog_Windows.Services;
 
@@ -89,6 +91,22 @@ public sealed class CompanionRuntime : IDisposable
         var invitation = Server.BeginPairing(device);
         Record($"{device.Name}: pairing QR generated (expires after 3 minutes)");
         return invitation;
+    }
+
+    public void SetManualAddress(PairedPhone phone, string? address)
+    {
+        address = address?.Trim();
+        if (!string.IsNullOrEmpty(address) &&
+            (!IPAddress.TryParse(address, out var parsed) ||
+             parsed.AddressFamily != AddressFamily.InterNetwork ||
+             IPAddress.IsLoopback(parsed) || parsed.Equals(IPAddress.Any)))
+            throw new ArgumentException("Enter a valid iPhone or iPad IPv4 address.");
+        lock (State) {
+            phone.ManualAddress = string.IsNullOrEmpty(address) ? null : address;
+            StateStore.Save(State);
+        }
+        Record($"{phone.Name}: manual device address {(phone.ManualAddress is null ? "cleared" : "set")}");
+        if (phone.ManualAddress is not null) _ = CollectAsync(phone);
     }
 
     public async Task CollectAsync(PairedPhone? selected = null)

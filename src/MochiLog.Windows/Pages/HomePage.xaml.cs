@@ -28,6 +28,14 @@ public sealed partial class HomePage : Page
         PairButton.Content = UiText.Get("win_pair");
         PairedTitle.Text = UiText.Get("win_paired");
         ProcessingNote.Text = UiText.Get("win_note");
+        ManualAddressHint.Text = UiText.Get("win_manual_device_ip");
+        SaveManualAddressButton.Content = UiText.Get("win_save_ip");
+        ClearManualAddressButton.Content = UiText.Get("win_clear_ip");
+        PairedList.SelectionChanged += (_, _) => {
+            if (PairedList.SelectedIndex is >= 0 and var index &&
+                index < _runtime.State.Phones.Count)
+                ManualAddressBox.Text = _runtime.State.Phones[index].ManualAddress ?? "";
+        };
         Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); };
         Unloaded += (_, _) => _runtime.Changed -= RuntimeChanged;
     }
@@ -42,10 +50,13 @@ public sealed partial class HomePage : Page
         DeviceList.ItemsSource = _runtime.Available.Select(device =>
             $"{device.Name} · {device.Model} · {device.Udid}").ToArray();
         if (selected >= 0 && selected < _runtime.Available.Count) DeviceList.SelectedIndex = selected;
+        var pairedSelected = PairedList.SelectedIndex;
         PairedList.ItemsSource = _runtime.State.Phones.Select(phone =>
             $"{phone.Name} · {phone.Model} · " +
             (phone.ConfirmedAt is null ? UiText.Get("win_waiting_app") :
                 UiText.Get("win_connected"))).ToArray();
+        if (pairedSelected >= 0 && pairedSelected < _runtime.State.Phones.Count)
+            PairedList.SelectedIndex = pairedSelected;
         CollectButton.IsEnabled = _runtime.State.Phones.Count > 0;
     }
 
@@ -101,4 +112,20 @@ public sealed partial class HomePage : Page
     private async Task ShowMessageAsync(string title, string message) =>
         await new ContentDialog { XamlRoot = XamlRoot, Title = title,
             Content = message, CloseButtonText = UiText.Get("win_close") }.ShowAsync();
+
+    private void SaveManualAddressClicked(object sender, RoutedEventArgs args)
+    {
+        var index = PairedList.SelectedIndex;
+        if (index < 0 || index >= _runtime.State.Phones.Count) return;
+        try { _runtime.SetManualAddress(_runtime.State.Phones[index], ManualAddressBox.Text); }
+        catch (Exception error) { _ = ShowMessageAsync(UiText.Get("win_manual_device_ip"), error.Message); }
+    }
+
+    private void ClearManualAddressClicked(object sender, RoutedEventArgs args)
+    {
+        var index = PairedList.SelectedIndex;
+        if (index < 0 || index >= _runtime.State.Phones.Count) return;
+        _runtime.SetManualAddress(_runtime.State.Phones[index], null);
+        ManualAddressBox.Text = "";
+    }
 }

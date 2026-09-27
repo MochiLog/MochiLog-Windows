@@ -234,7 +234,8 @@ public static partial class Collector
         CompanionState state, Action<int, int>? progress = null,
         CancellationToken cancellation = default)
     {
-        if (OperatingSystem.IsWindows() && !string.IsNullOrWhiteSpace(phone.LastKnownAddress))
+        if (OperatingSystem.IsWindows() &&
+            !string.IsNullOrWhiteSpace(phone.ManualAddress ?? phone.LastKnownAddress))
         {
             try { return await CollectDirectAsync(phone, state, progress, cancellation); }
             catch (Exception error) when (error is not OperationCanceledException)
@@ -253,8 +254,9 @@ public static partial class Collector
     private static async Task<CollectionResult> CollectDirectAsync(PairedPhone phone,
         CompanionState state, Action<int, int>? progress, CancellationToken cancellation)
     {
+        var address = phone.ManualAddress ?? phone.LastKnownAddress!;
         var connection = new[] { "direct-rsd", "scan", "--udid", phone.Udid,
-            "--host", phone.LastKnownAddress!, "--port", "49152" };
+            "--host", address, "--port", "49152" };
         var listing = await RunAsync(connection, TimeSpan.FromMinutes(2), cancellation);
         using var scan = JsonDocument.Parse(listing);
         var files = scan.RootElement.GetProperty("files").EnumerateArray().Select(item => new DirectFile(
@@ -282,7 +284,7 @@ public static partial class Collector
             await File.WriteAllTextAsync(manifest, JsonSerializer.Serialize(pending.Select(item =>
                 new { path = item.Path, source = item.Source })), cancellation);
             var output = await RunAsync(["direct-rsd", "pull-batch", "--udid", phone.Udid,
-                "--host", phone.LastKnownAddress!, "--port", "49152",
+                "--host", address, "--port", "49152",
                 "--manifest", manifest, "--output", staging],
                 TimeSpan.FromMinutes(Math.Max(3, pending.Count * 3)), cancellation);
             using var results = JsonDocument.Parse(output);
