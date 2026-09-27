@@ -21,6 +21,7 @@ public sealed class CompanionState
     public List<PairedPhone> Phones { get; set; } = [];
     public HashSet<string> Delivered { get; set; } = [];
     public Dictionary<string, byte[]> PhoneDiagnostics { get; set; } = [];
+    public Dictionary<string, CollectionResult> LastCollections { get; set; } = [];
 }
 
 public static class StateStore

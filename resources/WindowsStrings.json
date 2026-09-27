@@ -47,7 +47,7 @@
     "win_copy": "Copy debug log",
     "win_export": "Export support report",
     "win_mail": "Contact support",
-    "win_privacy": "Support reports exclude raw battery logs and pairing secrets. Review the file before sending it.",
+    "win_privacy": "Support reports exclude raw battery logs and pairing secrets. The computer and selected device reports are exported separately; review them before sending.",
     "win_help": "If connection is not working",
     "win_help_content": "Keep the device unlocked while collecting. Check the same Wi-Fi, local network permission, Apple Devices or iTunes, and USB Trust This Computer. Analytics sharing must be enabled on the device. On a different network, Tailscale is needed for already collected logs.",
     "win_license": "Open source licenses",
@@ -85,7 +85,11 @@
     "win_select_device_hint": "Choose the iPhone or iPad you want to set up. The USB and trust status is shown for each device.",
     "win_usb_trusted": "USB connected · trusted",
     "win_usb_needs_trust": "USB connected · trust required",
-    "win_device_wireless": "Discovered wirelessly"
+    "win_device_wireless": "Discovered wirelessly",
+    "win_support_device": "Device for diagnostics",
+    "win_support_nickname": "Nickname",
+    "win_support_email": "Email address",
+    "win_support_message": "Describe the issue"
   },
   "ja": {
     "win_home": "概要",
@@ -135,7 +139,7 @@
     "win_copy": "デバッグログをコピー",
     "win_export": "サポート情報を保存",
     "win_mail": "サポートに連絡",
-    "win_privacy": "サポート情報にバッテリーログ本文やペアリングの秘密鍵は含めません。送信前に内容を確認できます。",
+    "win_privacy": "サポート情報に生のバッテリーログやペアリング鍵は含まれません。PCと選択端末の診断情報を別々に書き出すので、送信前に確認してください。",
     "win_help": "接続できないときは",
     "win_help_content": "収集中は端末のロックを解除してください。同じWi-Fi、ローカルネットワーク権限、Apple DevicesまたはiTunes、USBの「このコンピュータを信頼」を確認します。端末の解析共有もオンにしてください。別のネットワークで収集済みログを転送するにはTailscaleが必要です。",
     "win_license": "オープンソースライセンス",
@@ -173,7 +177,11 @@
     "win_select_device_hint": "設定するiPhone・iPadを丸印で選んでください。端末ごとにUSB接続と信頼状態を表示します。",
     "win_usb_trusted": "USB接続済み・信頼済み",
     "win_usb_needs_trust": "USB接続済み・信頼設定が必要",
-    "win_device_wireless": "無線で検出"
+    "win_device_wireless": "無線で検出",
+    "win_support_device": "診断対象の端末",
+    "win_support_nickname": "ニックネーム",
+    "win_support_email": "メールアドレス",
+    "win_support_message": "発生したこと"
   },
   "de": {
     "win_home": "Übersicht",
@@ -223,7 +231,7 @@
     "win_copy": "Debugprotokoll kopieren",
     "win_export": "Supportbericht exportieren",
     "win_mail": "Support kontaktieren",
-    "win_privacy": "Supportberichte enthalten keine rohen Batterieprotokolle oder Kopplungsgeheimnisse. Prüfen Sie die Datei vor dem Senden.",
+    "win_privacy": "Supportberichte enthalten keine rohen Batterielogs oder Kopplungsschlüssel. PC- und Gerätebericht werden getrennt exportiert; vor dem Senden prüfen.",
     "win_help": "Wenn keine Verbindung möglich ist",
     "win_help_content": "Lassen Sie das Gerät während der Erfassung entsperrt. Prüfen Sie WLAN, lokalen Netzwerkzugriff, Apple Devices oder iTunes und USB-Vertrauen. Die Analysefreigabe muss aktiviert sein. Für bereits erfasste Protokolle über andere Netze ist Tailscale nötig.",
     "win_license": "Open-Source-Lizenzen",
@@ -261,7 +269,11 @@
     "win_select_device_hint": "Wählen Sie das einzurichtende iPhone oder iPad mit dem Auswahlkreis. USB- und Vertrauensstatus stehen bei jedem Gerät.",
     "win_usb_trusted": "USB verbunden · vertraut",
     "win_usb_needs_trust": "USB verbunden · Vertrauen erforderlich",
-    "win_device_wireless": "Drahtlos gefunden"
+    "win_device_wireless": "Drahtlos gefunden",
+    "win_support_device": "Gerät für Diagnose",
+    "win_support_nickname": "Spitzname",
+    "win_support_email": "E-Mail-Adresse",
+    "win_support_message": "Problem beschreiben"
   },
   "es": {
     "win_home": "Resumen",
@@ -311,7 +323,7 @@
     "win_copy": "Copiar registro de depuración",
     "win_export": "Exportar informe de soporte",
     "win_mail": "Contactar con soporte",
-    "win_privacy": "Los informes no incluyen registros de batería sin procesar ni secretos de enlace. Revisa el archivo antes de enviarlo.",
+    "win_privacy": "Los informes no incluyen registros de batería sin procesar ni claves de vinculación. Se exportan por separado los datos del PC y del dispositivo; revísalos antes de enviarlos.",
     "win_help": "Si no se establece la conexión",
     "win_help_content": "Mantén el dispositivo desbloqueado durante la recopilación. Comprueba la misma Wi-Fi, el permiso de red local, Apple Devices o iTunes y la confianza USB. Activa compartir análisis. Para enviar registros ya recopilados entre redes hace falta Tailscale.",
     "win_license": "Licencias de código abierto",
@@ -349,7 +361,11 @@
     "win_select_device_hint": "Selecciona con el círculo el iPhone o iPad que quieras configurar. Se muestra el estado USB y de confianza de cada dispositivo.",
     "win_usb_trusted": "USB conectado · de confianza",
     "win_usb_needs_trust": "USB conectado · requiere confianza",
-    "win_device_wireless": "Detectado de forma inalámbrica"
+    "win_device_wireless": "Detectado de forma inalámbrica",
+    "win_support_device": "Dispositivo para diagnóstico",
+    "win_support_nickname": "Apodo",
+    "win_support_email": "Correo electrónico",
+    "win_support_message": "Describe el problema"
   },
   "fr": {
     "win_home": "Vue d’ensemble",
@@ -399,7 +415,7 @@
     "win_copy": "Copier le journal",
     "win_export": "Exporter le rapport d’assistance",
     "win_mail": "Contacter l’assistance",
-    "win_privacy": "Le rapport exclut les journaux bruts et les secrets de jumelage. Vérifiez le fichier avant l’envoi.",
+    "win_privacy": "Les rapports excluent les journaux de batterie bruts et les clés de jumelage. Les rapports du PC et de l’appareil sont exportés séparément ; vérifiez-les avant envoi.",
     "win_help": "Si la connexion échoue",
     "win_help_content": "Gardez l’appareil déverrouillé pendant la collecte. Vérifiez le même Wi-Fi, l’autorisation réseau local, Apple Devices ou iTunes et la confiance USB. Activez le partage des données d’analyse. Tailscale est nécessaire pour les journaux déjà collectés entre réseaux différents.",
     "win_license": "Licences open source",
@@ -437,7 +453,11 @@
     "win_select_device_hint": "Sélectionnez l’iPhone ou l’iPad à configurer avec le bouton rond. L’état USB et de confiance est indiqué pour chaque appareil.",
     "win_usb_trusted": "USB connecté · approuvé",
     "win_usb_needs_trust": "USB connecté · approbation requise",
-    "win_device_wireless": "Détecté sans fil"
+    "win_device_wireless": "Détecté sans fil",
+    "win_support_device": "Appareil à diagnostiquer",
+    "win_support_nickname": "Surnom",
+    "win_support_email": "Adresse e-mail",
+    "win_support_message": "Décrivez le problème"
   },
   "ko": {
     "win_home": "개요",
@@ -487,7 +507,7 @@
     "win_copy": "디버그 로그 복사",
     "win_export": "지원 보고서 내보내기",
     "win_mail": "지원 문의",
-    "win_privacy": "지원 보고서에는 원본 배터리 로그와 페어링 비밀키가 포함되지 않습니다. 보내기 전에 파일을 확인하세요.",
+    "win_privacy": "지원 보고서에는 원본 배터리 로그와 페어링 키가 포함되지 않습니다. PC와 선택한 기기 보고서를 별도로 내보내므로 보내기 전에 확인하세요.",
     "win_help": "연결되지 않을 때",
     "win_help_content": "수집하는 동안 기기의 잠금을 해제하세요. 같은 Wi-Fi, 로컬 네트워크 권한, Apple Devices 또는 iTunes, USB 신뢰 설정을 확인하세요. 기기의 분석 공유를 켜야 합니다. 다른 네트워크에서 이미 수집한 로그를 전송하려면 Tailscale이 필요합니다.",
     "win_license": "오픈 소스 라이선스",
@@ -525,7 +545,11 @@
     "win_select_device_hint": "설정할 iPhone 또는 iPad를 원형 선택 버튼으로 고르세요. 각 기기의 USB 연결 및 신뢰 상태가 표시됩니다.",
     "win_usb_trusted": "USB 연결됨 · 신뢰됨",
     "win_usb_needs_trust": "USB 연결됨 · 신뢰 설정 필요",
-    "win_device_wireless": "무선으로 발견됨"
+    "win_device_wireless": "무선으로 발견됨",
+    "win_support_device": "진단 대상 기기",
+    "win_support_nickname": "닉네임",
+    "win_support_email": "이메일 주소",
+    "win_support_message": "문제 설명"
   },
   "zh-Hans": {
     "win_home": "概览",
@@ -575,7 +599,7 @@
     "win_copy": "复制调试日志",
     "win_export": "导出支持报告",
     "win_mail": "联系支持",
-    "win_privacy": "支持报告不包含原始电池日志或配对密钥。发送前请检查文件。",
+    "win_privacy": "支持报告不包含原始电池日志或配对密钥。电脑和所选设备的报告会分别导出；发送前请检查。",
     "win_help": "无法连接时",
     "win_help_content": "收集期间请保持设备解锁。检查是否位于同一 Wi-Fi、是否允许局域网访问、是否安装 Apple Devices 或 iTunes，以及 USB“信任此电脑”。还需开启设备的分析共享。跨网络传输已收集的日志需要 Tailscale。",
     "win_license": "开源许可证",
@@ -613,7 +637,11 @@
     "win_select_device_hint": "点击圆形选项，选择要设置的 iPhone 或 iPad。每台设备都会显示 USB 连接和信任状态。",
     "win_usb_trusted": "USB 已连接 · 已信任",
     "win_usb_needs_trust": "USB 已连接 · 需要信任",
-    "win_device_wireless": "无线发现"
+    "win_device_wireless": "无线发现",
+    "win_support_device": "诊断设备",
+    "win_support_nickname": "昵称",
+    "win_support_email": "邮箱地址",
+    "win_support_message": "描述问题"
   },
   "zh-Hant": {
     "win_home": "總覽",
@@ -663,7 +691,7 @@
     "win_copy": "複製偵錯日誌",
     "win_export": "匯出支援報告",
     "win_mail": "聯絡支援",
-    "win_privacy": "支援報告不包含原始電池日誌或配對密鑰。傳送前請檢查檔案。",
+    "win_privacy": "支援報告不包含原始電池記錄或配對金鑰。電腦和所選裝置的報告會分別匯出；傳送前請檢查。",
     "win_help": "無法連線時",
     "win_help_content": "收集期間請保持裝置解鎖。檢查是否位於相同 Wi-Fi、是否允許區域網路存取、是否安裝 Apple Devices 或 iTunes，以及 USB「信任這部電腦」。也請開啟裝置的分析共享。跨網路傳送已收集的日誌需要 Tailscale。",
     "win_license": "開放原始碼授權",
@@ -701,6 +729,10 @@
     "win_select_device_hint": "點選圓形選項，選擇要設定的 iPhone 或 iPad。每台裝置都會顯示 USB 連線和信任狀態。",
     "win_usb_trusted": "USB 已連接 · 已信任",
     "win_usb_needs_trust": "USB 已連接 · 需要信任",
-    "win_device_wireless": "無線發現"
+    "win_device_wireless": "無線發現",
+    "win_support_device": "診斷裝置",
+    "win_support_nickname": "暱稱",
+    "win_support_email": "電郵地址",
+    "win_support_message": "描述問題"
   }
 }

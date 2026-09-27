@@ -16,11 +16,15 @@ public sealed class CompanionRuntime : IDisposable
     private readonly SemaphoreSlim _collection = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<string> _events = [];
+    private static string EventsFile => Path.Combine(StateStore.Root, "support-events.json");
     private bool _started;
 
     private CompanionRuntime()
     {
         State = StateStore.Load();
+        try { _events.AddRange(JsonSerializer.Deserialize<string[]>(File.ReadAllText(EventsFile)) ?? []); }
+        catch (IOException) { }
+        catch (JsonException) { }
         Server = new TransferServer(State);
         Server.SupportReport = phone => JsonSerializer.SerializeToUtf8Bytes(new
         {
@@ -128,6 +132,10 @@ public sealed class CompanionRuntime : IDisposable
                     CollectionStatus = UiText.Format("win_collection_result", phone.Name,
                         result.Saved, result.Skipped, result.Failed);
                     if (result.LastError is not null) CollectionStatus += " " + result.LastError;
+                    lock (State) {
+                        State.LastCollections[phone.PhysicalDeviceId.ToString("D").ToUpperInvariant()] = result;
+                        StateStore.Save(State);
+                    }
                     Record(CollectionStatus);
                 }
                 catch (Exception error) { Record($"{phone.Name}: {error.Message}"); }
@@ -151,36 +159,62 @@ public sealed class CompanionRuntime : IDisposable
         get { lock (_events) return string.Join(Environment.NewLine, _events); }
     }
 
-    public string LatestPhoneDiagnosticsText => State.PhoneDiagnostics.Values.LastOrDefault() is { } report
-        ? System.Text.Encoding.UTF8.GetString(report) : UiText.Get("win_no_phone_report");
-
-    public byte[] SupportDiagnosticsData()
+    public string PhoneDiagnosticsText(PairedPhone? phone)
     {
-        JsonElement? latestPhone = null;
-        if (State.PhoneDiagnostics.Values.LastOrDefault() is { } report)
-        {
-            try { latestPhone = JsonSerializer.Deserialize<JsonElement>(report); }
-            catch (JsonException) { /* Invalid reports are omitted from support exports. */ }
+        if (phone is null || !State.PhoneDiagnostics.TryGetValue(
+            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var report))
+            return UiText.Get("win_no_phone_report");
+        try {
+            using var parsed = JsonDocument.Parse(report);
+            return parsed.RootElement.TryGetProperty("recentEvents", out var events) &&
+                events.ValueKind == JsonValueKind.Array
+                ? string.Join(Environment.NewLine, events.EnumerateArray().Select(e => e.GetString()))
+                : UiText.Get("win_no_phone_report");
         }
+        catch (JsonException) { return UiText.Get("win_no_phone_report"); }
+    }
+
+    public byte[] SupportDiagnosticsData(PairedPhone? phone)
+    {
+        var id = phone?.PhysicalDeviceId.ToString("D").ToUpperInvariant();
+        var pending = phone is null ? 0 : new[] { "Host", "Watch" }
+            .Sum(kind => Directory.Exists(Path.Combine(TransferServer.QueuePath(phone), kind))
+                ? Directory.EnumerateFiles(Path.Combine(TransferServer.QueuePath(phone), kind),
+                    "Analytics-*.ips.ca.synced", SearchOption.AllDirectories).Count() : 0);
+        var delivered = id is null ? 0 : State.Delivered.Count(token => token.StartsWith(id + "|"));
         return JsonSerializer.SerializeToUtf8Bytes(new
         {
             schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
             appVersion = typeof(CompanionRuntime).Assembly.GetName().Version?.ToString(),
             osVersion = Environment.OSVersion.VersionString,
-            pairedDevices = State.Phones.Select(phone => new {
-                phone.Name, phone.Model, phone.ConfirmedAt
-            }).ToArray(),
+            deviceName = phone?.Name, deviceModel = phone?.Model,
+            pairingConfirmed = phone?.ConfirmedAt is not null,
+            pendingFiles = pending, deliveredFiles = delivered,
+            lastCollection = id is not null && State.LastCollections.TryGetValue(id, out var last)
+                ? last : null,
             recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(40).ToArray(),
-            mobileDiagnostics = latestPhone
         }, new JsonSerializerOptions { WriteIndented = true });
     }
+
+    public byte[]? PhoneSupportDiagnosticsData(PairedPhone? phone) =>
+        phone is not null && State.PhoneDiagnostics.TryGetValue(
+            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var report)
+            ? report : null;
 
     private void Record(string message)
     {
         lock (_events)
         {
-            _events.Add($"{DateTimeOffset.Now:O} | {message.Replace('\n', ' ')}");
+            _events.Add($"{DateTimeOffset.Now:O} | {new string(message.Replace('\n', ' ').Take(200).ToArray())}");
             if (_events.Count > 100) _events.RemoveRange(0, _events.Count - 100);
+            try {
+                Directory.CreateDirectory(StateStore.Root);
+                var temporary = EventsFile + ".new";
+                File.WriteAllText(temporary, JsonSerializer.Serialize(_events));
+                File.Move(temporary, EventsFile, true);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            { /* Debug logging must not block transfers. */ }
         }
         Changed?.Invoke();
     }
