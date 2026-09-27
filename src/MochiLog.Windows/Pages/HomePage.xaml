@@ -38,7 +38,40 @@
                     <TextBlock x:Name="SetupStep2" TextWrapping="Wrap" />
                     <TextBlock x:Name="SetupStep3" TextWrapping="Wrap" />
                     <TextBlock x:Name="DeviceSelectionHint" TextWrapping="Wrap" Opacity="0.72" />
-                    <RadioButtons x:Name="DeviceList" MaxColumns="1" />
+                    <RadioButtons x:Name="DeviceList" MaxColumns="1">
+                        <RadioButtons.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnSpacing="12" Padding="4,7">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="36" Height="36"
+                                            CornerRadius="10" Background="{Binding BadgeBackground}">
+                                        <FontIcon Glyph="&#xE8EA;" FontSize="19"
+                                                  Foreground="{Binding AccentBrush}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Model}" Opacity="0.68"
+                                                   FontSize="12" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="{Binding BadgeBackground}"
+                                            CornerRadius="9" Padding="8,5" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <FontIcon Glyph="{Binding BadgeGlyph}" FontSize="13"
+                                                      Foreground="{Binding AccentBrush}" />
+                                            <TextBlock Text="{Binding BadgeText}" FontSize="12"
+                                                       Foreground="{Binding AccentBrush}"
+                                                       TextWrapping="Wrap" MaxWidth="150" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </RadioButtons.ItemTemplate>
+                    </RadioButtons>
                     <Button x:Name="UsbButton" Click="UsbClicked" HorizontalAlignment="Left" />
                     <Button x:Name="PairButton" Click="PairClicked" />
                 </StackPanel>

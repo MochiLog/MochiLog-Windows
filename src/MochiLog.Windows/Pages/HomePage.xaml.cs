@@ -1,11 +1,39 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using MochiLog_Windows.Services;
 using QRCoder;
 using Windows.Storage.Streams;
 
 namespace MochiLog_Windows.Pages;
+
+public sealed class DeviceListRow
+{
+    public string Name { get; }
+    public string Model { get; }
+    public string BadgeText { get; }
+    public string BadgeGlyph { get; }
+    public SolidColorBrush AccentBrush { get; }
+    public SolidColorBrush BadgeBackground { get; }
+    public string Key { get; }
+
+    public DeviceListRow(ConnectedDevice device)
+    {
+        Name = device.Name;
+        Model = string.IsNullOrWhiteSpace(device.Model)
+            ? UiText.Get("win_model_unknown") : device.Model;
+        var needsTrust = device.UsbConnected && !device.UsbTrusted;
+        BadgeText = UiText.Get(needsTrust ? "win_badge_trust_needed" :
+            device.UsbConnected ? "win_badge_trusted" : "win_badge_wireless");
+        BadgeGlyph = needsTrust ? "\uE7BA" : device.UsbConnected ? "\uE73E" : "\uE701";
+        var color = needsTrust ? Microsoft.UI.Colors.Orange :
+            device.UsbConnected ? Microsoft.UI.Colors.Green : Microsoft.UI.Colors.DodgerBlue;
+        AccentBrush = new SolidColorBrush(color);
+        BadgeBackground = new SolidColorBrush(color) { Opacity = 0.14 };
+        Key = $"{device.Udid}|{device.Name}|{device.Model}|{device.UsbConnected}|{device.UsbTrusted}";
+    }
+}
 
 public sealed partial class HomePage : Page
 {
@@ -88,14 +116,9 @@ public sealed partial class HomePage : Page
     {
         StatusText.Text = _runtime.Status;
         CollectionText.Text = _runtime.CollectionStatus;
-        var available = _runtime.Available.Select(device =>
-            $"{device.Name} · {device.Model}\n" + UiText.Get(device switch {
-                { UsbConnected: true, UsbTrusted: true } => "win_usb_trusted",
-                { UsbConnected: true } => "win_usb_needs_trust",
-                _ => "win_device_wireless"
-            })).ToArray();
-        if (DeviceList.ItemsSource is not string[] currentAvailable ||
-            !currentAvailable.SequenceEqual(available))
+        var available = _runtime.Available.Select(device => new DeviceListRow(device)).ToArray();
+        if (DeviceList.ItemsSource is not DeviceListRow[] currentAvailable ||
+            !currentAvailable.Select(row => row.Key).SequenceEqual(available.Select(row => row.Key)))
         {
             DeviceList.ItemsSource = available;
             var selected = _runtime.Available.ToList().FindIndex(device => device.Udid == _selectedUdid);
