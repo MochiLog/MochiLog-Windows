@@ -42,6 +42,10 @@ Source: "Build\Collector\pymobiledevice3.exe"; DestDir: "{app}\Collector"; Flags
 Source: "LICENSE"; DestDir: "{app}\Licenses"; DestName: "MochiLog-GPL-3.0.txt"; Flags: ignoreversion
 Source: "Build\Licenses\*"; DestDir: "{app}\Licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\Licenses\Python"
+Type: filesandordirs; Name: "{app}\Licenses\NuGet"
+
 [Icons]
 Name: "{group}\MochiLog Windows"; Filename: "{app}\{#AppExe}"
 Name: "{group}\Uninstall MochiLog Windows"; Filename: "{uninstallexe}"
