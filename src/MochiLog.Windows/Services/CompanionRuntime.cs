@@ -170,7 +170,8 @@ public sealed class CompanionRuntime : IDisposable
 
     public string DebugLog
     {
-        get { lock (_events) return string.Join(Environment.NewLine, _events); }
+        get { lock (_events) return CrashDiagnostics.SummaryText + Environment.NewLine +
+            string.Join(Environment.NewLine, _events); }
     }
 
     public string PhoneDiagnosticsText(PairedPhone? phone)
@@ -206,6 +207,7 @@ public sealed class CompanionRuntime : IDisposable
             pendingFiles = pending, deliveredFiles = delivered,
             lastCollection = id is not null && State.LastCollections.TryGetValue(id, out var last)
                 ? last : null,
+            lastCrash = CrashDiagnostics.Latest(),
             recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(40).ToArray(),
         }, new JsonSerializerOptions { WriteIndented = true });
     }

@@ -175,6 +175,7 @@ public sealed partial class SettingsPage : Page
     }
 
     private async Task ShowErrorAsync(string message) =>
-        await new ContentDialog { XamlRoot = XamlRoot, Title = UiText.Get("win_setup_failed"),
-            Content = message, CloseButtonText = UiText.Get("win_close") }.ShowAsync();
+        await DialogCoordinator.ShowAsync(new ContentDialog { XamlRoot = XamlRoot,
+            Title = UiText.Get("win_setup_failed"), Content = message,
+            CloseButtonText = UiText.Get("win_close") });
 }

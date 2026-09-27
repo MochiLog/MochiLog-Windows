@@ -31,6 +31,11 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        UnhandledException += (_, args) => CrashDiagnostics.Record("WinUI", args.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            CrashDiagnostics.Record("AppDomain", args.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+            CrashDiagnostics.Record("UnobservedTask", args.Exception);
     }
 
     /// <summary>

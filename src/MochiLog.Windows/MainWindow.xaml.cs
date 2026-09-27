@@ -17,6 +17,9 @@ public sealed partial class MainWindow : Window
     private bool _updatePromptOpen;
     public bool IsTrayReady => _tray is not null;
     public string? TrayError { get; private set; }
+    public double ContentViewportWidth =>
+        AppWindow.Size.Width / (NavView.XamlRoot?.RasterizationScale ?? 1) -
+        (NavView.IsPaneOpen ? NavView.OpenPaneLength : NavView.CompactPaneLength);
 
     public MainWindow()
     {
@@ -82,13 +85,13 @@ public sealed partial class MainWindow : Window
         _updatePromptOpen = true;
         try
         {
-            var answer = await new ContentDialog {
+            var answer = await DialogCoordinator.ShowAsync(new ContentDialog {
                 XamlRoot = NavView.XamlRoot,
                 Title = UiText.Format("win_update_available", update.Version),
                 Content = UiText.Get("win_update_confirm"),
                 PrimaryButtonText = UiText.Get("win_update_install"),
                 CloseButtonText = UiText.Get("win_close")
-            }.ShowAsync();
+            });
             if (answer != ContentDialogResult.Primary) return;
             _pendingUpdate = null;
             AppWindow.Title = UiText.Get("win_update_downloading");
@@ -105,9 +108,9 @@ public sealed partial class MainWindow : Window
     }
 
     private async Task ShowUpdateMessageAsync(string message) =>
-        await new ContentDialog { XamlRoot = NavView.XamlRoot,
+        await DialogCoordinator.ShowAsync(new ContentDialog { XamlRoot = NavView.XamlRoot,
             Title = UiText.Get("win_update_title"), Content = message,
-            CloseButtonText = UiText.Get("win_close") }.ShowAsync();
+            CloseButtonText = UiText.Get("win_close") });
 
     private void Quit()
     {
