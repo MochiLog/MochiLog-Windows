@@ -45,6 +45,8 @@ public sealed partial class HomePage : Page
     {
         InitializeComponent();
         SubtitleText.Text = UiText.Get("win_subtitle");
+        FirstConnectionTitle.Text = UiText.Get("win_intro_title");
+        FirstConnectionDescription.Text = UiText.Get("win_intro_detail");
         StatusTitle.Text = UiText.Get("win_status_title");
         RefreshButton.Content = UiText.Get("mt_015");
         CollectButton.Content = UiText.Get("win_collect_now");
@@ -96,6 +98,11 @@ public sealed partial class HomePage : Page
         var usable = ContentColumn.Width - 72;
         DashboardGrid.Width = usable;
         StatusCard.Width = usable;
+        FirstConnectionCard.Width = usable;
+        var showIllustration = usable >= 640;
+        FirstIllustrationColumn.Width = new GridLength(showIllustration ? 250 : 0);
+        FirstConnectionIllustration.Visibility = showIllustration
+            ? Visibility.Visible : Visibility.Collapsed;
 
         var wide = usable >= 760;
         var left = wide ? Math.Round((usable - 20) * 0.57) : usable;
@@ -141,6 +148,16 @@ public sealed partial class HomePage : Page
 
     private void Render()
     {
+        FirstConnectionCard.Visibility = _runtime.State.Phones.Count == 0
+            ? Visibility.Visible : Visibility.Collapsed;
+        var usbDevices = _runtime.Available.Where(device => device.UsbConnected).ToArray();
+        var introStatusKey = usbDevices.Any(device => !device.UsbTrusted)
+            ? "win_intro_trust" : usbDevices.Length > 0
+                ? "win_intro_connected" : _runtime.Available.Count > 0
+                    ? "win_intro_wireless" : "win_intro_waiting";
+        FirstConnectionStatus.Text = UiText.Get(introStatusKey);
+        FirstConnectionStatusIcon.Glyph = introStatusKey == "win_intro_waiting"
+            ? "\uE946" : introStatusKey == "win_intro_trust" ? "\uE7BA" : "\uE73E";
         StatusText.Text = _runtime.Status;
         CollectionText.Text = _runtime.CollectionStatus;
         var available = _runtime.Available.Select(device => new DeviceListRow(device)).ToArray();

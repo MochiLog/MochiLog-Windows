@@ -59,7 +59,7 @@
     "win_searching": "Searching for trusted iPhone and iPad devices…",
     "win_none_found": "No unlocked trusted device was found. Connect once by USB or check Wi-Fi.",
     "win_devices_available": "{0} device(s) available",
-    "win_usb_wait": "Waiting for USB trust and wireless pairing…",
+    "win_usb_wait": "Configuring USB trust…",
     "win_usb_ready": "{0}: USB trust recorded. Disconnect USB and verify Wi-Fi.",
     "win_checking": "Checking {0} over Wi-Fi…",
     "win_wireless_ready": "{0}: wireless diagnostics connection verified.",
@@ -106,7 +106,13 @@
     "win_update_confirm": "Download and install the verified update from GitHub Releases?",
     "win_update_install": "Update now",
     "win_update_downloading": "Downloading update…",
-    "win_update_failed": "Update failed: {0}"
+    "win_update_failed": "Update failed: {0}",
+    "win_intro_title": "Connect your iPhone or iPad",
+    "win_intro_detail": "For first-time trust, unlock your device and connect it with a data-capable USB cable. If this PC is already trusted, you can continue wirelessly.",
+    "win_intro_waiting": "Waiting for a device. Connect it by USB and keep it unlocked.",
+    "win_intro_trust": "Device connected. Approve “Trust This Computer” on the device.",
+    "win_intro_connected": "USB device detected. Set up trust below, then disconnect the cable.",
+    "win_intro_wireless": "Device found over Wi-Fi. Check its connection below; USB setup may be unnecessary."
   },
   "ja": {
     "win_unpair_button": "MochiLogの連携を解除",
@@ -168,7 +174,7 @@
     "win_searching": "信頼済みのiPhone・iPadを探しています…",
     "win_none_found": "ロック解除された信頼済みの端末が見つかりません。初回はUSB接続するか、Wi-Fiを確認してください。",
     "win_devices_available": "利用可能な端末：{0}台",
-    "win_usb_wait": "USBの信頼設定と無線ペアリングを待っています…",
+    "win_usb_wait": "USBの信頼設定を進めています…",
     "win_usb_ready": "{0}：USBの信頼設定が完了。ケーブルを外してWi-Fiを確認してください。",
     "win_checking": "{0} のWi-Fi接続を確認しています…",
     "win_wireless_ready": "{0}：診断ログへの無線接続を確認しました。",
@@ -215,7 +221,13 @@
     "win_update_confirm": "GitHub Releasesから検証済みの更新をダウンロードしてインストールしますか？",
     "win_update_install": "今すぐ更新",
     "win_update_downloading": "更新をダウンロード中…",
-    "win_update_failed": "更新に失敗しました: {0}"
+    "win_update_failed": "更新に失敗しました: {0}",
+    "win_intro_title": "iPhone・iPadを接続",
+    "win_intro_detail": "初回の信頼設定は、ロックを解除してデータ対応USBケーブルで接続します。このPCをすでに信頼している端末は無線から進められます。",
+    "win_intro_waiting": "端末を待っています。USBで接続し、ロックを解除してください。",
+    "win_intro_trust": "端末を検出しました。端末側で「このコンピュータを信頼」を許可してください。",
+    "win_intro_connected": "USB接続を確認しました。下で信頼設定を行い、完了後にケーブルを外してください。",
+    "win_intro_wireless": "端末を無線で検出しました。下で接続状態を確認してください。USB設定を省ける場合があります。"
   },
   "de": {
     "win_unpair_button": "MochiLog-Kopplung entfernen",
@@ -277,7 +289,7 @@
     "win_searching": "Suche nach vertrauenswürdigen iPhones und iPads…",
     "win_none_found": "Kein entsperrtes vertrauenswürdiges Gerät gefunden. Einmal per USB verbinden oder WLAN prüfen.",
     "win_devices_available": "{0} Gerät(e) verfügbar",
-    "win_usb_wait": "Warte auf USB-Vertrauen und Funkkopplung…",
+    "win_usb_wait": "USB-Vertrauen wird eingerichtet…",
     "win_usb_ready": "{0}: USB-Vertrauen gespeichert. Kabel trennen und WLAN prüfen.",
     "win_checking": "Prüfe {0} über WLAN…",
     "win_wireless_ready": "{0}: Funkzugriff auf Diagnose bestätigt.",
@@ -324,7 +336,13 @@
     "win_update_confirm": "Geprüftes Update von GitHub Releases laden und installieren?",
     "win_update_install": "Jetzt aktualisieren",
     "win_update_downloading": "Update wird geladen…",
-    "win_update_failed": "Update fehlgeschlagen: {0}"
+    "win_update_failed": "Update fehlgeschlagen: {0}",
+    "win_intro_title": "iPhone oder iPad verbinden",
+    "win_intro_detail": "Entsperren Sie das Gerät und verbinden Sie es zur ersten Vertrauenseinrichtung per USB-Datenkabel. Ist dieser PC bereits vertrauenswürdig, können Sie drahtlos fortfahren.",
+    "win_intro_waiting": "Warte auf ein Gerät. Per USB verbinden und entsperrt lassen.",
+    "win_intro_trust": "Gerät verbunden. Bestätigen Sie „Diesem Computer vertrauen“.",
+    "win_intro_connected": "USB-Gerät erkannt. Unten Vertrauen einrichten und dann Kabel trennen.",
+    "win_intro_wireless": "Gerät im WLAN gefunden. Prüfen Sie unten die Verbindung; USB ist möglicherweise unnötig."
   },
   "es": {
     "win_unpair_button": "Desvincular MochiLog",
@@ -386,7 +404,7 @@
     "win_searching": "Buscando iPhone y iPad de confianza…",
     "win_none_found": "No se encontró ningún dispositivo desbloqueado y de confianza. Conéctalo una vez por USB o revisa la Wi-Fi.",
     "win_devices_available": "{0} dispositivo(s) disponibles",
-    "win_usb_wait": "Esperando confianza USB y enlace inalámbrico…",
+    "win_usb_wait": "Configurando la confianza USB…",
     "win_usb_ready": "{0}: confianza USB guardada. Desconecta el cable y comprueba la Wi-Fi.",
     "win_checking": "Comprobando {0} por Wi-Fi…",
     "win_wireless_ready": "{0}: acceso inalámbrico al diagnóstico verificado.",
@@ -433,7 +451,13 @@
     "win_update_confirm": "¿Descargar e instalar la actualización verificada desde GitHub Releases?",
     "win_update_install": "Actualizar ahora",
     "win_update_downloading": "Descargando actualización…",
-    "win_update_failed": "Error de actualización: {0}"
+    "win_update_failed": "Error de actualización: {0}",
+    "win_intro_title": "Conecta tu iPhone o iPad",
+    "win_intro_detail": "Para establecer la confianza por primera vez, desbloquea el dispositivo y conéctalo con un cable USB de datos. Si ya confía en este PC, puedes continuar sin cable.",
+    "win_intro_waiting": "Esperando un dispositivo. Conéctalo por USB y mantenlo desbloqueado.",
+    "win_intro_trust": "Dispositivo conectado. Acepta «Confiar en este ordenador».",
+    "win_intro_connected": "Dispositivo USB detectado. Configura la confianza abajo y desconecta el cable.",
+    "win_intro_wireless": "Dispositivo encontrado por Wi-Fi. Comprueba la conexión abajo; quizá no necesites USB."
   },
   "fr": {
     "win_unpair_button": "Dissocier MochiLog",
@@ -495,7 +519,7 @@
     "win_searching": "Recherche d’iPhone et d’iPad approuvés…",
     "win_none_found": "Aucun appareil approuvé et déverrouillé. Branchez-le une fois en USB ou vérifiez le Wi-Fi.",
     "win_devices_available": "{0} appareil(s) disponible(s)",
-    "win_usb_wait": "En attente de la confiance USB et du jumelage sans fil…",
+    "win_usb_wait": "Établissement de la confiance USB…",
     "win_usb_ready": "{0} : confiance USB enregistrée. Débranchez et vérifiez le Wi-Fi.",
     "win_checking": "Vérification de {0} par Wi-Fi…",
     "win_wireless_ready": "{0} : accès sans fil aux diagnostics vérifié.",
@@ -542,7 +566,13 @@
     "win_update_confirm": "Télécharger et installer la mise à jour vérifiée depuis GitHub Releases ?",
     "win_update_install": "Mettre à jour",
     "win_update_downloading": "Téléchargement de la mise à jour…",
-    "win_update_failed": "Échec de la mise à jour : {0}"
+    "win_update_failed": "Échec de la mise à jour : {0}",
+    "win_intro_title": "Connectez votre iPhone ou iPad",
+    "win_intro_detail": "Pour la première autorisation, déverrouillez l’appareil et branchez-le avec un câble USB de données. Si ce PC est déjà approuvé, continuez sans fil.",
+    "win_intro_waiting": "En attente d’un appareil. Branchez-le en USB et laissez-le déverrouillé.",
+    "win_intro_trust": "Appareil connecté. Acceptez « Faire confiance à cet ordinateur ».",
+    "win_intro_connected": "Appareil USB détecté. Établissez la confiance ci-dessous, puis débranchez-le.",
+    "win_intro_wireless": "Appareil trouvé en Wi-Fi. Vérifiez la connexion ci-dessous ; l’USB peut être inutile."
   },
   "ko": {
     "win_unpair_button": "MochiLog 페어링 해제",
@@ -604,7 +634,7 @@
     "win_searching": "신뢰된 iPhone과 iPad를 찾는 중…",
     "win_none_found": "잠금 해제된 신뢰 기기를 찾지 못했습니다. 처음에는 USB로 연결하거나 Wi-Fi를 확인하세요.",
     "win_devices_available": "사용 가능한 기기 {0}대",
-    "win_usb_wait": "USB 신뢰와 무선 페어링을 기다리는 중…",
+    "win_usb_wait": "USB 신뢰 설정 중…",
     "win_usb_ready": "{0}: USB 신뢰 등록됨. 케이블을 분리하고 Wi-Fi를 확인하세요.",
     "win_checking": "Wi-Fi로 {0} 확인 중…",
     "win_wireless_ready": "{0}: 진단 로그 무선 연결 확인됨.",
@@ -651,7 +681,13 @@
     "win_update_confirm": "GitHub Releases에서 검증된 업데이트를 다운로드하고 설치할까요?",
     "win_update_install": "지금 업데이트",
     "win_update_downloading": "업데이트 다운로드 중…",
-    "win_update_failed": "업데이트 실패: {0}"
+    "win_update_failed": "업데이트 실패: {0}",
+    "win_intro_title": "iPhone 또는 iPad 연결",
+    "win_intro_detail": "처음 신뢰를 설정하려면 기기 잠금을 해제하고 데이터 USB 케이블로 연결하세요. 이미 이 PC를 신뢰한다면 무선으로 계속할 수 있습니다.",
+    "win_intro_waiting": "기기를 기다리는 중입니다. USB로 연결하고 잠금을 해제하세요.",
+    "win_intro_trust": "기기가 연결되었습니다. 기기에서 「이 컴퓨터를 신뢰」를 허용하세요.",
+    "win_intro_connected": "USB 기기를 찾았습니다. 아래에서 신뢰를 설정한 뒤 케이블을 분리하세요.",
+    "win_intro_wireless": "Wi-Fi에서 기기를 찾았습니다. 아래에서 연결을 확인하세요. USB 설정이 필요하지 않을 수 있습니다."
   },
   "zh-Hans": {
     "win_unpair_button": "解除 MochiLog 配对",
@@ -713,7 +749,7 @@
     "win_searching": "正在搜索受信任的 iPhone 和 iPad…",
     "win_none_found": "未找到已解锁的受信任设备。首次请用 USB 连接或检查 Wi-Fi。",
     "win_devices_available": "可用设备：{0} 台",
-    "win_usb_wait": "正在等待 USB 信任和无线配对…",
+    "win_usb_wait": "正在设置 USB 信任…",
     "win_usb_ready": "{0}：已保存 USB 信任。拔下数据线并检查 Wi-Fi。",
     "win_checking": "正在通过 Wi-Fi 检查 {0}…",
     "win_wireless_ready": "{0}：已验证无线诊断连接。",
@@ -760,7 +796,13 @@
     "win_update_confirm": "要从 GitHub Releases 下载并安装已验证的更新吗？",
     "win_update_install": "立即更新",
     "win_update_downloading": "正在下载更新…",
-    "win_update_failed": "更新失败：{0}"
+    "win_update_failed": "更新失败：{0}",
+    "win_intro_title": "连接 iPhone 或 iPad",
+    "win_intro_detail": "首次建立信任时，请解锁设备并使用支持数据传输的 USB 线连接。如果已信任这台电脑，可以直接无线继续。",
+    "win_intro_waiting": "等待设备。请通过 USB 连接并保持解锁。",
+    "win_intro_trust": "设备已连接。请在设备上允许“信任此电脑”。",
+    "win_intro_connected": "检测到 USB 设备。请在下方设置信任，然后拔下连接线。",
+    "win_intro_wireless": "通过 Wi-Fi 找到设备。请在下方检查连接，可能无需 USB 设置。"
   },
   "zh-Hant": {
     "win_unpair_button": "解除 MochiLog 配對",
@@ -822,7 +864,7 @@
     "win_searching": "正在搜尋受信任的 iPhone 和 iPad…",
     "win_none_found": "找不到已解鎖的受信任裝置。首次請使用 USB 連接或檢查 Wi-Fi。",
     "win_devices_available": "可用裝置：{0} 部",
-    "win_usb_wait": "正在等待 USB 信任與無線配對…",
+    "win_usb_wait": "正在設定 USB 信任…",
     "win_usb_ready": "{0}：已儲存 USB 信任。拔下資料線並檢查 Wi-Fi。",
     "win_checking": "正在透過 Wi-Fi 檢查 {0}…",
     "win_wireless_ready": "{0}：已驗證無線診斷連線。",
@@ -869,6 +911,12 @@
     "win_update_confirm": "要從 GitHub Releases 下載並安裝已驗證的更新嗎？",
     "win_update_install": "立即更新",
     "win_update_downloading": "正在下載更新…",
-    "win_update_failed": "更新失敗：{0}"
+    "win_update_failed": "更新失敗：{0}",
+    "win_intro_title": "連接 iPhone 或 iPad",
+    "win_intro_detail": "首次建立信任時，請解鎖裝置並使用支援資料傳輸的 USB 線連接。若已信任這部電腦，可直接以無線方式繼續。",
+    "win_intro_waiting": "等待裝置。請以 USB 連接並保持解鎖。",
+    "win_intro_trust": "裝置已連接。請在裝置上允許「信任這部電腦」。",
+    "win_intro_connected": "偵測到 USB 裝置。請在下方設定信任，然後拔除連接線。",
+    "win_intro_wireless": "透過 Wi-Fi 找到裝置。請在下方檢查連線，可能無需 USB 設定。"
   }
 }
