@@ -34,6 +34,8 @@ if ($LASTEXITCODE -ne 0) { throw "Windows icon conversion failed." }
 dotnet publish src\MochiLog.Windows\MochiLog.Windows.csproj -c Release -r win-x64 `
     -p:Platform=x64 -p:Version=$Version --self-contained true -o Build\Publish
 if ($LASTEXITCODE -ne 0) { throw "WinUI publish failed." }
+& $venvPython scripts\collect-nuget-licenses.py Build\Licenses
+if ($LASTEXITCODE -ne 0) { throw "NuGet license collection failed." }
 if (-not (Test-Path $InnoCompiler)) { throw "Inno Setup 6 compiler not found: $InnoCompiler" }
 & $InnoCompiler "/DAppVersion=$Version" installer.iss
 if ($LASTEXITCODE -ne 0) { throw "Installer build failed." }
