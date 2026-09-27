@@ -50,7 +50,8 @@ public partial class App : Application
             ShowRequest.Set();
         };
         _window.Activate();
-        if (TrayPreferences.Enabled && Environment.GetCommandLineArgs().Contains("--background"))
+        if (MainWindow?.IsTrayReady == true &&
+            Environment.GetCommandLineArgs().Contains("--background"))
             _window.AppWindow.Hide();
         _ = Task.Run(() => {
             while (_ownsInstance) {

@@ -62,6 +62,8 @@ public sealed partial class SettingsPage : Page
             if (StartupRegistration.Enabled) StartupRegistration.SetEnabled(true);
         }
         catch (Exception error) {
+            try { TrayPreferences.Enabled = false; }
+            catch { /* Closing still exits if the icon was not created. */ }
             TrayToggle.Toggled -= TrayToggled;
             TrayToggle.IsOn = TrayPreferences.Enabled;
             TrayToggle.Toggled += TrayToggled;

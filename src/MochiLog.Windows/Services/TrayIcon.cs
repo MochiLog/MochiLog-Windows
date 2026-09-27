@@ -62,7 +62,10 @@ public sealed class TrayIcon : IDisposable
     private IntPtr HandleMessage(IntPtr window, uint message, IntPtr wParam,
         IntPtr lParam, UIntPtr id, UIntPtr data)
     {
-        if (message == _taskbarCreated) Add();
+        if (message == _taskbarCreated) {
+            try { Add(); }
+            catch { /* A later shell restart can announce the icon again. */ }
+        }
         if (message == CallbackMessage) {
             switch ((uint)lParam.ToInt64()) {
                 case DoubleClick: _open(); break;

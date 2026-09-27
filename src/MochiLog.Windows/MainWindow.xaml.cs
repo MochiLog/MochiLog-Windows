@@ -13,6 +13,7 @@ public sealed partial class MainWindow : Window
 {
     private TrayIcon? _tray;
     private bool _quitting;
+    public bool IsTrayReady => _tray is not null;
 
     public MainWindow()
     {
@@ -26,12 +27,13 @@ public sealed partial class MainWindow : Window
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
         AppWindow.SetIcon("Assets/AppIcon.ico");
         AppWindow.Closing += (_, args) => {
-            if (_quitting || !TrayPreferences.Enabled) return;
+            if (_quitting || _tray is null || !TrayPreferences.Enabled) return;
             args.Cancel = true;
             AppWindow.Hide();
         };
         Closed += (_, _) => DisposeTray();
-        UpdateTrayPreference();
+        try { UpdateTrayPreference(); }
+        catch { DisposeTray(); } // A missing shell icon must not hide the only window.
     }
 
     public void UpdateTrayPreference()
@@ -44,7 +46,8 @@ public sealed partial class MainWindow : Window
         if (_tray is not null) return;
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
         _tray = new TrayIcon(WinRT.Interop.WindowNative.GetWindowHandle(this), iconPath,
-            UiText.Get("win_tray_open"), UiText.Get("win_tray_exit"), Restore, Quit);
+            UiText.Get("win_tray_open"), UiText.Get("win_tray_exit"), Restore,
+            () => DispatcherQueue.TryEnqueue(Quit));
     }
 
     public void Restore()
