@@ -87,6 +87,12 @@ static class Program
         Check(challenge.GetProperty("proof").GetString() ==
             Hex(Hmac(key, $"pair-challenge|{Upper(invitation.SessionId)}")),
             "Pairing challenge MAC was wrong.");
+        var incorrect = new Dictionary<string, string>(common) {
+            ["type"] = "pair-confirm", ["confirmationMAC"] = Hex(Hmac(key,
+                $"pair-confirm|{Upper(invitation.SessionId)}|000000-wrong"))
+        };
+        Check((await ExchangeAsync(incorrect)).Length == 0 && state.Phones.Count == 0,
+            "An incorrect confirmation code paired the phone.");
         var confirm = new Dictionary<string, string>(common) {
             ["type"] = "pair-confirm",
             ["confirmationMAC"] = Hex(Hmac(key,
@@ -114,6 +120,12 @@ static class Program
             mac = Hex(Hmac(key,
                 $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|{ack}"))
         });
+        var badNonce = Guid.NewGuid();
+        Check((await ExchangeAsync(new {
+            version = "2", hostID = Upper(invitation.HostId),
+            physicalDeviceID = Upper(physical), nonce = Upper(badNonce), ack = "",
+            mac = new string('0', 64)
+        })).Length == 0, "Invalid request authentication was accepted.");
         var firstNonce = Guid.NewGuid();
         var first = Open(await Pull(firstNonce), key, invitation.HostId, physical, firstNonce);
         Check(first.Name == "Host::" + name && first.Content.SequenceEqual(payload),
@@ -132,6 +144,27 @@ static class Program
             "Repeated background notice returned log data.");
         Check((await Pull(backgroundNonce)).Length == 0,
             "Background nonce was not recorded for replay rejection.");
+        var diagnosticNonce = Guid.NewGuid();
+        var diagnostic = Encoding.UTF8.GetBytes("encrypted phone diagnostic fixture");
+        var diagnosticIv = RandomNumberGenerator.GetBytes(12);
+        var diagnosticCipher = new byte[diagnostic.Length];
+        var diagnosticTag = new byte[16];
+        var diagnosticContext = Encoding.UTF8.GetBytes(
+            $"v2|diagnostics|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(diagnosticNonce)}");
+        using (var aes = new AesGcm(key, 16))
+            aes.Encrypt(diagnosticIv, diagnostic, diagnosticCipher, diagnosticTag, diagnosticContext);
+        var diagnosticBox = diagnosticIv.Concat(diagnosticCipher).Concat(diagnosticTag).ToArray();
+        var diagnosticResponse = await ExchangeAsync(new {
+            version = "2", hostID = Upper(invitation.HostId),
+            physicalDeviceID = Upper(physical), nonce = Upper(diagnosticNonce), ack = "",
+            mac = Hex(Hmac(key,
+                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(diagnosticNonce)}|")),
+            clientDiagnosticsBox = Convert.ToBase64String(diagnosticBox)
+        });
+        Check(diagnosticResponse.Length > 0 &&
+            state.PhoneDiagnostics.TryGetValue(Upper(physical), out var storedDiagnostic) &&
+            storedDiagnostic.SequenceEqual(diagnostic),
+            "Encrypted phone diagnostics were not authenticated and saved.");
         var ackNonce = Guid.NewGuid();
         var final = Open(await Pull(ackNonce, first.Name), key,
             invitation.HostId, physical, ackNonce);
