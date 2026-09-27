@@ -126,6 +126,28 @@ static class Program
             "File acknowledgement did not complete the batch.");
         Check(state.Delivered.Contains(Upper(physical) + "|" + first.Name),
             "Delivered file was not marked.");
+        var addressChanges = 0;
+        server.PhoneAddressChanged += _ => addressChanges++;
+        var addressNonce = Guid.NewGuid();
+        using var addressRequest = JsonDocument.Parse(JsonSerializer.Serialize(new {
+            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
+            nonce = Upper(addressNonce), ack = "",
+            mac = Hex(Hmac(key,
+                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(addressNonce)}|"))
+        }));
+        var pullMethod = typeof(TransferServer).GetMethod("Pull",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        _ = pullMethod.Invoke(server, [addressRequest.RootElement, "192.168.3.31"]);
+        Check(state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
+            "An authenticated address change did not update the wireless collection route.");
+        var invalidNonce = Guid.NewGuid();
+        using var invalidAddressRequest = JsonDocument.Parse(JsonSerializer.Serialize(new {
+            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
+            nonce = Upper(invalidNonce), ack = "", mac = new string('0', 64)
+        }));
+        _ = pullMethod.Invoke(server, [invalidAddressRequest.RootElement, "192.168.3.32"]);
+        Check(state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
+            "An unauthenticated request changed the device address.");
         Console.WriteLine("PASS: v3 identity pairing, encrypted v2 log, ACK, and replay rejection");
         var directUdid = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_UDID");
         var directAddress = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_ADDRESS");
