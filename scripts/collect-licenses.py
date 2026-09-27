@@ -6,6 +6,8 @@ import shutil
 import sys
 
 destination = Path(sys.argv[1]) / "Python"
+if destination.exists():
+    shutil.rmtree(destination)
 destination.mkdir(parents=True, exist_ok=True)
 manifest = []
 for package in sorted(importlib.metadata.distributions(), key=lambda p: p.metadata["Name"].lower()):

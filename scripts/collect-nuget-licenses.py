@@ -12,6 +12,8 @@ import zipfile
 root = Path(__file__).resolve().parents[1]
 assets = root / "src/MochiLog.Windows/obj/project.assets.json"
 destination = Path(sys.argv[1]) / "NuGet"
+if destination.exists():
+    shutil.rmtree(destination)
 destination.mkdir(parents=True, exist_ok=True)
 data = json.loads(assets.read_text(encoding="utf-8"))
 packages_root = Path(os.environ.get("NUGET_PACKAGES", Path.home() / ".nuget/packages"))
