@@ -234,6 +234,99 @@ public static partial class Collector
         CompanionState state, Action<int, int>? progress = null,
         CancellationToken cancellation = default)
     {
+        if (OperatingSystem.IsWindows() && !string.IsNullOrWhiteSpace(phone.LastKnownAddress))
+        {
+            try { return await CollectDirectAsync(phone, state, progress, cancellation); }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                // USB remains useful when a saved network address is stale.
+                try { return await CollectLegacyAsync(phone, state, progress, cancellation); }
+                catch (Exception fallback) { throw new IOException(
+                    $"Wireless collection failed: {error.Message}; USB fallback: {fallback.Message}", fallback); }
+            }
+        }
+        return await CollectLegacyAsync(phone, state, progress, cancellation);
+    }
+
+    private sealed record DirectFile(string Path, string? Source);
+
+    private static async Task<CollectionResult> CollectDirectAsync(PairedPhone phone,
+        CompanionState state, Action<int, int>? progress, CancellationToken cancellation)
+    {
+        var connection = new[] { "direct-rsd", "scan", "--udid", phone.Udid,
+            "--host", phone.LastKnownAddress!, "--port", "49152" };
+        var listing = await RunAsync(connection, TimeSpan.FromMinutes(2), cancellation);
+        using var scan = JsonDocument.Parse(listing);
+        var files = scan.RootElement.GetProperty("files").EnumerateArray().Select(item => new DirectFile(
+            item.GetProperty("path").GetString()!, item.GetProperty("source").ValueKind == JsonValueKind.Null
+                ? null : item.GetProperty("source").GetString())).ToArray();
+        var queue = TransferServer.QueuePath(phone);
+        Directory.CreateDirectory(queue);
+        var pending = new List<DirectFile>();
+        foreach (var item in files)
+        {
+            var name = Path.GetFileName(item.Path);
+            var token = (item.Source is null ? "Host::" : $"Watch::{item.Source}::") + name;
+            var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
+            lock (state) { if (state.Delivered.Contains(deliveredKey)) continue; }
+            if (new[] { "Host", "Watch" }.Any(kind => File.Exists(
+                Path.Combine(queue, kind, item.Source ?? "", name)))) continue;
+            pending.Add(item);
+        }
+        if (pending.Count == 0) { progress?.Invoke(0, 0); return new CollectionResult(0, 0, 0, null); }
+        var staging = Path.Combine(queue, ".staging-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(staging);
+        try
+        {
+            var manifest = Path.Combine(staging, "manifest.json");
+            await File.WriteAllTextAsync(manifest, JsonSerializer.Serialize(pending.Select(item =>
+                new { path = item.Path, source = item.Source })), cancellation);
+            var output = await RunAsync(["direct-rsd", "pull-batch", "--udid", phone.Udid,
+                "--host", phone.LastKnownAddress!, "--port", "49152",
+                "--manifest", manifest, "--output", staging],
+                TimeSpan.FromMinutes(Math.Max(3, pending.Count * 3)), cancellation);
+            using var results = JsonDocument.Parse(output);
+            var successful = results.RootElement.GetProperty("results").EnumerateArray()
+                .ToDictionary(result => result.GetProperty("index").GetInt32(),
+                    result => result.GetProperty("ok").GetBoolean());
+            var saved = 0; var skipped = 0; var failed = 0;
+            for (var index = 0; index < pending.Count; index++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                var item = pending[index];
+                progress?.Invoke(index, pending.Count);
+                if (!successful.TryGetValue(index, out var ok) || !ok) { failed++; continue; }
+                var name = Path.GetFileName(item.Path);
+                var downloaded = Path.Combine(staging, index.ToString(), name);
+                var kind = BatteryLogKind(downloaded);
+                if (kind is null)
+                {
+                    skipped++;
+                    var token = (item.Source is null ? "Host::" : $"Watch::{item.Source}::") + name;
+                    lock (state) {
+                        state.Delivered.Add(phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token);
+                        StateStore.Save(state);
+                    }
+                }
+                else
+                {
+                    var folder = Path.Combine(queue, kind, item.Source ?? "");
+                    Directory.CreateDirectory(folder);
+                    File.Move(downloaded, Path.Combine(folder, name), true);
+                    saved++;
+                }
+            }
+            progress?.Invoke(pending.Count, pending.Count);
+            return new CollectionResult(saved, skipped, failed,
+                failed == 0 ? null : "Some diagnostic files could not be downloaded.");
+        }
+        finally { Directory.Delete(staging, true); }
+    }
+
+    private static async Task<CollectionResult> CollectLegacyAsync(PairedPhone phone,
+        CompanionState state, Action<int, int>? progress,
+        CancellationToken cancellation)
+    {
         var (root, connection) = await RootListingAsync(phone.Udid, cancellation);
         var sources = root.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim()).Where(line => ProxiedPath().IsMatch(line)).ToArray();

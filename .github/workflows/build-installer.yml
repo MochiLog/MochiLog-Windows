@@ -15,7 +15,7 @@ jobs:
           dotnet-version: 10.0.x
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.13'
       - name: Verify encrypted transfer protocol
         run: dotnet run --project tests/ProtocolTests/ProtocolTests.csproj -c Release
       - name: Install installer compiler

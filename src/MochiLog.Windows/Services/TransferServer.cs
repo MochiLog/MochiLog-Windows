@@ -146,10 +146,13 @@ public sealed class TransferServer : IDisposable
                 if (input.Length >= 16_384) return;
                 using var json = JsonDocument.Parse(input.ToArray());
                 var root = json.RootElement;
+                var remoteAddress = (client.Client.RemoteEndPoint as IPEndPoint)?.Address;
+                var peer = remoteAddress?.IsIPv4MappedToIPv6 == true
+                    ? remoteAddress.MapToIPv4().ToString() : remoteAddress?.ToString();
                 if (root.TryGetProperty("type", out var type) && type.GetString() is
                     "pair-init" or "pair-confirm")
                 {
-                    var response = Pair(root);
+                    var response = Pair(root, peer);
                     if (response is not null)
                     {
                         await stream.WriteAsync(response, timeout.Token);
@@ -157,7 +160,7 @@ public sealed class TransferServer : IDisposable
                     }
                     return;
                 }
-                var packet = Pull(root);
+                var packet = Pull(root, peer);
                 if (packet is not null) await stream.WriteAsync(packet, timeout.Token);
             }
             catch (OperationCanceledException) { StatusChanged?.Invoke("Transfer timed out."); }
@@ -165,7 +168,7 @@ public sealed class TransferServer : IDisposable
         }
     }
 
-    private byte[]? Pair(JsonElement request)
+    private byte[]? Pair(JsonElement request, string? peer = null)
     {
         if (!Guid.TryParse(Get(request, "sessionID"), out var sessionId) ||
             !Guid.TryParse(Get(request, "physicalDeviceID"), out var physicalId) ||
@@ -213,7 +216,7 @@ public sealed class TransferServer : IDisposable
                 {
                     Udid = session.Device.Udid, Name = session.Device.Name,
                     Model = session.Device.Model, PhysicalDeviceId = physicalId,
-                    Secret = session.Secret
+                    Secret = session.Secret, LastKnownAddress = ValidPeerAddress(peer) ? peer : null
                 };
                 lock (_state) {
                     _state.Phones.RemoveAll(existing => existing.Udid == phone.Udid ||
@@ -232,7 +235,7 @@ public sealed class TransferServer : IDisposable
         }
     }
 
-    private byte[]? Pull(JsonElement request)
+    private byte[]? Pull(JsonElement request, string? peer = null)
     {
         if (Get(request, "version") != "2" ||
             !Guid.TryParse(Get(request, "hostID"), out var hostId) || hostId != _state.HostId ||
@@ -251,6 +254,11 @@ public sealed class TransferServer : IDisposable
             var message = $"v2|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}|{ack}";
             if (!CryptographicOperations.FixedTimeEquals(supplied, Hmac(phone.Secret, message))) return null;
             _nonces[nonce] = now;
+            if (ValidPeerAddress(peer) && phone.LastKnownAddress != peer)
+            {
+                phone.LastKnownAddress = peer;
+                StateStore.Save(_state);
+            }
             if (Get(request, "presence") == "foreground" &&
                 TryHex(Get(request, "presenceMAC"), out var presence) &&
                 CryptographicOperations.FixedTimeEquals(presence,
@@ -351,6 +359,9 @@ public sealed class TransferServer : IDisposable
     private static string? Get(JsonElement obj, string property) =>
         obj.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString() : null;
+    private static bool ValidPeerAddress(string? peer) =>
+        IPAddress.TryParse(peer, out var address) && address.AddressFamily == AddressFamily.InterNetwork &&
+        !IPAddress.IsLoopback(address) && !address.Equals(IPAddress.Any);
     private static string Upper(Guid value) => value.ToString("D").ToUpperInvariant();
     private static byte[] Hmac(byte[] key, string message) =>
         HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(message));

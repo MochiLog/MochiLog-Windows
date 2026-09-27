@@ -8,15 +8,19 @@ $ErrorActionPreference = "Stop"
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot ".."))
 New-Item -ItemType Directory -Force Build, Build\Collector, Build\Licenses | Out-Null
 
-if (-not (Test-Path Build\PythonVenv\Scripts\python.exe)) {
-    & $Python -m venv Build\PythonVenv
+if (-not (Test-Path Build\PythonVenv313\Scripts\python.exe)) {
+    & $Python -m venv Build\PythonVenv313
     if ($LASTEXITCODE -ne 0) { throw "Could not create the collector build environment." }
 }
-$venvPython = (Resolve-Path Build\PythonVenv\Scripts\python.exe).Path
+$venvPython = (Resolve-Path Build\PythonVenv313\Scripts\python.exe).Path
+if ((& $venvPython -c 'import sys; print(sys.version_info >= (3, 13))') -ne 'True') {
+    throw "The wireless userspace tunnel requires Python 3.13 or newer."
+}
 & $venvPython -m pip install --disable-pip-version-check -r requirements-build.txt
 if ($LASTEXITCODE -ne 0) { throw "Could not install pinned collector build dependencies." }
 & $venvPython -m PyInstaller --noconfirm --clean --onefile `
     --collect-all pymobiledevice3 --collect-all pytun_pmd3 `
+    --hidden-import DirectRsd --collect-all sslpsk_pmd3 `
     --recursive-copy-metadata pymobiledevice3 --name pymobiledevice3 `
     --distpath Build\Collector --workpath Build\PyInstaller --specpath Build CollectorEntry.py
 if ($LASTEXITCODE -ne 0) { throw "Collector bundling failed." }
