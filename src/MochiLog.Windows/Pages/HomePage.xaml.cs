@@ -28,7 +28,7 @@ public sealed class DeviceListRow
             device.UsbConnected ? "win_badge_trusted" : "win_badge_wireless");
         BadgeGlyph = needsTrust ? "\uE7BA" : device.UsbConnected ? "\uE73E" : "\uE701";
         var color = needsTrust ? Microsoft.UI.Colors.Orange :
-            device.UsbConnected ? Microsoft.UI.Colors.Green : Microsoft.UI.Colors.DodgerBlue;
+            device.UsbConnected ? Microsoft.UI.Colors.LimeGreen : Microsoft.UI.Colors.DodgerBlue;
         AccentBrush = new SolidColorBrush(color);
         BadgeBackground = new SolidColorBrush(color) { Opacity = 0.14 };
         Key = $"{device.Udid}|{device.Name}|{device.Model}|{device.UsbConnected}|{device.UsbTrusted}";
