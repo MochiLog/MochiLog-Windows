@@ -42,8 +42,10 @@ public sealed class TransferServer : IDisposable
     private TcpListener? _listener;
     private CancellationTokenSource? _lifetime;
     private ServiceDiscovery? _discovery;
+    private string? _advertisedAddresses;
     public event Action<string>? StatusChanged;
     public event Action<PairedPhone>? PhoneConfirmed;
+    public event Action<PairedPhone>? PhoneAddressChanged;
     public Func<PairedPhone, byte[]>? SupportReport { get; set; }
 
     public TransferServer(CompanionState state) => _state = state;
@@ -55,25 +57,43 @@ public sealed class TransferServer : IDisposable
         _listener = new TcpListener(IPAddress.Any, Port);
         _listener.Start(20);
         _ = AcceptLoopAsync(_lifetime.Token);
-        try
-        {
-            _discovery = new ServiceDiscovery();
-            var addresses = LanAddresses();
-            var profile = new ServiceProfile(Upper(_state.HostId), "_mochilog._tcp", Port,
-                addresses.Select(IPAddress.Parse));
-            profile.AddProperty("v", "1");
-            profile.AddProperty("port", Port.ToString());
-            profile.AddProperty("ipv4", string.Join(",", addresses));
-            if (TailnetAddress() is { } tailnet)
-            {
-                profile.AddProperty("tailnet", tailnet);
-                profile.AddProperty("tailnetPort", Port.ToString());
-            }
-            _discovery.Advertise(profile);
-            _discovery.Announce(profile);
-        }
-        catch (Exception error) { StatusChanged?.Invoke("Local discovery: " + error.Message); }
+        NetworkChange.NetworkAddressChanged += NetworkAddressChanged;
+        AdvertiseCurrentAddresses();
         StatusChanged?.Invoke($"Encrypted transfer server listening on port {Port}.");
+    }
+
+    private void NetworkAddressChanged(object? sender, EventArgs args) =>
+        Task.Run(AdvertiseCurrentAddresses);
+
+    private void AdvertiseCurrentAddresses()
+    {
+        lock (_gate)
+        {
+            var addresses = LanAddresses();
+            var tailnet = TailnetAddress();
+            var signature = string.Join(",", addresses) + "|" + tailnet;
+            if (_advertisedAddresses == signature) return;
+            try
+            {
+                _discovery?.Dispose();
+                _discovery = new ServiceDiscovery();
+                var profile = new ServiceProfile(Upper(_state.HostId), "_mochilog._tcp", Port,
+                    addresses.Select(IPAddress.Parse));
+                profile.AddProperty("v", "1");
+                profile.AddProperty("port", Port.ToString());
+                profile.AddProperty("ipv4", string.Join(",", addresses));
+                if (tailnet is not null)
+                {
+                    profile.AddProperty("tailnet", tailnet);
+                    profile.AddProperty("tailnetPort", Port.ToString());
+                }
+                _discovery.Advertise(profile);
+                _discovery.Announce(profile);
+                _advertisedAddresses = signature;
+                StatusChanged?.Invoke("Network address changed; local discovery was updated.");
+            }
+            catch (Exception error) { StatusChanged?.Invoke("Local discovery: " + error.Message); }
+        }
     }
 
     public PairingInvitation BeginPairing(ConnectedDevice device)
@@ -258,6 +278,7 @@ public sealed class TransferServer : IDisposable
             {
                 phone.LastKnownAddress = peer;
                 StateStore.Save(_state);
+                PhoneAddressChanged?.Invoke(phone);
             }
             if (Get(request, "presence") == "foreground" &&
                 TryHex(Get(request, "presenceMAC"), out var presence) &&
@@ -405,6 +426,7 @@ public sealed class TransferServer : IDisposable
 
     public void Dispose()
     {
+        NetworkChange.NetworkAddressChanged -= NetworkAddressChanged;
         _lifetime?.Cancel();
         _listener?.Stop();
         _discovery?.Dispose();

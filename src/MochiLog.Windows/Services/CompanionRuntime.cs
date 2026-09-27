@@ -27,7 +27,14 @@ public sealed class CompanionRuntime : IDisposable
             recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(30).ToArray()
         });
         Server.StatusChanged += message => Record(message);
-        Server.PhoneConfirmed += phone => Record($"{phone.Name}: app pairing confirmed");
+        Server.PhoneConfirmed += phone => {
+            Record($"{phone.Name}: app pairing confirmed");
+            _ = CollectAsync(phone);
+        };
+        Server.PhoneAddressChanged += phone => {
+            Record($"{phone.Name}: authenticated network address updated");
+            _ = CollectAsync(phone);
+        };
     }
 
     public void Start()
