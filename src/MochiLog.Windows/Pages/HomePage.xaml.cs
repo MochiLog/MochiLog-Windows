@@ -47,16 +47,26 @@ public sealed partial class HomePage : Page
         StatusText.Text = _runtime.Status;
         CollectionText.Text = _runtime.CollectionStatus;
         var selected = DeviceList.SelectedIndex;
-        DeviceList.ItemsSource = _runtime.Available.Select(device =>
+        var available = _runtime.Available.Select(device =>
             $"{device.Name} · {device.Model} · {device.Udid}").ToArray();
-        if (selected >= 0 && selected < _runtime.Available.Count) DeviceList.SelectedIndex = selected;
+        if (DeviceList.ItemsSource is not string[] currentAvailable ||
+            !currentAvailable.SequenceEqual(available))
+        {
+            DeviceList.ItemsSource = available;
+            if (selected >= 0 && selected < available.Length) DeviceList.SelectedIndex = selected;
+        }
         var pairedSelected = PairedList.SelectedIndex;
-        PairedList.ItemsSource = _runtime.State.Phones.Select(phone =>
+        var paired = _runtime.State.Phones.Select(phone =>
             $"{phone.Name} · {phone.Model} · " +
             (phone.ConfirmedAt is null ? UiText.Get("win_waiting_app") :
                 UiText.Get("win_connected"))).ToArray();
-        if (pairedSelected >= 0 && pairedSelected < _runtime.State.Phones.Count)
-            PairedList.SelectedIndex = pairedSelected;
+        if (PairedList.ItemsSource is not string[] currentPaired ||
+            !currentPaired.SequenceEqual(paired))
+        {
+            PairedList.ItemsSource = paired;
+            if (pairedSelected >= 0 && pairedSelected < paired.Length)
+                PairedList.SelectedIndex = pairedSelected;
+        }
         CollectButton.IsEnabled = _runtime.State.Phones.Count > 0;
     }
 
