@@ -21,7 +21,7 @@
     "win_manual_device_ip": "Optional iPhone/iPad IPv4 address for this paired device. Use if automatic discovery fails.",
     "win_save_ip": "Save IP",
     "win_clear_ip": "Use automatic IP",
-    "win_note": "Battery logs are analyzed and recorded on the iPhone or iPad. PCs do not sync with each other. iCloud sync is optional.",
+    "win_note": "Battery logs are analyzed and recorded on the iPhone or iPad. PCs do not sync with each other.",
     "win_waiting_app": "Waiting for MochiLog app confirmation",
     "win_connected": "App connected",
     "win_select": "Select a device",
@@ -78,9 +78,14 @@
     "win_usb_missing": "Connect and unlock an iPhone or iPad with a USB data cable.",
     "win_usb_not_connected": "The selected device is not connected by USB. Select a connected device and try again.",
     "win_usb_select_multiple": "Multiple Apple devices are connected. Select the one to set up in the device list, then try again.",
-    "win_tray_status_ready": "The MochiLog icon is shown in the notification area while the app is running. The switch above controls whether it stays running after closing the window.",
+    "win_tray_status_ready": "The MochiLog icon is in the notification area while the app runs. If it is not visible, check the ^ hidden-icons menu. The switch above controls whether it keeps running after closing the window.",
     "win_tray_status_failed": "Could not add the notification-area icon: {0}",
-    "win_tray_status_unavailable": "The notification-area icon is not ready."
+    "win_tray_status_unavailable": "The notification-area icon is not ready.",
+    "win_usb_unknown": "Connected Apple device",
+    "win_select_device_hint": "Choose the iPhone or iPad you want to set up. The USB and trust status is shown for each device.",
+    "win_usb_trusted": "USB connected · trusted",
+    "win_usb_needs_trust": "USB connected · trust required",
+    "win_device_wireless": "Discovered wirelessly"
   },
   "ja": {
     "win_home": "概要",
@@ -104,7 +109,7 @@
     "win_manual_device_ip": "この連携端末のiPhone・iPad IPv4アドレス（任意）。自動検出できないときに指定します。",
     "win_save_ip": "IPを保存",
     "win_clear_ip": "自動IPに戻す",
-    "win_note": "解析と記録はiPhone・iPad側で行います。PC同士は同期しません。iCloud同期は任意です。",
+    "win_note": "解析と記録はiPhone・iPad側で行います。PC同士は同期しません。",
     "win_waiting_app": "MochiLogアプリの確認待ち",
     "win_connected": "アプリ接続済み",
     "win_select": "端末を選択",
@@ -161,9 +166,14 @@
     "win_usb_missing": "iPhoneまたはiPadをデータ対応USBケーブルで接続し、ロックを解除してください。",
     "win_usb_not_connected": "選択中の端末はUSB接続されていません。接続中の端末を選び直してください。",
     "win_usb_select_multiple": "複数のApple端末がUSB接続されています。下の一覧で初回設定する端末を選んでから、もう一度押してください。",
-    "win_tray_status_ready": "アプリの起動中は通知領域にMochiLogのアイコンを表示します。上のスイッチはウィンドウを閉じた後も動かすかを切り替えます。",
+    "win_tray_status_ready": "起動中は通知領域にMochiLogのアイコンを表示します。見えないときはタスクバーの「^」内も確認してください。上のスイッチは閉じた後も動かすかを切り替えます。",
     "win_tray_status_failed": "通知領域にアイコンを追加できませんでした：{0}",
-    "win_tray_status_unavailable": "通知領域のアイコンは準備中です。"
+    "win_tray_status_unavailable": "通知領域のアイコンは準備中です。",
+    "win_usb_unknown": "接続中のApple端末",
+    "win_select_device_hint": "設定するiPhone・iPadを丸印で選んでください。端末ごとにUSB接続と信頼状態を表示します。",
+    "win_usb_trusted": "USB接続済み・信頼済み",
+    "win_usb_needs_trust": "USB接続済み・信頼設定が必要",
+    "win_device_wireless": "無線で検出"
   },
   "de": {
     "win_home": "Übersicht",
@@ -187,7 +197,7 @@
     "win_manual_device_ip": "Optionale IPv4-Adresse dieses gekoppelten iPhone/iPad, falls die automatische Suche fehlschlägt.",
     "win_save_ip": "IP speichern",
     "win_clear_ip": "Automatische IP",
-    "win_note": "Auswertung und Speicherung erfolgen auf dem iPhone oder iPad. PCs synchronisieren nicht miteinander. iCloud-Sync ist optional.",
+    "win_note": "Auswertung und Speicherung erfolgen auf dem iPhone oder iPad. PCs synchronisieren nicht miteinander.",
     "win_waiting_app": "Warte auf Bestätigung in MochiLog",
     "win_connected": "App verbunden",
     "win_select": "Gerät auswählen",
@@ -244,9 +254,14 @@
     "win_usb_missing": "Verbinden und entsperren Sie ein iPhone oder iPad mit einem USB-Datenkabel.",
     "win_usb_not_connected": "Das ausgewählte Gerät ist nicht per USB verbunden. Wählen Sie ein verbundenes Gerät.",
     "win_usb_select_multiple": "Mehrere Apple-Geräte sind per USB verbunden. Wählen Sie das gewünschte Gerät in der Liste und versuchen Sie es erneut.",
-    "win_tray_status_ready": "Das MochiLog-Symbol erscheint während der Ausführung im Infobereich. Der Schalter steuert, ob die App nach dem Schließen des Fensters weiterläuft.",
+    "win_tray_status_ready": "Das MochiLog-Symbol erscheint während der Ausführung im Infobereich. Falls es nicht sichtbar ist, prüfen Sie das Menü ^ für ausgeblendete Symbole. Der Schalter steuert das Weiterlaufen nach dem Schließen.",
     "win_tray_status_failed": "Symbol konnte nicht zum Infobereich hinzugefügt werden: {0}",
-    "win_tray_status_unavailable": "Das Symbol im Infobereich ist noch nicht bereit."
+    "win_tray_status_unavailable": "Das Symbol im Infobereich ist noch nicht bereit.",
+    "win_usb_unknown": "Verbundenes Apple-Gerät",
+    "win_select_device_hint": "Wählen Sie das einzurichtende iPhone oder iPad mit dem Auswahlkreis. USB- und Vertrauensstatus stehen bei jedem Gerät.",
+    "win_usb_trusted": "USB verbunden · vertraut",
+    "win_usb_needs_trust": "USB verbunden · Vertrauen erforderlich",
+    "win_device_wireless": "Drahtlos gefunden"
   },
   "es": {
     "win_home": "Resumen",
@@ -270,7 +285,7 @@
     "win_manual_device_ip": "Dirección IPv4 opcional del iPhone/iPad vinculado si falla la detección automática.",
     "win_save_ip": "Guardar IP",
     "win_clear_ip": "IP automática",
-    "win_note": "El análisis y los registros se guardan en el iPhone o iPad. Los PC no se sincronizan entre sí. iCloud es opcional.",
+    "win_note": "El análisis y los registros se guardan en el iPhone o iPad. Los PC no se sincronizan entre sí.",
     "win_waiting_app": "Esperando confirmación de MochiLog",
     "win_connected": "App conectada",
     "win_select": "Seleccionar dispositivo",
@@ -327,9 +342,14 @@
     "win_usb_missing": "Conecta y desbloquea un iPhone o iPad con un cable USB de datos.",
     "win_usb_not_connected": "El dispositivo seleccionado no está conectado por USB. Selecciona uno conectado.",
     "win_usb_select_multiple": "Hay varios dispositivos Apple conectados por USB. Selecciona el que quieras configurar en la lista y vuelve a intentarlo.",
-    "win_tray_status_ready": "El icono de MochiLog aparece en el área de notificación mientras se ejecuta. El interruptor controla si sigue activo al cerrar la ventana.",
+    "win_tray_status_ready": "El icono de MochiLog aparece en el área de notificación. Si no lo ves, revisa el menú ^ de iconos ocultos. El interruptor controla si sigue activo al cerrar la ventana.",
     "win_tray_status_failed": "No se pudo añadir el icono al área de notificación: {0}",
-    "win_tray_status_unavailable": "El icono del área de notificación aún no está listo."
+    "win_tray_status_unavailable": "El icono del área de notificación aún no está listo.",
+    "win_usb_unknown": "Dispositivo Apple conectado",
+    "win_select_device_hint": "Selecciona con el círculo el iPhone o iPad que quieras configurar. Se muestra el estado USB y de confianza de cada dispositivo.",
+    "win_usb_trusted": "USB conectado · de confianza",
+    "win_usb_needs_trust": "USB conectado · requiere confianza",
+    "win_device_wireless": "Detectado de forma inalámbrica"
   },
   "fr": {
     "win_home": "Vue d’ensemble",
@@ -353,7 +373,7 @@
     "win_manual_device_ip": "Adresse IPv4 facultative de cet iPhone/iPad associé si la découverte automatique échoue.",
     "win_save_ip": "Enregistrer IP",
     "win_clear_ip": "IP automatique",
-    "win_note": "L’analyse et les données restent sur l’iPhone ou l’iPad. Les PC ne se synchronisent pas entre eux. iCloud est facultatif.",
+    "win_note": "L’analyse et l’enregistrement sont effectués sur l’iPhone ou l’iPad. Les PC ne se synchronisent pas entre eux.",
     "win_waiting_app": "En attente de confirmation dans MochiLog",
     "win_connected": "App connectée",
     "win_select": "Sélectionner un appareil",
@@ -410,9 +430,14 @@
     "win_usb_missing": "Connectez et déverrouillez un iPhone ou iPad avec un câble USB de données.",
     "win_usb_not_connected": "L’appareil sélectionné n’est pas connecté en USB. Sélectionnez un appareil connecté.",
     "win_usb_select_multiple": "Plusieurs appareils Apple sont connectés en USB. Sélectionnez celui à configurer dans la liste puis réessayez.",
-    "win_tray_status_ready": "L’icône MochiLog apparaît dans la zone de notification pendant l’exécution. L’interrupteur décide si l’app continue après la fermeture de la fenêtre.",
+    "win_tray_status_ready": "L’icône MochiLog apparaît dans la zone de notification. Si elle est absente, vérifiez le menu ^ des icônes masquées. L’interrupteur décide si l’app continue après fermeture.",
     "win_tray_status_failed": "Impossible d’ajouter l’icône à la zone de notification : {0}",
-    "win_tray_status_unavailable": "L’icône de la zone de notification n’est pas prête."
+    "win_tray_status_unavailable": "L’icône de la zone de notification n’est pas prête.",
+    "win_usb_unknown": "Appareil Apple connecté",
+    "win_select_device_hint": "Sélectionnez l’iPhone ou l’iPad à configurer avec le bouton rond. L’état USB et de confiance est indiqué pour chaque appareil.",
+    "win_usb_trusted": "USB connecté · approuvé",
+    "win_usb_needs_trust": "USB connecté · approbation requise",
+    "win_device_wireless": "Détecté sans fil"
   },
   "ko": {
     "win_home": "개요",
@@ -436,7 +461,7 @@
     "win_manual_device_ip": "자동 검색에 실패할 때 사용하는 페어링된 iPhone/iPad의 선택적 IPv4 주소입니다.",
     "win_save_ip": "IP 저장",
     "win_clear_ip": "자동 IP 사용",
-    "win_note": "분석과 기록은 iPhone 또는 iPad에서 처리됩니다. PC끼리는 동기화하지 않으며 iCloud 동기화는 선택 사항입니다.",
+    "win_note": "분석과 기록은 iPhone 또는 iPad에서 처리됩니다. PC끼리는 동기화하지 않습니다.",
     "win_waiting_app": "MochiLog 앱 확인 대기 중",
     "win_connected": "앱 연결됨",
     "win_select": "기기 선택",
@@ -493,9 +518,14 @@
     "win_usb_missing": "데이터용 USB 케이블로 iPhone 또는 iPad를 연결하고 잠금을 해제하세요.",
     "win_usb_not_connected": "선택한 기기가 USB로 연결되어 있지 않습니다. 연결된 기기를 선택하세요.",
     "win_usb_select_multiple": "여러 Apple 기기가 USB로 연결되어 있습니다. 아래 목록에서 설정할 기기를 선택하고 다시 시도하세요.",
-    "win_tray_status_ready": "앱 실행 중 MochiLog 아이콘이 알림 영역에 표시됩니다. 위 스위치는 창을 닫은 뒤에도 계속 실행할지 정합니다.",
+    "win_tray_status_ready": "앱 실행 중 MochiLog 아이콘이 알림 영역에 표시됩니다. 보이지 않으면 ^ 숨겨진 아이콘 메뉴를 확인하세요. 위 스위치는 창을 닫은 뒤에도 실행할지 정합니다.",
     "win_tray_status_failed": "알림 영역에 아이콘을 추가하지 못했습니다: {0}",
-    "win_tray_status_unavailable": "알림 영역 아이콘을 준비 중입니다."
+    "win_tray_status_unavailable": "알림 영역 아이콘을 준비 중입니다.",
+    "win_usb_unknown": "연결된 Apple 기기",
+    "win_select_device_hint": "설정할 iPhone 또는 iPad를 원형 선택 버튼으로 고르세요. 각 기기의 USB 연결 및 신뢰 상태가 표시됩니다.",
+    "win_usb_trusted": "USB 연결됨 · 신뢰됨",
+    "win_usb_needs_trust": "USB 연결됨 · 신뢰 설정 필요",
+    "win_device_wireless": "무선으로 발견됨"
   },
   "zh-Hans": {
     "win_home": "概览",
@@ -519,7 +549,7 @@
     "win_manual_device_ip": "自动发现失败时，可填写此已配对 iPhone/iPad 的 IPv4 地址。",
     "win_save_ip": "保存 IP",
     "win_clear_ip": "使用自动 IP",
-    "win_note": "分析和记录在 iPhone 或 iPad 上完成。电脑之间不会同步。iCloud 同步为可选功能。",
+    "win_note": "分析和记录在 iPhone 或 iPad 上完成。电脑之间不会同步。",
     "win_waiting_app": "等待 MochiLog 应用确认",
     "win_connected": "应用已连接",
     "win_select": "选择设备",
@@ -576,9 +606,14 @@
     "win_usb_missing": "请用 USB 数据线连接并解锁 iPhone 或 iPad。",
     "win_usb_not_connected": "所选设备未通过 USB 连接。请选择已连接的设备。",
     "win_usb_select_multiple": "有多台 Apple 设备通过 USB 连接。请在下方列表中选择要设置的设备后重试。",
-    "win_tray_status_ready": "应用运行时，MochiLog 图标会显示在通知区域。上方开关控制关闭窗口后是否继续运行。",
+    "win_tray_status_ready": "应用运行时，MochiLog 图标会显示在通知区域。若看不到，请检查 ^ 隐藏图标菜单。上方开关控制关闭窗口后是否继续运行。",
     "win_tray_status_failed": "无法将图标添加到通知区域：{0}",
-    "win_tray_status_unavailable": "通知区域图标尚未就绪。"
+    "win_tray_status_unavailable": "通知区域图标尚未就绪。",
+    "win_usb_unknown": "已连接的 Apple 设备",
+    "win_select_device_hint": "点击圆形选项，选择要设置的 iPhone 或 iPad。每台设备都会显示 USB 连接和信任状态。",
+    "win_usb_trusted": "USB 已连接 · 已信任",
+    "win_usb_needs_trust": "USB 已连接 · 需要信任",
+    "win_device_wireless": "无线发现"
   },
   "zh-Hant": {
     "win_home": "總覽",
@@ -602,7 +637,7 @@
     "win_manual_device_ip": "自動搜尋失敗時，可填寫這部已配對 iPhone/iPad 的 IPv4 位址。",
     "win_save_ip": "儲存 IP",
     "win_clear_ip": "使用自動 IP",
-    "win_note": "分析和紀錄在 iPhone 或 iPad 上完成。電腦之間不會同步。iCloud 同步為選用功能。",
+    "win_note": "分析和紀錄在 iPhone 或 iPad 上完成。電腦之間不會同步。",
     "win_waiting_app": "等待 MochiLog App 確認",
     "win_connected": "App 已連線",
     "win_select": "選擇裝置",
@@ -659,8 +694,13 @@
     "win_usb_missing": "請用 USB 資料線連接並解鎖 iPhone 或 iPad。",
     "win_usb_not_connected": "所選裝置未透過 USB 連接。請選擇已連接的裝置。",
     "win_usb_select_multiple": "有多台 Apple 裝置透過 USB 連接。請在下方清單選擇要設定的裝置後重試。",
-    "win_tray_status_ready": "應用程式執行時，MochiLog 圖示會顯示在通知區域。上方開關控制關閉視窗後是否繼續執行。",
+    "win_tray_status_ready": "應用程式執行時，MochiLog 圖示會顯示在通知區域。若看不到，請檢查 ^ 隱藏圖示選單。上方開關控制關閉視窗後是否繼續執行。",
     "win_tray_status_failed": "無法將圖示加入通知區域：{0}",
-    "win_tray_status_unavailable": "通知區域圖示尚未準備好。"
+    "win_tray_status_unavailable": "通知區域圖示尚未準備好。",
+    "win_usb_unknown": "已連接的 Apple 裝置",
+    "win_select_device_hint": "點選圓形選項，選擇要設定的 iPhone 或 iPad。每台裝置都會顯示 USB 連線和信任狀態。",
+    "win_usb_trusted": "USB 已連接 · 已信任",
+    "win_usb_needs_trust": "USB 已連接 · 需要信任",
+    "win_device_wireless": "無線發現"
   }
 }

@@ -37,10 +37,9 @@
                     <TextBlock x:Name="SetupStep1" TextWrapping="Wrap" />
                     <TextBlock x:Name="SetupStep2" TextWrapping="Wrap" />
                     <TextBlock x:Name="SetupStep3" TextWrapping="Wrap" />
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Button x:Name="UsbButton" Click="UsbClicked" />
-                    </StackPanel>
-                    <ListView x:Name="DeviceList" Height="160" SelectionMode="Single" />
+                    <TextBlock x:Name="DeviceSelectionHint" TextWrapping="Wrap" Opacity="0.72" />
+                    <RadioButtons x:Name="DeviceList" MaxColumns="1" />
+                    <Button x:Name="UsbButton" Click="UsbClicked" HorizontalAlignment="Left" />
                     <Button x:Name="PairButton" Click="PairClicked" />
                 </StackPanel>
             </Border>

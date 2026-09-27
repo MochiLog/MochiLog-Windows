@@ -11,6 +11,7 @@ public sealed partial class HomePage : Page
 {
     private readonly CompanionRuntime _runtime = CompanionRuntime.Shared;
     private ConnectedDevice? _usbDevice;
+    private string? _selectedUdid;
 
     public HomePage()
     {
@@ -31,6 +32,12 @@ public sealed partial class HomePage : Page
         SetupStep3.Text = UiText.Get("win_step_3");
         UsbButton.Content = UiText.Get("win_usb");
         DeviceList.Header = UiText.Get("win_found");
+        DeviceSelectionHint.Text = UiText.Get("win_select_device_hint");
+        DeviceList.SelectionChanged += (_, _) => {
+            if (DeviceList.SelectedIndex is >= 0 and var index &&
+                index < _runtime.Available.Count)
+                _selectedUdid = _runtime.Available[index].Udid;
+        };
         PairButton.Content = UiText.Get("win_pair");
         PairedTitle.Text = UiText.Get("win_paired");
         ProcessingNote.Text = UiText.Get("win_note");
@@ -78,14 +85,18 @@ public sealed partial class HomePage : Page
     {
         StatusText.Text = _runtime.Status;
         CollectionText.Text = _runtime.CollectionStatus;
-        var selected = DeviceList.SelectedIndex;
         var available = _runtime.Available.Select(device =>
-            $"{device.Name} · {device.Model} · {device.Udid}").ToArray();
+            $"{device.Name} · {device.Model}\n" + UiText.Get(device switch {
+                { UsbConnected: true, UsbTrusted: true } => "win_usb_trusted",
+                { UsbConnected: true } => "win_usb_needs_trust",
+                _ => "win_device_wireless"
+            })).ToArray();
         if (DeviceList.ItemsSource is not string[] currentAvailable ||
             !currentAvailable.SequenceEqual(available))
         {
             DeviceList.ItemsSource = available;
-            if (selected >= 0 && selected < available.Length) DeviceList.SelectedIndex = selected;
+            var selected = _runtime.Available.ToList().FindIndex(device => device.Udid == _selectedUdid);
+            if (selected >= 0) DeviceList.SelectedIndex = selected;
         }
         var pairedSelected = PairedList.SelectedIndex;
         var paired = _runtime.State.Phones.Select(phone =>
@@ -117,8 +128,8 @@ public sealed partial class HomePage : Page
         catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
     }
 
-    private ConnectedDevice? SelectedDevice() => DeviceList.SelectedIndex is >= 0 and var index &&
-        index < _runtime.Available.Count ? _runtime.Available[index] : null;
+    private ConnectedDevice? SelectedDevice() => _runtime.Available.FirstOrDefault(device =>
+        device.Udid == _selectedUdid);
 
     private async void PairClicked(object sender, RoutedEventArgs args)
     {

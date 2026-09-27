@@ -5,7 +5,8 @@ using System.Text.RegularExpressions;
 
 namespace MochiLog_Windows.Services;
 
-public sealed record ConnectedDevice(string Udid, string Name, string Model);
+public sealed record ConnectedDevice(string Udid, string Name, string Model,
+    bool UsbConnected = false, bool UsbTrusted = false);
 public sealed record CollectionResult(int Saved, int Skipped, int Failed, string? LastError);
 
 public static partial class Collector
@@ -104,7 +105,6 @@ public static partial class Collector
                 TimeSpan.FromSeconds(20), cancellation);
             foreach (var id in JsonSerializer.Deserialize<string[]>(list) ?? [])
             {
-                if (discovered.ContainsKey(id)) continue;
                 try
                 {
                     var info = await RunAsync(["lockdown", "info", "--udid", id],
@@ -113,9 +113,18 @@ public static partial class Collector
                     var model = json.GetProperty("ProductType").GetString() ?? "";
                     if (SupportedModel(model)) discovered[id] = new ConnectedDevice(id,
                         json.TryGetProperty("DeviceName", out var name) ? name.GetString() ?? model : model,
-                        model);
+                        model, UsbConnected: true, UsbTrusted: true);
                 }
-                catch { /* Continue past an attached but locked or untrusted device. */ }
+                catch
+                {
+                    // Keep an untrusted USB device selectable even when its name
+                    // is unavailable; the trust button can then target its UDID.
+                    discovered[id] = discovered.TryGetValue(id, out var previous)
+                        ? previous with { UsbConnected = true, UsbTrusted = false }
+                        : new ConnectedDevice(id,
+                            $"{UiText.Get("win_usb_unknown")} · {id[^Math.Min(id.Length, 8)..]}",
+                            "", UsbConnected: true, UsbTrusted: false);
+                }
             }
         }
         catch { /* USB is optional after initial pairing. */ }
@@ -191,7 +200,8 @@ public static partial class Collector
         await RunAsync(["lockdown", "remotepairing", "--pair", "--udid", id],
             TimeSpan.FromSeconds(60), cancellation);
         return new ConnectedDevice(id,
-            info.TryGetProperty("DeviceName", out var name) ? name.GetString() ?? model : model, model);
+            info.TryGetProperty("DeviceName", out var name) ? name.GetString() ?? model : model,
+            UsbConnected: true, UsbTrusted: true);
     }
 
     public static async Task VerifyWirelessAsync(string udid, CancellationToken cancellation = default)
