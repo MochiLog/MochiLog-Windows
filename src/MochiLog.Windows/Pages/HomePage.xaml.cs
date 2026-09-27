@@ -20,6 +20,10 @@ public sealed partial class HomePage : Page
         RefreshButton.Content = UiText.Get("mt_015");
         CollectButton.Content = UiText.Get("win_collect_now");
         SetupTitle.Text = UiText.Get("win_setup_title");
+        SetupRequirement.Text = UiText.Get("win_setup_requirement");
+        AppleDevicesLink.Content = UiText.Get("win_get_apple_devices");
+        ITunesLink.Content = UiText.Get("win_get_itunes");
+        ICloudNote.Text = UiText.Get("win_icloud_note");
         SetupStep1.Text = UiText.Get("win_step_1");
         SetupStep2.Text = UiText.Get("win_step_2");
         SetupStep3.Text = UiText.Get("win_step_3");

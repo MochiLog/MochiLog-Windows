@@ -26,6 +26,12 @@
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="14">
                     <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="SetupRequirement" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <HyperlinkButton x:Name="AppleDevicesLink" NavigateUri="https://support.apple.com/guide/devices-windows/mchl5ded2763/windows" />
+                        <HyperlinkButton x:Name="ITunesLink" NavigateUri="https://www.apple.com/itunes/download/win64" />
+                    </StackPanel>
+                    <TextBlock x:Name="ICloudNote" TextWrapping="Wrap" Opacity="0.72" />
                     <TextBlock x:Name="SetupStep1" TextWrapping="Wrap" />
                     <TextBlock x:Name="SetupStep2" TextWrapping="Wrap" />
                     <TextBlock x:Name="SetupStep3" TextWrapping="Wrap" />
