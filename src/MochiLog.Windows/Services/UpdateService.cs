@@ -119,6 +119,7 @@ public static class UpdateService
         start.ArgumentList.Add("/NORESTART");
         start.ArgumentList.Add("/CLOSEAPPLICATIONS");
         start.ArgumentList.Add("/RESTARTAPPLICATIONS");
-        Process.Start(start) ?? throw new IOException("The update installer did not start.");
+        if (Process.Start(start) is null)
+            throw new IOException("The update installer did not start.");
     }
 }
