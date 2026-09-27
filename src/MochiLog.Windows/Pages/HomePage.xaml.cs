@@ -168,6 +168,7 @@ public sealed partial class HomePage : Page
             {
                 writer.WriteBytes(png);
                 await writer.StoreAsync();
+                writer.DetachStream();
             }
             memory.Seek(0);
             var image = new BitmapImage();
