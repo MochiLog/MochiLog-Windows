@@ -94,9 +94,9 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <StackPanel x:Name="LeftColumn" Grid.Row="0" Grid.Column="0" Spacing="20">
-                <Border x:Name="DeviceCard"
+                <Border x:Name="DeviceCard" Grid.Row="0" Grid.Column="0"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="20" Padding="24">
@@ -164,25 +164,6 @@
                     </StackPanel>
                 </Border>
 
-                <Border x:Name="PairedCard"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="20" Padding="24">
-                    <StackPanel Spacing="14">
-                        <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        <ListView x:Name="PairedList" MinHeight="110" MaxHeight="220" SelectionMode="Single" />
-                        <Button x:Name="UnpairButton" Click="UnpairClicked" HorizontalAlignment="Left" />
-                        <TextBlock x:Name="ManualAddressHint" TextWrapping="Wrap" Opacity="0.72" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBox x:Name="ManualAddressBox" Width="220" PlaceholderText="192.168.1.20" />
-                            <Button x:Name="SaveManualAddressButton" Click="SaveManualAddressClicked" />
-                            <Button x:Name="ClearManualAddressButton" Click="ClearManualAddressClicked" />
-                        </StackPanel>
-                        <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.68" />
-                    </StackPanel>
-                </Border>
-                </StackPanel>
-
                 <Border x:Name="GuideCard" Grid.Row="0" Grid.Column="1"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -210,7 +191,31 @@
                             <Button x:Name="SoftwareRefreshButton" Click="SoftwareRefreshClicked" />
                         </StackPanel>
                         <TextBlock x:Name="ICloudNote" TextWrapping="Wrap" Opacity="0.68" />
-                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="PairedCard" Grid.Row="1" Grid.Column="0"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="20" Padding="24">
+                    <StackPanel Spacing="14">
+                        <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ListView x:Name="PairedList" MinHeight="110" MaxHeight="220" SelectionMode="Single" />
+                        <Button x:Name="UnpairButton" Click="UnpairClicked" HorizontalAlignment="Left" />
+                        <TextBlock x:Name="ManualAddressHint" TextWrapping="Wrap" Opacity="0.72" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="ManualAddressBox" Width="220" PlaceholderText="192.168.1.20" />
+                            <Button x:Name="SaveManualAddressButton" Click="SaveManualAddressClicked" />
+                            <Button x:Name="ClearManualAddressButton" Click="ClearManualAddressClicked" />
+                        </StackPanel>
+                        <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.68" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="StepsCard" Grid.Row="1" Grid.Column="1"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="20" Padding="24">
+                    <StackPanel Spacing="17">
+                        <TextBlock x:Name="SetupStepsTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Width="32" Height="32" CornerRadius="10" Background="#183D8D55">

@@ -51,6 +51,7 @@ public sealed partial class HomePage : Page
         RefreshButton.Content = UiText.Get("mt_015");
         CollectButton.Content = UiText.Get("win_collect_now");
         SetupTitle.Text = UiText.Get("win_setup_title");
+        SetupStepsTitle.Text = UiText.Get("win_setup_steps_title");
         SetupRequirement.Text = UiText.Get("win_setup_requirement");
         AppleDevicesLink.Content = UiText.Get("win_get_apple_devices");
         ITunesLink.Content = UiText.Get("win_get_itunes");
@@ -109,12 +110,15 @@ public sealed partial class HomePage : Page
         var right = wide ? usable - 20 - left : 0;
         MainColumn.Width = new GridLength(left);
         SideColumn.Width = new GridLength(right);
-        LeftColumn.Width = left;
         DeviceCard.Width = left;
         GuideCard.Width = wide ? right : usable;
         PairedCard.Width = left;
+        StepsCard.Width = wide ? right : usable;
         Grid.SetColumn(GuideCard, wide ? 1 : 0);
         Grid.SetRow(GuideCard, wide ? 0 : 1);
+        Grid.SetRow(PairedCard, wide ? 1 : 2);
+        Grid.SetColumn(StepsCard, wide ? 1 : 0);
+        Grid.SetRow(StepsCard, wide ? 1 : 3);
         Grid.SetColumn(StatusActions, wide ? 2 : 1);
         Grid.SetRow(StatusActions, wide ? 0 : 1);
     }

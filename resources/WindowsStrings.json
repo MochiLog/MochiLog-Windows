@@ -112,7 +112,8 @@
     "win_intro_waiting": "Waiting for a device. Connect it by USB and keep it unlocked.",
     "win_intro_trust": "Device connected. Approve “Trust This Computer” on the device.",
     "win_intro_connected": "USB device detected. Set up trust below, then disconnect the cable.",
-    "win_intro_wireless": "Device found over Wi-Fi. Check its connection below; USB setup may be unnecessary."
+    "win_intro_wireless": "Device found over Wi-Fi. Check its connection below; USB setup may be unnecessary.",
+    "win_setup_steps_title": "Setup steps"
   },
   "ja": {
     "win_unpair_button": "MochiLogの連携を解除",
@@ -227,7 +228,8 @@
     "win_intro_waiting": "端末を待っています。USBで接続し、ロックを解除してください。",
     "win_intro_trust": "端末を検出しました。端末側で「このコンピュータを信頼」を許可してください。",
     "win_intro_connected": "USB接続を確認しました。下で信頼設定を行い、完了後にケーブルを外してください。",
-    "win_intro_wireless": "端末を無線で検出しました。下で接続状態を確認してください。USB設定を省ける場合があります。"
+    "win_intro_wireless": "端末を無線で検出しました。下で接続状態を確認してください。USB設定を省ける場合があります。",
+    "win_setup_steps_title": "設定の流れ"
   },
   "de": {
     "win_unpair_button": "MochiLog-Kopplung entfernen",
@@ -342,7 +344,8 @@
     "win_intro_waiting": "Warte auf ein Gerät. Per USB verbinden und entsperrt lassen.",
     "win_intro_trust": "Gerät verbunden. Bestätigen Sie „Diesem Computer vertrauen“.",
     "win_intro_connected": "USB-Gerät erkannt. Unten Vertrauen einrichten und dann Kabel trennen.",
-    "win_intro_wireless": "Gerät im WLAN gefunden. Prüfen Sie unten die Verbindung; USB ist möglicherweise unnötig."
+    "win_intro_wireless": "Gerät im WLAN gefunden. Prüfen Sie unten die Verbindung; USB ist möglicherweise unnötig.",
+    "win_setup_steps_title": "Einrichtungsschritte"
   },
   "es": {
     "win_unpair_button": "Desvincular MochiLog",
@@ -457,7 +460,8 @@
     "win_intro_waiting": "Esperando un dispositivo. Conéctalo por USB y mantenlo desbloqueado.",
     "win_intro_trust": "Dispositivo conectado. Acepta «Confiar en este ordenador».",
     "win_intro_connected": "Dispositivo USB detectado. Configura la confianza abajo y desconecta el cable.",
-    "win_intro_wireless": "Dispositivo encontrado por Wi-Fi. Comprueba la conexión abajo; quizá no necesites USB."
+    "win_intro_wireless": "Dispositivo encontrado por Wi-Fi. Comprueba la conexión abajo; quizá no necesites USB.",
+    "win_setup_steps_title": "Pasos de configuración"
   },
   "fr": {
     "win_unpair_button": "Dissocier MochiLog",
@@ -572,7 +576,8 @@
     "win_intro_waiting": "En attente d’un appareil. Branchez-le en USB et laissez-le déverrouillé.",
     "win_intro_trust": "Appareil connecté. Acceptez « Faire confiance à cet ordinateur ».",
     "win_intro_connected": "Appareil USB détecté. Établissez la confiance ci-dessous, puis débranchez-le.",
-    "win_intro_wireless": "Appareil trouvé en Wi-Fi. Vérifiez la connexion ci-dessous ; l’USB peut être inutile."
+    "win_intro_wireless": "Appareil trouvé en Wi-Fi. Vérifiez la connexion ci-dessous ; l’USB peut être inutile.",
+    "win_setup_steps_title": "Étapes de configuration"
   },
   "ko": {
     "win_unpair_button": "MochiLog 페어링 해제",
@@ -687,7 +692,8 @@
     "win_intro_waiting": "기기를 기다리는 중입니다. USB로 연결하고 잠금을 해제하세요.",
     "win_intro_trust": "기기가 연결되었습니다. 기기에서 「이 컴퓨터를 신뢰」를 허용하세요.",
     "win_intro_connected": "USB 기기를 찾았습니다. 아래에서 신뢰를 설정한 뒤 케이블을 분리하세요.",
-    "win_intro_wireless": "Wi-Fi에서 기기를 찾았습니다. 아래에서 연결을 확인하세요. USB 설정이 필요하지 않을 수 있습니다."
+    "win_intro_wireless": "Wi-Fi에서 기기를 찾았습니다. 아래에서 연결을 확인하세요. USB 설정이 필요하지 않을 수 있습니다.",
+    "win_setup_steps_title": "설정 단계"
   },
   "zh-Hans": {
     "win_unpair_button": "解除 MochiLog 配对",
@@ -802,7 +808,8 @@
     "win_intro_waiting": "等待设备。请通过 USB 连接并保持解锁。",
     "win_intro_trust": "设备已连接。请在设备上允许“信任此电脑”。",
     "win_intro_connected": "检测到 USB 设备。请在下方设置信任，然后拔下连接线。",
-    "win_intro_wireless": "通过 Wi-Fi 找到设备。请在下方检查连接，可能无需 USB 设置。"
+    "win_intro_wireless": "通过 Wi-Fi 找到设备。请在下方检查连接，可能无需 USB 设置。",
+    "win_setup_steps_title": "设置步骤"
   },
   "zh-Hant": {
     "win_unpair_button": "解除 MochiLog 配對",
@@ -917,6 +924,7 @@
     "win_intro_waiting": "等待裝置。請以 USB 連接並保持解鎖。",
     "win_intro_trust": "裝置已連接。請在裝置上允許「信任這部電腦」。",
     "win_intro_connected": "偵測到 USB 裝置。請在下方設定信任，然後拔除連接線。",
-    "win_intro_wireless": "透過 Wi-Fi 找到裝置。請在下方檢查連線，可能無需 USB 設定。"
+    "win_intro_wireless": "透過 Wi-Fi 找到裝置。請在下方檢查連線，可能無需 USB 設定。",
+    "win_setup_steps_title": "設定步驟"
   }
 }
