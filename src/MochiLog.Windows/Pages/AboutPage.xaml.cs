@@ -14,6 +14,7 @@ public sealed partial class AboutPage : Page
             typeof(AboutPage).Assembly.GetName().Version?.ToString() ?? "0.1.0");
         AboutText.Text = UiText.Get("win_note");
         RepositoryButton.Content = UiText.Get("win_repo");
+        UpdateButton.Content = UiText.Get("win_update_check");
         LicenseButton.Content = UiText.Get("win_license");
         PrivacyLink.Content = UiText.Get("mt_l_07");
         TermsLink.Content = UiText.Get("mt_l_08");
@@ -26,4 +27,11 @@ public sealed partial class AboutPage : Page
 
     private void LicenseClicked(object sender, RoutedEventArgs args) =>
         Frame.Navigate(typeof(LicensesPage));
+
+    private async void UpdateClicked(object sender, RoutedEventArgs args)
+    {
+        UpdateButton.IsEnabled = false;
+        try { await ((App)Application.Current).MainWindow!.CheckForUpdatesAsync(true); }
+        finally { UpdateButton.IsEnabled = true; }
+    }
 }

@@ -90,7 +90,15 @@
     "win_support_nickname": "Nickname",
     "win_support_email": "Email address",
     "win_support_message": "Describe the issue",
-    "win_license_missing": "License files were not found. Reinstall MochiLog Windows."
+    "win_license_missing": "License files were not found. Reinstall MochiLog Windows.",
+    "win_update_check": "Check for updates",
+    "win_update_title": "Updates",
+    "win_update_current": "You are using the latest available version.",
+    "win_update_available": "Version {0} is available.",
+    "win_update_confirm": "Download and install the verified update from GitHub Releases?",
+    "win_update_install": "Update now",
+    "win_update_downloading": "Downloading update…",
+    "win_update_failed": "Update failed: {0}"
   },
   "ja": {
     "win_home": "概要",
@@ -183,7 +191,15 @@
     "win_support_nickname": "ニックネーム",
     "win_support_email": "メールアドレス",
     "win_support_message": "発生したこと",
-    "win_license_missing": "ライセンスファイルが見つかりません。MochiLog Windowsを再インストールしてください。"
+    "win_license_missing": "ライセンスファイルが見つかりません。MochiLog Windowsを再インストールしてください。",
+    "win_update_check": "アップデートを確認",
+    "win_update_title": "アップデート",
+    "win_update_current": "利用可能な最新版です。",
+    "win_update_available": "バージョン{0}を利用できます。",
+    "win_update_confirm": "GitHub Releasesから検証済みの更新をダウンロードしてインストールしますか？",
+    "win_update_install": "今すぐ更新",
+    "win_update_downloading": "更新をダウンロード中…",
+    "win_update_failed": "更新に失敗しました: {0}"
   },
   "de": {
     "win_home": "Übersicht",
@@ -276,7 +292,15 @@
     "win_support_nickname": "Spitzname",
     "win_support_email": "E-Mail-Adresse",
     "win_support_message": "Problem beschreiben",
-    "win_license_missing": "Lizenzdateien wurden nicht gefunden. Installieren Sie MochiLog Windows erneut."
+    "win_license_missing": "Lizenzdateien wurden nicht gefunden. Installieren Sie MochiLog Windows erneut.",
+    "win_update_check": "Nach Updates suchen",
+    "win_update_title": "Updates",
+    "win_update_current": "Die neueste verfügbare Version ist installiert.",
+    "win_update_available": "Version {0} ist verfügbar.",
+    "win_update_confirm": "Geprüftes Update von GitHub Releases laden und installieren?",
+    "win_update_install": "Jetzt aktualisieren",
+    "win_update_downloading": "Update wird geladen…",
+    "win_update_failed": "Update fehlgeschlagen: {0}"
   },
   "es": {
     "win_home": "Resumen",
@@ -369,7 +393,15 @@
     "win_support_nickname": "Apodo",
     "win_support_email": "Correo electrónico",
     "win_support_message": "Describe el problema",
-    "win_license_missing": "No se encontraron los archivos de licencias. Reinstala MochiLog Windows."
+    "win_license_missing": "No se encontraron los archivos de licencias. Reinstala MochiLog Windows.",
+    "win_update_check": "Buscar actualizaciones",
+    "win_update_title": "Actualizaciones",
+    "win_update_current": "Ya tienes la última versión disponible.",
+    "win_update_available": "La versión {0} está disponible.",
+    "win_update_confirm": "¿Descargar e instalar la actualización verificada desde GitHub Releases?",
+    "win_update_install": "Actualizar ahora",
+    "win_update_downloading": "Descargando actualización…",
+    "win_update_failed": "Error de actualización: {0}"
   },
   "fr": {
     "win_home": "Vue d’ensemble",
@@ -462,7 +494,15 @@
     "win_support_nickname": "Surnom",
     "win_support_email": "Adresse e-mail",
     "win_support_message": "Décrivez le problème",
-    "win_license_missing": "Fichiers de licence introuvables. Réinstallez MochiLog Windows."
+    "win_license_missing": "Fichiers de licence introuvables. Réinstallez MochiLog Windows.",
+    "win_update_check": "Rechercher des mises à jour",
+    "win_update_title": "Mises à jour",
+    "win_update_current": "Vous utilisez la dernière version disponible.",
+    "win_update_available": "La version {0} est disponible.",
+    "win_update_confirm": "Télécharger et installer la mise à jour vérifiée depuis GitHub Releases ?",
+    "win_update_install": "Mettre à jour",
+    "win_update_downloading": "Téléchargement de la mise à jour…",
+    "win_update_failed": "Échec de la mise à jour : {0}"
   },
   "ko": {
     "win_home": "개요",
@@ -555,7 +595,15 @@
     "win_support_nickname": "닉네임",
     "win_support_email": "이메일 주소",
     "win_support_message": "문제 설명",
-    "win_license_missing": "라이선스 파일을 찾을 수 없습니다. MochiLog Windows를 다시 설치하세요."
+    "win_license_missing": "라이선스 파일을 찾을 수 없습니다. MochiLog Windows를 다시 설치하세요.",
+    "win_update_check": "업데이트 확인",
+    "win_update_title": "업데이트",
+    "win_update_current": "사용 가능한 최신 버전입니다.",
+    "win_update_available": "버전 {0}을 사용할 수 있습니다.",
+    "win_update_confirm": "GitHub Releases에서 검증된 업데이트를 다운로드하고 설치할까요?",
+    "win_update_install": "지금 업데이트",
+    "win_update_downloading": "업데이트 다운로드 중…",
+    "win_update_failed": "업데이트 실패: {0}"
   },
   "zh-Hans": {
     "win_home": "概览",
@@ -648,7 +696,15 @@
     "win_support_nickname": "昵称",
     "win_support_email": "邮箱地址",
     "win_support_message": "描述问题",
-    "win_license_missing": "找不到许可文件。请重新安装 MochiLog Windows。"
+    "win_license_missing": "找不到许可文件。请重新安装 MochiLog Windows。",
+    "win_update_check": "检查更新",
+    "win_update_title": "更新",
+    "win_update_current": "当前已是最新可用版本。",
+    "win_update_available": "版本 {0} 已发布。",
+    "win_update_confirm": "要从 GitHub Releases 下载并安装已验证的更新吗？",
+    "win_update_install": "立即更新",
+    "win_update_downloading": "正在下载更新…",
+    "win_update_failed": "更新失败：{0}"
   },
   "zh-Hant": {
     "win_home": "總覽",
@@ -741,6 +797,14 @@
     "win_support_nickname": "暱稱",
     "win_support_email": "電郵地址",
     "win_support_message": "描述問題",
-    "win_license_missing": "找不到授權檔案。請重新安裝 MochiLog Windows。"
+    "win_license_missing": "找不到授權檔案。請重新安裝 MochiLog Windows。",
+    "win_update_check": "檢查更新",
+    "win_update_title": "更新",
+    "win_update_current": "目前已是最新可用版本。",
+    "win_update_available": "版本 {0} 已發佈。",
+    "win_update_confirm": "要從 GitHub Releases 下載並安裝已驗證的更新嗎？",
+    "win_update_install": "立即更新",
+    "win_update_downloading": "正在下載更新…",
+    "win_update_failed": "更新失敗：{0}"
   }
 }

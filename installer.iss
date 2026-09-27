@@ -30,7 +30,7 @@ LicenseFile=LICENSE
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
-RestartApplications=no
+RestartApplications=yes
 
 [Languages]
 Name: "ja"; MessagesFile: "compiler:Languages\Japanese.isl"

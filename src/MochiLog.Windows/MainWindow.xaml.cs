@@ -13,6 +13,8 @@ public sealed partial class MainWindow : Window
 {
     private TrayIcon? _tray;
     private bool _quitting;
+    private AvailableUpdate? _pendingUpdate;
+    private bool _updatePromptOpen;
     public bool IsTrayReady => _tray is not null;
     public string? TrayError { get; private set; }
 
@@ -55,7 +57,57 @@ public sealed partial class MainWindow : Window
     {
         AppWindow.Show();
         Activate();
+        if (_pendingUpdate is not null) _ = PromptForUpdateAsync();
     }
+
+    public async Task CheckForUpdatesAsync(bool manual)
+    {
+        try
+        {
+            _pendingUpdate = await UpdateService.CheckAsync();
+            if (_pendingUpdate is not null && AppWindow.IsVisible)
+                await PromptForUpdateAsync();
+            else if (manual)
+                await ShowUpdateMessageAsync(UiText.Get("win_update_current"));
+        }
+        catch (Exception error)
+        {
+            if (manual) await ShowUpdateMessageAsync(UiText.Format("win_update_failed", error.Message));
+        }
+    }
+
+    private async Task PromptForUpdateAsync()
+    {
+        if (_pendingUpdate is not { } update || _updatePromptOpen || !AppWindow.IsVisible) return;
+        _updatePromptOpen = true;
+        try
+        {
+            var answer = await new ContentDialog {
+                XamlRoot = NavView.XamlRoot,
+                Title = UiText.Format("win_update_available", update.Version),
+                Content = UiText.Get("win_update_confirm"),
+                PrimaryButtonText = UiText.Get("win_update_install"),
+                CloseButtonText = UiText.Get("win_close")
+            }.ShowAsync();
+            if (answer != ContentDialogResult.Primary) return;
+            _pendingUpdate = null;
+            AppWindow.Title = UiText.Get("win_update_downloading");
+            var installer = await UpdateService.DownloadAsync(update);
+            UpdateService.LaunchInstaller(installer);
+            Quit();
+        }
+        catch (Exception error)
+        {
+            AppWindow.Title = "MochiLog Windows";
+            await ShowUpdateMessageAsync(UiText.Format("win_update_failed", error.Message));
+        }
+        finally { _updatePromptOpen = false; }
+    }
+
+    private async Task ShowUpdateMessageAsync(string message) =>
+        await new ContentDialog { XamlRoot = NavView.XamlRoot,
+            Title = UiText.Get("win_update_title"), Content = message,
+            CloseButtonText = UiText.Get("win_close") }.ShowAsync();
 
     private void Quit()
     {
