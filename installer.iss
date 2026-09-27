@@ -41,10 +41,12 @@ Source: "Build\Publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Source: "Build\Collector\pymobiledevice3.exe"; DestDir: "{app}\Collector"; Flags: ignoreversion
 Source: "LICENSE"; DestDir: "{app}\Licenses"; DestName: "MochiLog-GPL-3.0.txt"; Flags: ignoreversion
 Source: "Build\Licenses\*"; DestDir: "{app}\Licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "resources\RuntimeLicenses\*"; DestDir: "{app}\Licenses\Runtime"; Flags: ignoreversion
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\Licenses\Python"
 Type: filesandordirs; Name: "{app}\Licenses\NuGet"
+Type: filesandordirs; Name: "{app}\Licenses\Runtime"
 
 [Icons]
 Name: "{group}\MochiLog Windows"; Filename: "{app}\{#AppExe}"
