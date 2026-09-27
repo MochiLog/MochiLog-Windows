@@ -96,6 +96,8 @@ public sealed class CompanionRuntime : IDisposable
     {
         if (!Available.Any(item => item.Udid == device.Udid))
             throw new InvalidOperationException("Set up USB trust or select a discovered device first.");
+        if (string.IsNullOrWhiteSpace(device.Model))
+            throw new InvalidOperationException(UiText.Get("win_pair_trust_first"));
         var invitation = Server.BeginPairing(device);
         Record($"{device.Name}: pairing QR generated (expires after 3 minutes)");
         return invitation;

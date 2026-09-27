@@ -118,6 +118,8 @@ public sealed class TransferServer : IDisposable
 
     public PairingInvitation BeginPairing(ConnectedDevice device)
     {
+        if (string.IsNullOrWhiteSpace(device.Model))
+            throw new InvalidOperationException("A trusted device model is required before creating a pairing QR.");
         var privateKey = new X25519PrivateKeyParameters(new SecureRandom());
         var publicKey = new byte[32];
         privateKey.GeneratePublicKey().Encode(publicKey, 0);

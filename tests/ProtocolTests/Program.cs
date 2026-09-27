@@ -62,6 +62,10 @@ static class Program
         var state = new CompanionState();
         using var server = new TransferServer(state);
         server.Start();
+        try {
+            server.BeginPairing(new ConnectedDevice("untrusted", "Untrusted iPad", ""));
+            throw new Exception("An untrusted device produced a pairing QR.");
+        } catch (InvalidOperationException) { }
         var device = new ConnectedDevice("test-iphone", "Protocol iPhone", "iPhone18,3");
         var invitation = server.BeginPairing(device);
         var qr = new Uri(invitation.Url);

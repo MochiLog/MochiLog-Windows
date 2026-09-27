@@ -158,8 +158,14 @@ public sealed partial class HomePage : Page
     {
         var device = SelectedDevice() ?? _usbDevice;
         if (device is null) { await ShowMessageAsync(UiText.Get("win_select"), UiText.Get("win_select_pair")); return; }
+        PairButton.IsEnabled = false;
         try
         {
+            if (device.UsbConnected && !device.UsbTrusted)
+            {
+                device = await _runtime.PrepareUsbAsync(device.Udid);
+                _usbDevice = device;
+            }
             var invite = _runtime.BeginPairing(device);
             using var qrData = QRCodeGenerator.GenerateQrCode(invite.Url, QRCodeGenerator.ECCLevel.Q);
             var png = new PngByteQRCode(qrData).GetGraphic(7);
@@ -184,6 +190,7 @@ public sealed partial class HomePage : Page
             }.ShowAsync();
         }
         catch (Exception error) { await ShowMessageAsync(UiText.Get("win_pair_failed"), error.Message); }
+        finally { PairButton.IsEnabled = true; }
     }
 
     private async Task ShowMessageAsync(string title, string message) =>
