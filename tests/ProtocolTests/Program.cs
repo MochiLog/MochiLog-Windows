@@ -123,5 +123,25 @@ static class Program
         Check(state.Delivered.Contains(Upper(physical) + "|" + first.Name),
             "Delivered file was not marked.");
         Console.WriteLine("PASS: v3 identity pairing, encrypted v2 log, ACK, and replay rejection");
+        var directUdid = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_UDID");
+        var directAddress = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_ADDRESS");
+        if (!string.IsNullOrWhiteSpace(directUdid) && !string.IsNullOrWhiteSpace(directAddress))
+        {
+            var probe = new PairedPhone {
+                Udid = directUdid, Name = "Direct diagnostic probe", Model = "iPad",
+                PhysicalDeviceId = Guid.NewGuid(), ManualAddress = directAddress
+            };
+            var probeState = new CompanionState();
+            try
+            {
+                var collection = await Collector.CollectAsync(probe, probeState);
+                Check(collection.Failed == 0, "Direct wireless collection failed: " + collection.LastError);
+                Console.WriteLine($"PASS: direct wireless collection, saved={collection.Saved}, skipped={collection.Skipped}");
+            }
+            finally
+            {
+                if (Directory.Exists(StateStore.Root)) Directory.Delete(StateStore.Root, true);
+            }
+        }
     }
 }

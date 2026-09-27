@@ -12,6 +12,9 @@ public static partial class Collector
 {
     private static string? Tool => new[]
     {
+        #if MOCHILOG_PROTOCOL_TEST
+        Environment.GetEnvironmentVariable("MOCHILOG_TEST_COLLECTOR") ?? "",
+        #endif
         Path.Combine(AppContext.BaseDirectory, "Collector", "pymobiledevice3.exe"),
         Path.Combine(AppContext.BaseDirectory, "pymobiledevice3.exe"),
         // Only for development on the configured Windows build host.
