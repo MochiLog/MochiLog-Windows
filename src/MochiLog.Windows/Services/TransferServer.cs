@@ -333,6 +333,7 @@ public sealed class TransferServer : IDisposable
             if (!backgroundNotice &&
                 !CryptographicOperations.FixedTimeEquals(supplied, Hmac(phone.Secret, message)))
                 return null;
+            _nonces[nonce] = now;
             if (_state.RevokedPhones.Contains(phone))
             {
                 if (backgroundNotice) return null;
@@ -340,7 +341,6 @@ public sealed class TransferServer : IDisposable
                     new byte[] { 0, 0 }.Concat(JsonSerializer.SerializeToUtf8Bytes(
                         new { type = "unpair" })).ToArray());
             }
-            _nonces[nonce] = now;
             if (ValidPeerAddress(peer) && phone.LastKnownAddress != peer)
             {
                 phone.LastKnownAddress = peer;

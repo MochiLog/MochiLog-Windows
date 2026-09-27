@@ -211,6 +211,8 @@ static class Program
         Check(control.Name.Length == 0 &&
             JsonDocument.Parse(control.Content).RootElement.GetProperty("type").GetString() == "unpair",
             "The revoked phone did not receive an authenticated removal command.");
+        Check((await Pull(revokedNonce)).Length == 0,
+            "A revoked phone replayed a pull nonce.");
         var unpairNonce = Guid.NewGuid();
         var identity = $"{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(unpairNonce)}";
         var unpairRequest = new { type = "unpair", version = "1",
@@ -225,6 +227,16 @@ static class Program
             hostID = Upper(invitation.HostId), physicalDeviceID = Upper(second.PhysicalDeviceId),
             nonce = Upper(Guid.NewGuid()), proof = new string('0', 64) })).Length == 0 &&
             state.Phones.Contains(second), "An invalid removal proof revoked another phone.");
+        var secondNonce = Guid.NewGuid();
+        var secondIdentity = $"{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(secondNonce)}";
+        var secondReply = JsonDocument.Parse(await ExchangeAsync(new {
+            type = "unpair", version = "1", hostID = Upper(invitation.HostId),
+            physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(secondNonce),
+            proof = Hex(Hmac(secondKey, $"unpair|v1|{secondIdentity}"))
+        })).RootElement;
+        Check(secondReply.GetProperty("type").GetString() == "unpair-ack" &&
+            state.Phones.Count == 0 && state.RevokedPhones.Count == 2,
+            "Phone-initiated removal did not persist on Windows.");
         Console.WriteLine("PASS: v3 identity pairing, encrypted v2 log, ACK, and replay rejection");
         var directUdid = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_UDID");
         var directAddress = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_ADDRESS");
