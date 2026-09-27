@@ -41,6 +41,10 @@ public sealed class CompanionRuntime : IDisposable
             Record($"{phone.Name}: authenticated network address updated");
             _ = CollectAsync(phone);
         };
+        Server.PairingRevoked += () => {
+            Record("MochiLog app pairing removed for one device");
+            Changed?.Invoke();
+        };
     }
 
     public void Start()
@@ -119,7 +123,8 @@ public sealed class CompanionRuntime : IDisposable
         try
         {
             PairedPhone[] phones;
-            lock (State) { phones = selected is null ? State.Phones.ToArray() : [selected]; }
+            lock (State) { phones = selected is null ? State.Phones.ToArray() :
+                State.Phones.Contains(selected) ? [selected] : []; }
             foreach (var phone in phones)
             {
                 CollectionStatus = UiText.Format("win_reading", phone.Name);
@@ -142,6 +147,13 @@ public sealed class CompanionRuntime : IDisposable
             }
         }
         finally { _collection.Release(); }
+    }
+
+    public void Unpair(PairedPhone phone)
+    {
+        Server.Revoke(phone);
+        Record($"{phone.Name}: MochiLog pairing removed; OS trust and saved logs retained");
+        Changed?.Invoke();
     }
 
     private async Task PeriodicCollectionAsync(CancellationToken token)

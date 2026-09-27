@@ -40,6 +40,7 @@ public sealed partial class HomePage : Page
         };
         PairButton.Content = UiText.Get("win_pair");
         PairedTitle.Text = UiText.Get("win_paired");
+        UnpairButton.Content = UiText.Get("win_unpair_button");
         ProcessingNote.Text = UiText.Get("win_note");
         ManualAddressHint.Text = UiText.Get("win_manual_device_ip");
         SaveManualAddressButton.Content = UiText.Get("win_save_ip");
@@ -48,6 +49,8 @@ public sealed partial class HomePage : Page
             if (PairedList.SelectedIndex is >= 0 and var index &&
                 index < _runtime.State.Phones.Count)
                 ManualAddressBox.Text = _runtime.State.Phones[index].ManualAddress ?? "";
+            UnpairButton.IsEnabled = PairedList.SelectedIndex >= 0 &&
+                PairedList.SelectedIndex < _runtime.State.Phones.Count;
         };
         Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); _ = CheckAppleSoftwareAsync(); };
         Unloaded += (_, _) => _runtime.Changed -= RuntimeChanged;
@@ -111,12 +114,32 @@ public sealed partial class HomePage : Page
                 PairedList.SelectedIndex = pairedSelected;
         }
         CollectButton.IsEnabled = _runtime.State.Phones.Count > 0;
+        UnpairButton.IsEnabled = PairedList.SelectedIndex >= 0 &&
+            PairedList.SelectedIndex < _runtime.State.Phones.Count;
     }
 
     private async void RefreshClicked(object sender, RoutedEventArgs args) =>
         await _runtime.RefreshAsync();
     private async void CollectClicked(object sender, RoutedEventArgs args) =>
         await _runtime.CollectAsync();
+
+    private async void UnpairClicked(object sender, RoutedEventArgs args)
+    {
+        var index = PairedList.SelectedIndex;
+        if (index < 0 || index >= _runtime.State.Phones.Count) return;
+        var phone = _runtime.State.Phones[index];
+        var answer = await new ContentDialog {
+            XamlRoot = XamlRoot,
+            Title = UiText.Format("win_unpair_title", phone.Name),
+            Content = UiText.Get("win_unpair_detail"),
+            PrimaryButtonText = UiText.Get("win_unpair_button"),
+            CloseButtonText = UiText.Get("win_close"),
+            DefaultButton = ContentDialogButton.Close
+        }.ShowAsync();
+        if (answer != ContentDialogResult.Primary) return;
+        try { _runtime.Unpair(phone); Render(); }
+        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
+    }
 
     private async void UsbClicked(object sender, RoutedEventArgs args)
     {

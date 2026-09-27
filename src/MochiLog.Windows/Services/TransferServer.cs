@@ -46,9 +46,29 @@ public sealed class TransferServer : IDisposable
     public event Action<string>? StatusChanged;
     public event Action<PairedPhone>? PhoneConfirmed;
     public event Action<PairedPhone>? PhoneAddressChanged;
+    public event Action? PairingRevoked;
     public Func<PairedPhone, byte[]>? SupportReport { get; set; }
 
     public TransferServer(CompanionState state) => _state = state;
+
+    public void Revoke(PairedPhone phone)
+    {
+        lock (_gate)
+        {
+            var current = _state.Phones.FirstOrDefault(p => p.PhysicalDeviceId == phone.PhysicalDeviceId);
+            if (current is null) return;
+            _state.Phones.Remove(current);
+            _state.RevokedPhones.RemoveAll(p => p.PhysicalDeviceId == current.PhysicalDeviceId);
+            _state.RevokedPhones.Add(current);
+            try { StateStore.Save(_state); }
+            catch {
+                _state.RevokedPhones.Remove(current);
+                _state.Phones.Add(current);
+                throw;
+            }
+            PairingRevoked?.Invoke();
+        }
+    }
 
     public void Start()
     {
@@ -180,6 +200,15 @@ public sealed class TransferServer : IDisposable
                     }
                     return;
                 }
+                if (type.ValueKind == JsonValueKind.String && type.GetString() == "unpair")
+                {
+                    var response = RevokeFromPhone(root);
+                    if (response is not null) {
+                        await stream.WriteAsync(response, timeout.Token);
+                        await stream.WriteAsync(new byte[] { 10 }, timeout.Token);
+                    }
+                    return;
+                }
                 var packet = Pull(root, peer);
                 if (packet is not null) await stream.WriteAsync(packet, timeout.Token);
             }
@@ -241,6 +270,8 @@ public sealed class TransferServer : IDisposable
                 lock (_state) {
                     _state.Phones.RemoveAll(existing => existing.Udid == phone.Udid ||
                         existing.PhysicalDeviceId == phone.PhysicalDeviceId);
+                    _state.RevokedPhones.RemoveAll(existing =>
+                        existing.PhysicalDeviceId == phone.PhysicalDeviceId);
                     _state.Phones.Add(phone);
                     StateStore.Save(_state);
                 }
@@ -255,6 +286,29 @@ public sealed class TransferServer : IDisposable
         }
     }
 
+    private byte[]? RevokeFromPhone(JsonElement request)
+    {
+        if (Get(request, "version") != "1" ||
+            !Guid.TryParse(Get(request, "hostID"), out var hostId) || hostId != _state.HostId ||
+            !Guid.TryParse(Get(request, "physicalDeviceID"), out var physicalId) ||
+            !Guid.TryParse(Get(request, "nonce"), out var nonce) ||
+            !TryHex(Get(request, "proof"), out var supplied)) return null;
+        lock (_gate)
+        {
+            var phone = _state.Phones.Concat(_state.RevokedPhones)
+                .FirstOrDefault(p => p.PhysicalDeviceId == physicalId);
+            if (phone is null) return null;
+            var identity = $"{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}";
+            if (!CryptographicOperations.FixedTimeEquals(supplied,
+                    Hmac(phone.Secret, $"unpair|v1|{identity}"))) return null;
+            if (_state.Phones.Contains(phone)) Revoke(phone);
+            return JsonSerializer.SerializeToUtf8Bytes(new {
+                type = "unpair-ack", nonce = Upper(nonce),
+                proof = Mac(phone.Secret, $"unpair-ack|v1|{identity}")
+            });
+        }
+    }
+
     private byte[]? Pull(JsonElement request, string? peer = null)
     {
         if (Get(request, "version") != "2" ||
@@ -264,7 +318,8 @@ public sealed class TransferServer : IDisposable
             !TryHex(Get(request, "mac"), out var supplied)) return null;
         lock (_gate)
         {
-            var phone = _state.Phones.FirstOrDefault(p => p.PhysicalDeviceId == physicalId);
+            var phone = _state.Phones.Concat(_state.RevokedPhones)
+                .FirstOrDefault(p => p.PhysicalDeviceId == physicalId);
             if (phone is null) return null;
             var now = DateTimeOffset.UtcNow;
             foreach (var expired in _nonces.Where(n => now - n.Value > TimeSpan.FromMinutes(5))
@@ -278,6 +333,13 @@ public sealed class TransferServer : IDisposable
             if (!backgroundNotice &&
                 !CryptographicOperations.FixedTimeEquals(supplied, Hmac(phone.Secret, message)))
                 return null;
+            if (_state.RevokedPhones.Contains(phone))
+            {
+                if (backgroundNotice) return null;
+                return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
+                    new byte[] { 0, 0 }.Concat(JsonSerializer.SerializeToUtf8Bytes(
+                        new { type = "unpair" })).ToArray());
+            }
             _nonces[nonce] = now;
             if (ValidPeerAddress(peer) && phone.LastKnownAddress != peer)
             {
@@ -355,12 +417,22 @@ public sealed class TransferServer : IDisposable
             BinaryPrimitives.WriteUInt16BigEndian(plain, (ushort)filename.Length);
             filename.CopyTo(plain.AsSpan(2));
             content.CopyTo(plain.AsSpan(2 + filename.Length));
+            var frame = EncryptResponse(phone.Secret, hostId, physicalId, nonce, plain);
+            StatusChanged?.Invoke(token.Length == 0 ? $"{phone.Name}: no new logs" :
+                $"{phone.Name}: sending {token}");
+            return frame;
+        }
+    }
+
+    private static byte[] EncryptResponse(byte[] secret, Guid hostId, Guid physicalId,
+        Guid nonce, byte[] plain)
+    {
             var iv = RandomNumberGenerator.GetBytes(12);
             var ciphertext = new byte[plain.Length];
             var tag = new byte[16];
             var aad = Encoding.UTF8.GetBytes(
                 $"v2|response|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}");
-            using (var aes = new AesGcm(phone.Secret, 16)) aes.Encrypt(iv, plain, ciphertext, tag, aad);
+            using (var aes = new AesGcm(secret, 16)) aes.Encrypt(iv, plain, ciphertext, tag, aad);
             var combined = new byte[iv.Length + ciphertext.Length + tag.Length];
             iv.CopyTo(combined, 0);
             ciphertext.CopyTo(combined, iv.Length);
@@ -368,10 +440,7 @@ public sealed class TransferServer : IDisposable
             var frame = new byte[4 + combined.Length];
             BinaryPrimitives.WriteUInt32BigEndian(frame, (uint)combined.Length);
             combined.CopyTo(frame, 4);
-            StatusChanged?.Invoke(token.Length == 0 ? $"{phone.Name}: no new logs" :
-                $"{phone.Name}: sending {token}");
             return frame;
-        }
     }
 
     public static string QueuePath(PairedPhone phone) => Path.Combine(StateStore.Root,

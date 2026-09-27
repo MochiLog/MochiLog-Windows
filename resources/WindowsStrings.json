@@ -1,5 +1,8 @@
 {
   "en": {
+    "win_unpair_button": "Remove MochiLog pairing",
+    "win_unpair_title": "Remove pairing with {0}?",
+    "win_unpair_detail": "This device stops exchanging logs immediately. The other side will remove this pairing when it next connects. Saved battery records and the computer's OS trust are kept.",
     "win_home": "Overview",
     "win_about": "About",
     "win_subtitle": "Collect iPhone and iPad battery logs and send them securely to MochiLog on the device.",
@@ -101,6 +104,9 @@
     "win_update_failed": "Update failed: {0}"
   },
   "ja": {
+    "win_unpair_button": "MochiLogの連携を解除",
+    "win_unpair_title": "{0}との連携を解除しますか？",
+    "win_unpair_detail": "この端末とのログ転送はすぐに停止します。相手側は次に接続したとき連携を解除します。保存済みの記録とOSの信頼設定は残ります。",
     "win_home": "概要",
     "win_about": "アプリについて",
     "win_subtitle": "iPhone・iPadのバッテリーログを収集し、端末上のMochiLogへ安全に転送します。",
@@ -202,6 +208,9 @@
     "win_update_failed": "更新に失敗しました: {0}"
   },
   "de": {
+    "win_unpair_button": "MochiLog-Kopplung entfernen",
+    "win_unpair_title": "Kopplung mit {0} entfernen?",
+    "win_unpair_detail": "Die Logübertragung stoppt sofort. Die Gegenseite entfernt die Kopplung bei der nächsten Verbindung. Gespeicherte Einträge und das OS-Vertrauen bleiben erhalten.",
     "win_home": "Übersicht",
     "win_about": "Über die App",
     "win_subtitle": "Batterieprotokolle von iPhone und iPad erfassen und sicher an MochiLog auf dem Gerät übertragen.",
@@ -303,6 +312,9 @@
     "win_update_failed": "Update fehlgeschlagen: {0}"
   },
   "es": {
+    "win_unpair_button": "Desvincular MochiLog",
+    "win_unpair_title": "¿Desvincular {0}?",
+    "win_unpair_detail": "La transferencia de registros se detiene ahora. El otro lado se desvinculará al volver a conectarse. Se conservan los registros y la confianza del sistema.",
     "win_home": "Resumen",
     "win_about": "Acerca de",
     "win_subtitle": "Recopila registros de batería del iPhone y el iPad y envíalos de forma segura a MochiLog en el dispositivo.",
@@ -404,6 +416,9 @@
     "win_update_failed": "Error de actualización: {0}"
   },
   "fr": {
+    "win_unpair_button": "Dissocier MochiLog",
+    "win_unpair_title": "Dissocier {0} ?",
+    "win_unpair_detail": "Le transfert des journaux s'arrête immédiatement. L'autre appareil se dissociera à sa prochaine connexion. Les données et la confiance du système sont conservées.",
     "win_home": "Vue d’ensemble",
     "win_about": "À propos",
     "win_subtitle": "Collectez les journaux de batterie de l’iPhone et de l’iPad et transférez-les en sécurité vers MochiLog sur l’appareil.",
@@ -505,6 +520,9 @@
     "win_update_failed": "Échec de la mise à jour : {0}"
   },
   "ko": {
+    "win_unpair_button": "MochiLog 페어링 해제",
+    "win_unpair_title": "{0} 페어링을 해제할까요?",
+    "win_unpair_detail": "로그 전송이 즉시 중지됩니다. 상대 기기는 다음 연결 시 페어링을 해제합니다. 저장된 기록과 OS 신뢰 설정은 유지됩니다.",
     "win_home": "개요",
     "win_about": "앱 정보",
     "win_subtitle": "iPhone과 iPad의 배터리 로그를 수집하여 기기의 MochiLog로 안전하게 전송합니다.",
@@ -606,6 +624,9 @@
     "win_update_failed": "업데이트 실패: {0}"
   },
   "zh-Hans": {
+    "win_unpair_button": "解除 MochiLog 配对",
+    "win_unpair_title": "解除与 {0} 的配对？",
+    "win_unpair_detail": "日志传输会立即停止。另一端下次连接时将解除配对。已保存的记录和系统信任设置会保留。",
     "win_home": "概览",
     "win_about": "关于",
     "win_subtitle": "收集 iPhone 和 iPad 的电池日志，并安全传输至设备上的 MochiLog。",
@@ -707,6 +728,9 @@
     "win_update_failed": "更新失败：{0}"
   },
   "zh-Hant": {
+    "win_unpair_button": "解除 MochiLog 配對",
+    "win_unpair_title": "解除與 {0} 的配對？",
+    "win_unpair_detail": "日誌傳輸會立即停止。另一端下次連線時將解除配對。已儲存的記錄與系統信任設定會保留。",
     "win_home": "總覽",
     "win_about": "關於",
     "win_subtitle": "收集 iPhone 和 iPad 的電池日誌，並安全傳輸至裝置上的 MochiLog。",

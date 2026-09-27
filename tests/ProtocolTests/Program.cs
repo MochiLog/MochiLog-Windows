@@ -198,6 +198,33 @@ static class Program
         _ = pullMethod.Invoke(server, [invalidAddressRequest.RootElement, "192.168.3.32"]);
         Check(state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
             "An unauthenticated request changed the device address.");
+        var secondKey = RandomNumberGenerator.GetBytes(32);
+        var second = new PairedPhone { Udid = "other-iphone", Name = "Other iPhone",
+            Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid(), Secret = secondKey };
+        state.Phones.Add(second);
+        StateStore.Save(state);
+        server.Revoke(state.Phones[0]);
+        Check(state.Phones.Count == 1 && state.Phones[0] == second &&
+            state.RevokedPhones.Count == 1, "Revoking one phone removed another pairing.");
+        var revokedNonce = Guid.NewGuid();
+        var control = Open(await Pull(revokedNonce), key, invitation.HostId, physical, revokedNonce);
+        Check(control.Name.Length == 0 &&
+            JsonDocument.Parse(control.Content).RootElement.GetProperty("type").GetString() == "unpair",
+            "The revoked phone did not receive an authenticated removal command.");
+        var unpairNonce = Guid.NewGuid();
+        var identity = $"{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(unpairNonce)}";
+        var unpairRequest = new { type = "unpair", version = "1",
+            hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
+            nonce = Upper(unpairNonce), proof = Hex(Hmac(key, $"unpair|v1|{identity}")) };
+        var unpairReply = JsonDocument.Parse(await ExchangeAsync(unpairRequest)).RootElement;
+        Check(unpairReply.GetProperty("type").GetString() == "unpair-ack" &&
+            unpairReply.GetProperty("proof").GetString() ==
+                Hex(Hmac(key, $"unpair-ack|v1|{identity}")),
+            "The revoked phone could not finish the idempotent handshake.");
+        Check((await ExchangeAsync(new { type = "unpair", version = "1",
+            hostID = Upper(invitation.HostId), physicalDeviceID = Upper(second.PhysicalDeviceId),
+            nonce = Upper(Guid.NewGuid()), proof = new string('0', 64) })).Length == 0 &&
+            state.Phones.Contains(second), "An invalid removal proof revoked another phone.");
         Console.WriteLine("PASS: v3 identity pairing, encrypted v2 log, ACK, and replay rejection");
         var directUdid = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_UDID");
         var directAddress = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_ADDRESS");

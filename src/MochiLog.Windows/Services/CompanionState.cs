@@ -19,6 +19,9 @@ public sealed class CompanionState
 {
     public Guid HostId { get; set; } = Guid.NewGuid();
     public List<PairedPhone> Phones { get; set; } = [];
+    // Revoked keys authenticate a delayed unpair acknowledgement only.
+    // These phones are excluded from discovery, collection and transfer.
+    public List<PairedPhone> RevokedPhones { get; set; } = [];
     public HashSet<string> Delivered { get; set; } = [];
     public Dictionary<string, byte[]> PhoneDiagnostics { get; set; } = [];
     public Dictionary<string, CollectionResult> LastCollections { get; set; } = [];
