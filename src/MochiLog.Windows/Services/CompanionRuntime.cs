@@ -13,6 +13,7 @@ public sealed class CompanionRuntime : IDisposable
     public string Status { get; private set; } = UiText.Get("win_searching");
     public string CollectionStatus { get; private set; } = "";
     public event Action? Changed;
+    public event Action<PairedPhone>? PairingConfirmed;
     private readonly SemaphoreSlim _collection = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<string> _events = [];
@@ -35,6 +36,7 @@ public sealed class CompanionRuntime : IDisposable
         Server.StatusChanged += message => Record(message);
         Server.PhoneConfirmed += phone => {
             Record($"{phone.Name}: app pairing confirmed");
+            PairingConfirmed?.Invoke(phone);
             _ = CollectAsync(phone);
         };
         Server.PhoneAddressChanged += phone => {
@@ -63,7 +65,7 @@ public sealed class CompanionRuntime : IDisposable
         {
             Status = UiText.Get("win_searching");
             Changed?.Invoke();
-            Available = await Collector.BrowseAsync(State.Phones, _lifetime.Token);
+            Available = await Task.Run(() => Collector.BrowseAsync(State.Phones, _lifetime.Token));
             Status = Available.Count == 0 ? UiText.Get("win_none_found") :
                 UiText.Format("win_devices_available", Available.Count);
         }
@@ -71,22 +73,32 @@ public sealed class CompanionRuntime : IDisposable
         Record(Status);
     }
 
-    public async Task<ConnectedDevice> PrepareUsbAsync(string? selectedUdid = null)
+    public async Task<ConnectedDevice> PrepareUsbAsync(string? selectedUdid = null,
+        Action<int, string>? progress = null)
     {
         Status = UiText.Get("win_usb_wait");
         Changed?.Invoke();
-        var device = await Collector.PrepareUsbPairingAsync(selectedUdid, _lifetime.Token);
-        Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
-        Status = UiText.Format("win_usb_ready", device.Name);
-        Record(Status);
-        return device;
+        try
+        {
+            var device = await Task.Run(() => Collector.PrepareUsbPairingAsync(
+                selectedUdid, progress, _lifetime.Token));
+            Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
+            Status = UiText.Format("win_usb_ready", device.Name);
+            Record(Status);
+            return device;
+        }
+        catch (Exception error)
+        {
+            Record("USB setup failed: " + error.Message);
+            throw;
+        }
     }
 
     public async Task VerifyWirelessAsync(ConnectedDevice device)
     {
         Status = UiText.Format("win_checking", device.Name);
         Changed?.Invoke();
-        await Collector.VerifyWirelessAsync(device.Udid, _lifetime.Token);
+        await Task.Run(() => Collector.VerifyWirelessAsync(device.Udid, _lifetime.Token));
         Status = UiText.Format("win_wireless_ready", device.Name);
         Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
         Record(Status);
@@ -133,9 +145,9 @@ public sealed class CompanionRuntime : IDisposable
                 Changed?.Invoke();
                 try
                 {
-                    var result = await Collector.CollectAsync(phone, State,
+                    var result = await Task.Run(() => Collector.CollectAsync(phone, State,
                         (done, total) => { CollectionStatus = UiText.Format("win_progress", phone.Name, done, total);
-                            Changed?.Invoke(); }, _lifetime.Token);
+                            Changed?.Invoke(); }, _lifetime.Token));
                     CollectionStatus = UiText.Format("win_collection_result", phone.Name,
                         result.Saved, result.Skipped, result.Failed);
                     if (result.LastError is not null) CollectionStatus += " " + result.LastError;

@@ -225,9 +225,13 @@ public sealed partial class HomePage : Page
         UsbResultBar.Message = UiText.Get("win_usb_wait");
         UsbResultBar.Severity = InfoBarSeverity.Informational;
         UsbResultBar.IsOpen = true;
+        UsbProgressRing.Visibility = Visibility.Visible;
+        UsbProgressRing.IsActive = true;
         try
         {
-            _usbDevice = await _runtime.PrepareUsbAsync(SelectedDevice()?.Udid);
+            _usbDevice = await _runtime.PrepareUsbAsync(SelectedDevice()?.Udid,
+                (step, message) => DispatcherQueue.TryEnqueue(() =>
+                    UsbResultBar.Message = $"{step}/4 · {message} {UiText.Get("win_usb_wait_note")}"));
             UsbResultBar.Message = UiText.Get("win_usb_done_detail");
             UsbResultBar.Severity = InfoBarSeverity.Success;
         }
@@ -237,7 +241,12 @@ public sealed partial class HomePage : Page
             UsbResultBar.Message = error.Message;
             UsbResultBar.Severity = InfoBarSeverity.Error;
         }
-        finally { UsbButton.IsEnabled = true; }
+        finally
+        {
+            UsbProgressRing.IsActive = false;
+            UsbProgressRing.Visibility = Visibility.Collapsed;
+            UsbButton.IsEnabled = true;
+        }
     }
 
     private ConnectedDevice? SelectedDevice() => _runtime.Available.FirstOrDefault(device =>
@@ -272,11 +281,31 @@ public sealed partial class HomePage : Page
             detail.Children.Add(new TextBlock { Text = UiText.Get("win_qr_instruction"), TextWrapping = TextWrapping.Wrap });
             detail.Children.Add(new Image { Source = image, Width = 280, Height = 280 });
             detail.Children.Add(new TextBlock { Text = UiText.Format("win_code", invite.Code), FontSize = 24 });
-            var presented = await DialogCoordinator.ShowAsync(new ContentDialog
+            var dialog = new ContentDialog
             {
                 XamlRoot = XamlRoot, Title = UiText.Format("win_pair_title", device.Name),
                 Content = detail, CloseButtonText = UiText.Get("win_close")
-            });
+            };
+            var confirmedHandled = false;
+            void OnConfirmed(PairedPhone phone)
+            {
+                if (phone.Udid != device.Udid || confirmedHandled) return;
+                confirmedHandled = true;
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    dialog.Hide();
+                    UsbResultBar.Title = UiText.Get("win_connected");
+                    UsbResultBar.Message = UiText.Format("win_pair_confirmed", phone.Name);
+                    UsbResultBar.Severity = InfoBarSeverity.Success;
+                    UsbResultBar.IsOpen = true;
+                    Render();
+                    PairedCard.StartBringIntoView();
+                });
+            }
+            _runtime.PairingConfirmed += OnConfirmed;
+            ContentDialogResult? presented;
+            try { presented = await DialogCoordinator.ShowAsync(dialog); }
+            finally { _runtime.PairingConfirmed -= OnConfirmed; }
             if (presented is null)
                 ShowInlineError(UiText.Get("win_pair_failed"), UiText.Get("win_setup_failed"));
         }

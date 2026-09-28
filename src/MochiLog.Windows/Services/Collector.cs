@@ -175,8 +175,10 @@ public static partial class Collector
     }
 
     public static async Task<ConnectedDevice> PrepareUsbPairingAsync(
-        string? selectedUdid = null, CancellationToken cancellation = default)
+        string? selectedUdid = null, Action<int, string>? progress = null,
+        CancellationToken cancellation = default)
     {
+        progress?.Invoke(1, UiText.Get("win_usb_stage_detect"));
         var output = await RunAsync(["usbmux", "list", "--usb", "--simple"],
             TimeSpan.FromSeconds(20), cancellation);
         var ids = JsonSerializer.Deserialize<string[]>(output) ?? [];
@@ -187,6 +189,7 @@ public static partial class Collector
         if (selectedUdid is null && ids.Length > 1)
             throw new InvalidOperationException(UiText.Get("win_usb_select_multiple"));
         var id = selectedUdid ?? ids[0];
+        progress?.Invoke(2, UiText.Get("win_usb_stage_trust"));
         try { await RunAsync(["lockdown", "info", "--udid", id], TimeSpan.FromSeconds(20), cancellation); }
         catch { await RunAsync(["lockdown", "pair", "--udid", id], TimeSpan.FromSeconds(90), cancellation); }
         var info = JsonSerializer.Deserialize<JsonElement>(await RunAsync(
@@ -195,8 +198,10 @@ public static partial class Collector
         var version = info.GetProperty("ProductVersion").GetString() ?? "0";
         if (!SupportedModel(model) || !int.TryParse(version.Split('.')[0], out var major) || major < 27)
             throw new InvalidOperationException("This beta requires iOS or iPadOS 27 or later.");
+        progress?.Invoke(3, UiText.Get("win_usb_stage_wifi"));
         await RunAsync(["lockdown", "wifi-connections", "on", "--udid", id],
             TimeSpan.FromSeconds(20), cancellation);
+        progress?.Invoke(4, UiText.Get("win_usb_stage_pair"));
         await RunAsync(["lockdown", "remotepairing", "--pair", "--udid", id],
             TimeSpan.FromSeconds(60), cancellation);
         return new ConnectedDevice(id,
