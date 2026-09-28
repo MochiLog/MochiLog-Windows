@@ -393,6 +393,8 @@ public sealed class TransferServer : IDisposable
             {
                 phone.AutomaticPauseUntil = DateTimeOffset.FromUnixTimeSeconds(untilSeconds);
                 StateStore.Save(_state);
+                StatusChanged?.Invoke($"{phone.Name}: automatic collection stopped; " +
+                    $"trigger=confirmed daily receipt; resume={phone.AutomaticPauseUntil.Value.ToLocalTime():O}");
                 var control = JsonSerializer.SerializeToUtf8Bytes(new {
                     type = "daily-pause-ack", until = untilText
                 });
@@ -405,6 +407,8 @@ public sealed class TransferServer : IDisposable
             {
                 phone.AutomaticPauseUntil = null;
                 StateStore.Save(_state);
+                StatusChanged?.Invoke($"{phone.Name}: automatic collection resumed; " +
+                    $"trigger=authenticated mobile request at {DateTimeOffset.Now:O}");
                 var control = JsonSerializer.SerializeToUtf8Bytes(new {
                     type = "daily-resume-ack"
                 });

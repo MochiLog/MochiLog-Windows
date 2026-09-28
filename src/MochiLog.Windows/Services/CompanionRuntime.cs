@@ -17,6 +17,7 @@ public sealed class CompanionRuntime : IDisposable
     private readonly SemaphoreSlim _collection = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<string> _events = [];
+    private readonly Dictionary<Guid, string> _lastAutomaticDecision = [];
     private static string EventsFile => Path.Combine(StateStore.Root, "support-events.json");
     private bool _started;
 
@@ -37,11 +38,11 @@ public sealed class CompanionRuntime : IDisposable
         Server.PhoneConfirmed += phone => {
             Record($"{phone.Name}: app pairing confirmed");
             PairingConfirmed?.Invoke(phone);
-            _ = CollectAsync(phone);
+            _ = CollectAsync(phone, trigger: "app pairing confirmed");
         };
         Server.PhoneAddressChanged += phone => {
             Record($"{phone.Name}: authenticated network address updated");
-            _ = CollectAsync(phone);
+            _ = CollectAsync(phone, trigger: "authenticated address changed");
         };
         Server.PairingRevoked += () => {
             Record("MochiLog app pairing removed for one device");
@@ -128,12 +129,18 @@ public sealed class CompanionRuntime : IDisposable
             StateStore.Save(State);
         }
         Record($"{phone.Name}: manual device address {(phone.ManualAddress is null ? "cleared" : "set")}");
-        if (phone.ManualAddress is not null) _ = CollectAsync(phone);
+        if (phone.ManualAddress is not null)
+            _ = CollectAsync(phone, trigger: "manual device address set");
     }
 
-    public async Task CollectAsync(PairedPhone? selected = null, bool manual = false)
+    public async Task CollectAsync(PairedPhone? selected = null, bool manual = false,
+        string trigger = "5-minute timer")
     {
-        if (!await _collection.WaitAsync(0)) return;
+        if (!await _collection.WaitAsync(0))
+        {
+            Record($"Collection trigger skipped: {trigger}; another collection is in progress");
+            return;
+        }
         try
         {
             PairedPhone[] phones;
@@ -143,7 +150,31 @@ public sealed class CompanionRuntime : IDisposable
             var collectionOpen = now.ToOffset(TimeSpan.FromHours(9)).Hour >= 9;
             foreach (var phone in phones)
             {
-                if (!manual && (!collectionOpen || phone.AutomaticPauseUntil > now)) continue;
+                if (!manual)
+                {
+                    var japanNow = now.ToOffset(TimeSpan.FromHours(9));
+                    var nextWindow = new DateTimeOffset(japanNow.Date.AddHours(9)
+                        .AddDays(japanNow.Hour >= 9 ? 1 : 0), TimeSpan.FromHours(9));
+                    var resume = !collectionOpen ? nextWindow : phone.AutomaticPauseUntil;
+                    var reason = !collectionOpen ? "before the daily collection window" :
+                        phone.AutomaticPauseUntil > now ?
+                        "mobile app confirmed all required daily logs" : null;
+                    if (reason is not null)
+                    {
+                        var key = $"{reason}|{resume:O}";
+                        if (!_lastAutomaticDecision.TryGetValue(phone.PhysicalDeviceId,
+                            out var previous) || previous != key)
+                        {
+                            Record($"{phone.Name}: automatic collection stopped; trigger={reason}; " +
+                                $"resume={resume?.ToLocalTime():O}");
+                            _lastAutomaticDecision[phone.PhysicalDeviceId] = key;
+                        }
+                        continue;
+                    }
+                    if (_lastAutomaticDecision.Remove(phone.PhysicalDeviceId))
+                        Record($"{phone.Name}: automatic collection resumed; trigger={trigger}");
+                }
+                Record($"{phone.Name}: collection started; trigger={(manual ? "manual request" : trigger)}");
                 CollectionStatus = UiText.Format("win_reading", phone.Name);
                 Changed?.Invoke();
                 try
@@ -159,8 +190,11 @@ public sealed class CompanionRuntime : IDisposable
                         StateStore.Save(State);
                     }
                     Record(CollectionStatus);
+                    Record($"{phone.Name}: collection finished; saved={result.Saved}, " +
+                        $"excluded={result.Skipped}, failed={result.Failed}");
                 }
-                catch (Exception error) { Record($"{phone.Name}: {error.Message}"); }
+                catch (Exception error) { Record($"{phone.Name}: collection failed; " +
+                    $"trigger={(manual ? "manual request" : trigger)}; error={error.Message}"); }
             }
         }
         finally { _collection.Release(); }
@@ -178,7 +212,8 @@ public sealed class CompanionRuntime : IDisposable
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
         try
         {
-            while (await timer.WaitForNextTickAsync(token)) await CollectAsync();
+            while (await timer.WaitForNextTickAsync(token))
+                await CollectAsync(trigger: "5-minute timer");
         }
         catch (OperationCanceledException) { }
     }
@@ -237,7 +272,7 @@ public sealed class CompanionRuntime : IDisposable
         lock (_events)
         {
             _events.Add($"{DateTimeOffset.Now:O} | {new string(message.Replace('\n', ' ').Take(200).ToArray())}");
-            if (_events.Count > 100) _events.RemoveRange(0, _events.Count - 100);
+            if (_events.Count > 500) _events.RemoveRange(0, _events.Count - 500);
             try {
                 Directory.CreateDirectory(StateStore.Root);
                 var temporary = EventsFile + ".new";
