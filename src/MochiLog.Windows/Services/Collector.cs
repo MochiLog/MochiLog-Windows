@@ -183,7 +183,12 @@ public static partial class Collector
             TimeSpan.FromSeconds(20), cancellation);
         var ids = JsonSerializer.Deserialize<string[]>(output) ?? [];
         if (ids.Length == 0)
+        {
+            if (OperatingSystem.IsWindows() &&
+                await AppleUsbRecovery.HasConnectedDeviceAsync(cancellation))
+                throw new AppleUsbBridgeUnavailableException();
             throw new InvalidOperationException(UiText.Get("win_usb_missing"));
+        }
         if (selectedUdid is not null && !ids.Contains(selectedUdid, StringComparer.OrdinalIgnoreCase))
             throw new InvalidOperationException(UiText.Get("win_usb_not_connected"));
         if (selectedUdid is null && ids.Length > 1)

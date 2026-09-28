@@ -189,6 +189,8 @@
                             <Button x:Name="UsbButton" Click="UsbClicked" />
                             <ProgressRing x:Name="UsbProgressRing" Width="24" Height="24"
                                           IsActive="False" Visibility="Collapsed" />
+                            <Button x:Name="RepairUsbButton" Click="RepairUsbClicked"
+                                    Visibility="Collapsed" />
                             <Button x:Name="PairButton" Click="PairClicked"
                                     Style="{StaticResource AccentButtonStyle}" />
                         </StackPanel>

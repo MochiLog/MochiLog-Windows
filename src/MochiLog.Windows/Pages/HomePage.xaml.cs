@@ -62,6 +62,7 @@ public sealed partial class HomePage : Page
         SetupStep2.Text = UiText.Get("win_step_2");
         SetupStep3.Text = UiText.Get("win_step_3");
         UsbButton.Content = UiText.Get("win_usb");
+        RepairUsbButton.Content = UiText.Get("win_usb_repair");
         DeviceHeading.Text = UiText.Get("win_found");
         DeviceSelectionHint.Text = UiText.Get("win_select_device_hint");
         DeviceEmptyText.Text = UiText.Get("win_none_found");
@@ -217,10 +218,17 @@ public sealed partial class HomePage : Page
         catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
     }
 
-    private async void UsbClicked(object sender, RoutedEventArgs args)
+    private async void UsbClicked(object sender, RoutedEventArgs args) =>
+        await RunUsbSetupAsync(repair: false);
+
+    private async void RepairUsbClicked(object sender, RoutedEventArgs args) =>
+        await RunUsbSetupAsync(repair: true);
+
+    private async Task RunUsbSetupAsync(bool repair)
     {
         if (!UsbButton.IsEnabled) return;
         UsbButton.IsEnabled = false;
+        RepairUsbButton.IsEnabled = false;
         UsbResultBar.Title = UiText.Get("win_usb_done");
         UsbResultBar.Message = UiText.Get("win_usb_wait");
         UsbResultBar.Severity = InfoBarSeverity.Informational;
@@ -229,9 +237,15 @@ public sealed partial class HomePage : Page
         UsbProgressRing.IsActive = true;
         try
         {
+            if (repair)
+            {
+                UsbResultBar.Message = UiText.Get("win_usb_repairing");
+                await Task.Run(() => AppleUsbRecovery.RepairAsync(CancellationToken.None));
+            }
             _usbDevice = await _runtime.PrepareUsbAsync(SelectedDevice()?.Udid,
                 (step, message) => DispatcherQueue.TryEnqueue(() =>
                     UsbResultBar.Message = $"{step}/4 · {message} {UiText.Get("win_usb_wait_note")}"));
+            RepairUsbButton.Visibility = Visibility.Collapsed;
             UsbResultBar.Message = UiText.Get("win_usb_done_detail");
             UsbResultBar.Severity = InfoBarSeverity.Success;
         }
@@ -240,12 +254,15 @@ public sealed partial class HomePage : Page
             UsbResultBar.Title = UiText.Get("win_setup_failed");
             UsbResultBar.Message = error.Message;
             UsbResultBar.Severity = InfoBarSeverity.Error;
+            RepairUsbButton.Visibility = error is AppleUsbBridgeUnavailableException
+                ? Visibility.Visible : Visibility.Collapsed;
         }
         finally
         {
             UsbProgressRing.IsActive = false;
             UsbProgressRing.Visibility = Visibility.Collapsed;
             UsbButton.IsEnabled = true;
+            RepairUsbButton.IsEnabled = true;
         }
     }
 
