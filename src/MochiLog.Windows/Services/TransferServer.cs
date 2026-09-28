@@ -375,6 +375,13 @@ public sealed class TransferServer : IDisposable
                         diagnosticBox.AsSpan(12 + report.Length, 16), report, context);
                     if (report.Length <= 8_192)
                     {
+                        try { DebugArchiveSync.ReceivePhoneChunk(report, physicalId,
+                            DebugArchiveSync.RetentionDays); }
+                        catch (Exception error) when (error is IOException or JsonException or
+                            UnauthorizedAccessException) {
+                            StatusChanged?.Invoke("Phone debug archive could not be saved: " +
+                                error.Message);
+                        }
                         lock (_state) {
                             _state.PhoneDiagnostics[Upper(physicalId)] = report;
                             StateStore.Save(_state);

@@ -56,6 +56,8 @@
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="12">
                     <TextBlock x:Name="PhoneTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ComboBox x:Name="PhoneDayPicker" MinWidth="150" HorizontalAlignment="Left"
+                              SelectionChanged="PhoneDayChanged" />
                     <TextBox x:Name="PhoneText" IsReadOnly="True" AcceptsReturn="True"
                              TextWrapping="Wrap" Height="140" FontFamily="Consolas" />
                     <Button x:Name="CopyPhoneButton" Click="CopyPhoneClicked" HorizontalAlignment="Left" />

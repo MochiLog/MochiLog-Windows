@@ -33,12 +33,7 @@ public sealed class CompanionRuntime : IDisposable
         catch (JsonException) { }
         MigrateLegacyEvents();
         Server = new TransferServer(State);
-        Server.SupportReport = phone => JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
-            deviceName = phone.Name, osVersion = Environment.OSVersion.VersionString,
-            recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(30).ToArray()
-        });
+        Server.SupportReport = BuildTransferReport;
         Server.StatusChanged += message => Record(message);
         Server.PhoneConfirmed += phone => {
             Record($"{phone.Name}: app pairing confirmed");
@@ -237,6 +232,8 @@ public sealed class CompanionRuntime : IDisposable
                 Directory.CreateDirectory(StateStore.Root);
                 File.WriteAllText(RetentionFile, Math.Clamp(value, 1, 365).ToString(CultureInfo.InvariantCulture));
                 PruneArchive();
+                DebugArchiveSync.PruneAllRemote(value);
+                DebugArchiveSync.RefreshAllSnapshots();
             }
             Changed?.Invoke();
         }
@@ -267,6 +264,7 @@ public sealed class CompanionRuntime : IDisposable
 
     public void DeleteDebugLogs()
     {
+        DebugArchiveSync.RefreshAllSnapshots();
         lock (_events) {
             foreach (var day in StoredDays()) File.Delete(Path.Combine(ArchiveRoot, day + ".log"));
             _events.Clear();
@@ -316,6 +314,9 @@ public sealed class CompanionRuntime : IDisposable
 
     public string PhoneDiagnosticsText(PairedPhone? phone)
     {
+        if (phone is not null && DebugArchiveSync.PhoneDays(phone.PhysicalDeviceId)
+            .FirstOrDefault() is { } latest)
+            return DebugArchiveSync.PhoneText(phone.PhysicalDeviceId, latest);
         if (phone is null || !State.PhoneDiagnostics.TryGetValue(
             phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var report))
             return UiText.Get("win_no_phone_report");
@@ -327,6 +328,54 @@ public sealed class CompanionRuntime : IDisposable
                 : UiText.Get("win_no_phone_report");
         }
         catch (JsonException) { return UiText.Get("win_no_phone_report"); }
+    }
+
+    public IReadOnlyList<string> PhoneDebugDays(PairedPhone? phone) => phone is null
+        ? [] : DebugArchiveSync.PhoneDays(phone.PhysicalDeviceId);
+
+    public string PhoneDebugForDay(PairedPhone? phone, string? day) =>
+        phone is null || day is null ? "" :
+        DebugArchiveSync.PhoneText(phone.PhysicalDeviceId, day);
+
+    private byte[] BuildTransferReport(PairedPhone phone)
+    {
+        byte[]? phoneReport;
+        lock (State) State.PhoneDiagnostics.TryGetValue(
+            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out phoneReport);
+        var events = DebugLog.Split(Environment.NewLine).TakeLast(30).ToList();
+        var report = new Dictionary<string, object?> {
+            ["schema"] = 1, ["platform"] = "Windows",
+            ["generatedAt"] = DateTimeOffset.Now,
+            ["deviceName"] = phone.Name,
+            ["osVersion"] = Environment.OSVersion.VersionString,
+            ["archiveManifest"] = DebugArchiveSync.LocalManifest(phone.PhysicalDeviceId),
+            ["recentEvents"] = events
+        };
+        try {
+            if (DebugArchiveSync.RequestPhoneChunk(phoneReport,
+                phone.PhysicalDeviceId) is { } request)
+                report["archiveRequest"] = request;
+            if (DebugArchiveSync.ComputerChunk(phoneReport) is { } chunk)
+                report["archiveChunk"] = chunk;
+        }
+        catch (Exception error) when (error is IOException or JsonException or
+            UnauthorizedAccessException) {
+            Record("Debug archive report: " + error.Message);
+        }
+        while (true) {
+            var data = JsonSerializer.SerializeToUtf8Bytes(report);
+            if (data.Length <= 16_384) return data;
+            if (events.Count > 0) { events.RemoveAt(0); continue; }
+            if (report.TryGetValue("archiveChunk", out var value) &&
+                value is Dictionary<string, object> chunk &&
+                chunk.TryGetValue("data", out var encoded) && encoded is string text &&
+                Convert.FromBase64String(text) is { Length: > 128 } bytes) {
+                chunk["data"] = Convert.ToBase64String(bytes.AsSpan(0, bytes.Length / 2));
+                continue;
+            }
+            report.Remove("archiveChunk");
+            return JsonSerializer.SerializeToUtf8Bytes(report);
+        }
     }
 
     public byte[] SupportDiagnosticsData(PairedPhone? phone)

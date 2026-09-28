@@ -19,6 +19,43 @@ static class Program
         if (!condition) throw new Exception(message);
     }
 
+    private static void CheckArchiveExchange()
+    {
+        var deviceId = Guid.NewGuid();
+        var day = DateTime.Today.ToString("yyyyMMdd",
+            System.Globalization.CultureInfo.InvariantCulture);
+        var fullDay = DateTime.Today.ToString("yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture);
+        var local = Path.Combine(StateStore.Root, "DebugLogs");
+        Directory.CreateDirectory(local);
+        var computerData = Encoding.UTF8.GetBytes("computer archive line\n");
+        File.WriteAllBytes(Path.Combine(local, fullDay + ".log"), computerData);
+        Check(DebugArchiveSync.LocalManifest(deviceId)[day] == computerData.Length,
+            "Computer archive manifest omitted a day.");
+        var phoneData = Encoding.UTF8.GetBytes("phone archive line\n");
+        var report = JsonSerializer.SerializeToUtf8Bytes(new {
+            archiveManifest = new Dictionary<string, int> { [day] = phoneData.Length },
+            archiveRequest = new { day, offset = 0 },
+            archiveChunk = new { day, offset = 0,
+                data = Convert.ToBase64String(phoneData) }
+        });
+        var chunk = DebugArchiveSync.ComputerChunk(report);
+        Check(chunk is not null && chunk["data"] as string ==
+            Convert.ToBase64String(computerData),
+            "Computer archive chunk did not match the requested day.");
+        DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30);
+        DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30);
+        Check(DebugArchiveSync.PhoneText(deviceId, fullDay) ==
+            Encoding.UTF8.GetString(phoneData),
+            "Retried phone archive chunk was duplicated.");
+        var extended = JsonSerializer.SerializeToUtf8Bytes(new {
+            archiveManifest = new Dictionary<string, int> { [day] = phoneData.Length + 1 }
+        });
+        var request = DebugArchiveSync.RequestPhoneChunk(extended, deviceId);
+        Check(request is not null && Convert.ToInt64(request["offset"]) == phoneData.Length,
+            "Phone archive did not resume from the stored byte offset.");
+    }
+
     private static byte[] Derive(byte[] shared, Guid session, Guid host, Guid physical)
     {
         var salt = Encoding.UTF8.GetBytes(Upper(session));
@@ -59,6 +96,7 @@ static class Program
 
     public static async Task Main()
     {
+        CheckArchiveExchange();
         var state = new CompanionState();
         using var server = new TransferServer(state);
         server.Start();

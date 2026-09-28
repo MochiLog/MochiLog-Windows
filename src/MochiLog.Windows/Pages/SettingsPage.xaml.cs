@@ -47,6 +47,7 @@ public sealed partial class SettingsPage : Page
         CopyButton.Content = UiText.Get("win_copy");
         RefreshDebugButton.Content = UiText.Get("mt_015");
         PhoneTitle.Text = UiText.Get("win_phone_report");
+        PhoneDayPicker.Header = UiText.Get("mt_log_date");
         CopyPhoneButton.Content = UiText.Get("win_copy");
         HelpTitle.Text = UiText.Get("win_help");
         HelpContent.Text = UiText.Get("win_help_content");
@@ -82,7 +83,17 @@ public sealed partial class SettingsPage : Page
         }
         DebugText.Text = DebugDayPicker.SelectedItem is string selectedDay
             ? _runtime.DebugLogForDay(selectedDay) : _runtime.DebugLog;
-        PhoneText.Text = _runtime.PhoneDiagnosticsText(SelectedPhone());
+        var phoneDay = PhoneDayPicker.SelectedItem as string;
+        var phoneDays = _runtime.PhoneDebugDays(SelectedPhone()).ToArray();
+        if (PhoneDayPicker.ItemsSource is not string[] currentPhoneDays ||
+            !currentPhoneDays.SequenceEqual(phoneDays)) {
+            PhoneDayPicker.ItemsSource = phoneDays;
+            PhoneDayPicker.SelectedItem = phoneDay is not null && phoneDays.Contains(phoneDay)
+                ? phoneDay : phoneDays.FirstOrDefault();
+        }
+        PhoneText.Text = PhoneDayPicker.SelectedItem is string selectedPhoneDay
+            ? _runtime.PhoneDebugForDay(SelectedPhone(), selectedPhoneDay)
+            : _runtime.PhoneDiagnosticsText(SelectedPhone());
         MailButton.IsEnabled = !string.IsNullOrWhiteSpace(NicknameBox.Text) &&
             !string.IsNullOrWhiteSpace(EmailBox.Text) &&
             !string.IsNullOrWhiteSpace(MessageBox.Text);
@@ -98,6 +109,11 @@ public sealed partial class SettingsPage : Page
     private void DebugDayChanged(object sender, SelectionChangedEventArgs args)
     {
         if (DebugText is not null) Render();
+    }
+
+    private void PhoneDayChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (PhoneText is not null) Render();
     }
 
     private void RetentionChanged(object sender, SelectionChangedEventArgs args)
@@ -131,7 +147,7 @@ public sealed partial class SettingsPage : Page
     private void CopyPhoneClicked(object sender, RoutedEventArgs args)
     {
         var package = new DataPackage();
-        package.SetText(_runtime.PhoneDiagnosticsText(SelectedPhone()));
+        package.SetText(PhoneText.Text);
         Clipboard.SetContent(package);
     }
 
@@ -182,6 +198,13 @@ public sealed partial class SettingsPage : Page
             var path = Path.Combine(directory, $"MochiLog-Windows-debug-{day}-{stamp}.log");
             await File.WriteAllTextAsync(path, _runtime.DebugLogForDay(day));
             logs.Add(path);
+            if (SelectedPhone() is { } selectedPhone) {
+                var phonePath = Path.Combine(directory,
+                    $"MochiLog-iPhone-debug-{day}-{stamp}.log");
+                await File.WriteAllTextAsync(phonePath,
+                    _runtime.PhoneDebugForDay(selectedPhone, day));
+                logs.Add(phonePath);
+            }
         }
         return (computer, phone, logs.ToArray());
     }
