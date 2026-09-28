@@ -54,6 +54,22 @@ static class Program
         var request = DebugArchiveSync.RequestPhoneChunk(extended, deviceId);
         Check(request is not null && Convert.ToInt64(request["offset"]) == phoneData.Length,
             "Phone archive did not resume from the stored byte offset.");
+        for (var offset = 1; offset <= 4; offset++) {
+            var date = DateTime.Today.AddDays(-offset);
+            var oldCompact = date.ToString("yyyyMMdd",
+                System.Globalization.CultureInfo.InvariantCulture);
+            var oldDay = date.ToString("yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture);
+            File.WriteAllBytes(Path.Combine(local, oldDay + ".log"), computerData);
+            var oldReport = JsonSerializer.SerializeToUtf8Bytes(new {
+                archiveChunk = new { day = oldCompact, offset = 0,
+                    data = Convert.ToBase64String(phoneData) }
+            });
+            DebugArchiveSync.ReceivePhoneChunk(oldReport, deviceId, 30);
+        }
+        Check(DebugArchiveSync.LocalManifest(deviceId).Count >= 5 &&
+            DebugArchiveSync.PhoneDays(deviceId).Count >= 5,
+            "Five archived days were not available on both sides.");
     }
 
     private static byte[] Derive(byte[] shared, Guid session, Guid host, Guid physical)

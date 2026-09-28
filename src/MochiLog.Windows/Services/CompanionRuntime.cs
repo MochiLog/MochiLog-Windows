@@ -226,11 +226,11 @@ public sealed class CompanionRuntime : IDisposable
 
     public int DebugRetentionDays
     {
-        get => int.TryParse(ReadRetention(), out var value) ? Math.Clamp(value, 1, 365) : 30;
+        get => int.TryParse(ReadRetention(), out var value) ? Math.Clamp(value, 7, 365) : 30;
         set {
             lock (_events) {
                 Directory.CreateDirectory(StateStore.Root);
-                File.WriteAllText(RetentionFile, Math.Clamp(value, 1, 365).ToString(CultureInfo.InvariantCulture));
+                File.WriteAllText(RetentionFile, Math.Clamp(value, 7, 365).ToString(CultureInfo.InvariantCulture));
                 PruneArchive();
                 DebugArchiveSync.PruneAllRemote(value);
                 DebugArchiveSync.RefreshAllSnapshots();

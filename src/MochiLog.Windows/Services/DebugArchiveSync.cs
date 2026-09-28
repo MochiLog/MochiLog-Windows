@@ -18,7 +18,7 @@ public static class DebugArchiveSync
         get {
             var file = Path.Combine(StateStore.Root, "debug-retention-days.txt");
             try { return int.TryParse(File.ReadAllText(file), out var days)
-                ? Math.Clamp(days, 1, 365) : 30; }
+                ? Math.Clamp(days, 7, 365) : 30; }
             catch (IOException) { return 30; }
             catch (UnauthorizedAccessException) { return 30; }
         }
@@ -55,7 +55,7 @@ public static class DebugArchiveSync
         var root = Path.Combine(StateStore.Root, "PhoneDebugLogs");
         if (!Directory.Exists(root)) return;
         var cutoff = DateOnly.FromDateTime(DateTime.Today)
-            .AddDays(1 - Math.Clamp(retentionDays, 1, 365))
+            .AddDays(1 - Math.Clamp(retentionDays, 7, 365))
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         foreach (var folder in Directory.EnumerateDirectories(root))
             foreach (var old in Days(folder).Where(day =>
@@ -102,12 +102,16 @@ public static class DebugArchiveSync
         using var parsed = JsonDocument.Parse(phoneReport);
         if (!parsed.RootElement.TryGetProperty("archiveManifest", out var manifest) ||
             manifest.ValueKind != JsonValueKind.Object) return null;
+        var cutoff = DateOnly.FromDateTime(DateTime.Today)
+            .AddDays(1 - RetentionDays).ToString("yyyy-MM-dd",
+                CultureInfo.InvariantCulture);
         foreach (var entry in manifest.EnumerateObject()
             .OrderByDescending(item => item.Name, StringComparer.Ordinal)) {
             var day = Expand(entry.Name);
             if (day is null || entry.Value.ValueKind != JsonValueKind.Number ||
                 !entry.Value.TryGetInt32(out var size) ||
-                size is < 0 or > MaximumDayBytes) continue;
+                size is < 0 or > MaximumDayBytes ||
+                string.CompareOrdinal(day, cutoff) < 0) continue;
             var file = Path.Combine(RemoteRoot(deviceId), day + ".log");
             var current = File.Exists(file) ? new FileInfo(file).Length : 0;
             if (current < size) return new Dictionary<string, object> {
