@@ -105,7 +105,8 @@ public static class DebugArchiveSync
         foreach (var entry in manifest.EnumerateObject()
             .OrderByDescending(item => item.Name, StringComparer.Ordinal)) {
             var day = Expand(entry.Name);
-            if (day is null || !entry.Value.TryGetInt32(out var size) ||
+            if (day is null || entry.Value.ValueKind != JsonValueKind.Number ||
+                !entry.Value.TryGetInt32(out var size) ||
                 size is < 0 or > MaximumDayBytes) continue;
             var file = Path.Combine(RemoteRoot(deviceId), day + ".log");
             var current = File.Exists(file) ? new FileInfo(file).Length : 0;
@@ -124,9 +125,11 @@ public static class DebugArchiveSync
         if (!parsed.RootElement.TryGetProperty("archiveRequest", out var request) ||
             request.ValueKind != JsonValueKind.Object ||
             !request.TryGetProperty("day", out var compactElement) ||
+            compactElement.ValueKind != JsonValueKind.String ||
             compactElement.GetString() is not { } compact ||
             Expand(compact) is not { } day ||
             !request.TryGetProperty("offset", out var offsetElement) ||
+            offsetElement.ValueKind != JsonValueKind.Number ||
             !offsetElement.TryGetInt64(out var offset) ||
             offset is < 0 or > MaximumDayBytes) return null;
         var file = Path.Combine(LocalRoot, day + ".log");
@@ -151,12 +154,15 @@ public static class DebugArchiveSync
         if (!parsed.RootElement.TryGetProperty("archiveChunk", out var chunk) ||
             chunk.ValueKind != JsonValueKind.Object ||
             !chunk.TryGetProperty("day", out var compactElement) ||
+            compactElement.ValueKind != JsonValueKind.String ||
             compactElement.GetString() is not { } compact ||
             Expand(compact) is not { } day ||
             !chunk.TryGetProperty("offset", out var offsetElement) ||
+            offsetElement.ValueKind != JsonValueKind.Number ||
             !offsetElement.TryGetInt64(out var offset) ||
             offset is < 0 or > MaximumDayBytes ||
             !chunk.TryGetProperty("data", out var encodedElement) ||
+            encodedElement.ValueKind != JsonValueKind.String ||
             encodedElement.GetString() is not { } encoded) return;
         byte[] data;
         try { data = Convert.FromBase64String(encoded); }
