@@ -14,7 +14,7 @@ public static class AppleUsbRecovery
     private const string DeviceQuery =
         "$d=Get-PnpDevice -PresentOnly -Class USBDevice | Where-Object { " +
         "$_.FriendlyName -eq 'Apple Mobile Device USB Composite Device' -and " +
-        "$_.InstanceId -like 'USB\VID_05AC*' }; " +
+        "$_.InstanceId -like 'USB\\VID_05AC*' }; " +
         "$d | Select-Object -ExpandProperty InstanceId";
 
     public static async Task<bool> HasConnectedDeviceAsync(CancellationToken cancellation)
@@ -39,7 +39,7 @@ public static class AppleUsbRecovery
         const string script =
             "$d=Get-PnpDevice -PresentOnly -Class USBDevice | Where-Object { " +
             "$_.FriendlyName -eq 'Apple Mobile Device USB Composite Device' -and " +
-            "$_.InstanceId -like 'USB\VID_05AC*' }; " +
+            "$_.InstanceId -like 'USB\\VID_05AC*' }; " +
             "if (-not $d) { exit 2 }; " +
             "foreach ($item in $d) { & pnputil.exe /restart-device $item.InstanceId | Out-Null; " +
             "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }";
