@@ -383,6 +383,34 @@ public sealed class TransferServer : IDisposable
                 }
                 catch (CryptographicException) { return null; }
             }
+            if (Get(request, "dailyPauseUntil") is { } untilText &&
+                long.TryParse(untilText, out var untilSeconds) &&
+                untilSeconds > now.ToUnixTimeSeconds() &&
+                untilSeconds <= now.AddHours(26).ToUnixTimeSeconds() &&
+                TryHex(Get(request, "dailyPauseMAC"), out var pauseMac) &&
+                CryptographicOperations.FixedTimeEquals(pauseMac, Hmac(phone.Secret,
+                    $"daily-pause|v1|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}|{untilText}")))
+            {
+                phone.AutomaticPauseUntil = DateTimeOffset.FromUnixTimeSeconds(untilSeconds);
+                StateStore.Save(_state);
+                var control = JsonSerializer.SerializeToUtf8Bytes(new {
+                    type = "daily-pause-ack", until = untilText
+                });
+                return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
+                    new byte[] { 0, 0 }.Concat(control).ToArray());
+            }
+            if (TryHex(Get(request, "dailyResumeMAC"), out var resumeMac) &&
+                CryptographicOperations.FixedTimeEquals(resumeMac, Hmac(phone.Secret,
+                    $"daily-resume|v1|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}")))
+            {
+                phone.AutomaticPauseUntil = null;
+                StateStore.Save(_state);
+                var control = JsonSerializer.SerializeToUtf8Bytes(new {
+                    type = "daily-resume-ack"
+                });
+                return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
+                    new byte[] { 0, 0 }.Concat(control).ToArray());
+            }
             if (!string.IsNullOrEmpty(ack) && ValidToken(ack))
             {
                 var file = Path.Combine(QueuePath(phone), ack.Replace("::", Path.DirectorySeparatorChar.ToString()));

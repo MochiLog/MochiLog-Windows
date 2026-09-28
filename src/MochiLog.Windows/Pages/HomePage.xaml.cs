@@ -198,7 +198,7 @@ public sealed partial class HomePage : Page
     private async void RefreshClicked(object sender, RoutedEventArgs args) =>
         await _runtime.RefreshAsync();
     private async void CollectClicked(object sender, RoutedEventArgs args) =>
-        await _runtime.CollectAsync();
+        await _runtime.CollectAsync(manual: true);
 
     private async void UnpairClicked(object sender, RoutedEventArgs args)
     {

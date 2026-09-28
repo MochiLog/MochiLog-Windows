@@ -13,6 +13,7 @@
     <Compile Include="..\..\src\MochiLog.Windows\Services\CompanionState.cs" Link="CompanionState.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\TransferServer.cs" Link="TransferServer.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\Collector.cs" Link="Collector.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\AppleUsbRecovery.cs" Link="AppleUsbRecovery.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\UiText.cs" Link="UiText.cs" />
   </ItemGroup>
 </Project>

@@ -131,7 +131,7 @@ public sealed class CompanionRuntime : IDisposable
         if (phone.ManualAddress is not null) _ = CollectAsync(phone);
     }
 
-    public async Task CollectAsync(PairedPhone? selected = null)
+    public async Task CollectAsync(PairedPhone? selected = null, bool manual = false)
     {
         if (!await _collection.WaitAsync(0)) return;
         try
@@ -139,8 +139,11 @@ public sealed class CompanionRuntime : IDisposable
             PairedPhone[] phones;
             lock (State) { phones = selected is null ? State.Phones.ToArray() :
                 State.Phones.Contains(selected) ? [selected] : []; }
+            var now = DateTimeOffset.UtcNow;
+            var collectionOpen = now.ToOffset(TimeSpan.FromHours(9)).Hour >= 9;
             foreach (var phone in phones)
             {
+                if (!manual && (!collectionOpen || phone.AutomaticPauseUntil > now)) continue;
                 CollectionStatus = UiText.Format("win_reading", phone.Name);
                 Changed?.Invoke();
                 try

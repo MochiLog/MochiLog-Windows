@@ -180,6 +180,47 @@ static class Program
             "File acknowledgement did not complete the batch.");
         Check(state.Delivered.Contains(Upper(physical) + "|" + first.Name),
             "Delivered file was not marked.");
+        var pauseUntil = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
+        var invalidPauseNonce = Guid.NewGuid();
+        var invalidPause = Open(await ExchangeAsync(new {
+            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
+            nonce = Upper(invalidPauseNonce), ack = "",
+            mac = Hex(Hmac(key,
+                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(invalidPauseNonce)}|")),
+            dailyPauseUntil = pauseUntil, dailyPauseMAC = new string('0', 64)
+        }), key, invitation.HostId, physical, invalidPauseNonce);
+        Check(invalidPause.Name.Length == 0 && state.Phones[0].AutomaticPauseUntil is null,
+            "Invalid pause proof changed collection state.");
+        var pauseNonce = Guid.NewGuid();
+        var acceptedPause = Open(await ExchangeAsync(new {
+            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
+            nonce = Upper(pauseNonce), ack = "",
+            mac = Hex(Hmac(key,
+                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(pauseNonce)}|")),
+            dailyPauseUntil = pauseUntil,
+            dailyPauseMAC = Hex(Hmac(key,
+                $"daily-pause|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(pauseNonce)}|{pauseUntil}"))
+        }), key, invitation.HostId, physical, pauseNonce);
+        var pauseAck = JsonDocument.Parse(acceptedPause.Content).RootElement;
+        Check(acceptedPause.Name.Length == 0 &&
+            pauseAck.GetProperty("type").GetString() == "daily-pause-ack" &&
+            pauseAck.GetProperty("until").GetString() == pauseUntil &&
+            StateStore.Load().Phones[0].AutomaticPauseUntil is not null,
+            "Authenticated pause was not acknowledged and persisted.");
+        Check((await Pull(pauseNonce)).Length == 0,
+            "A pause request nonce was accepted twice.");
+        var resumeNonce = Guid.NewGuid();
+        var resumed = Open(await ExchangeAsync(new {
+            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
+            nonce = Upper(resumeNonce), ack = "",
+            mac = Hex(Hmac(key,
+                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(resumeNonce)}|")),
+            dailyResumeMAC = Hex(Hmac(key,
+                $"daily-resume|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(resumeNonce)}"))
+        }), key, invitation.HostId, physical, resumeNonce);
+        Check(JsonDocument.Parse(resumed.Content).RootElement.GetProperty("type").GetString() ==
+            "daily-resume-ack" && StateStore.Load().Phones[0].AutomaticPauseUntil is null,
+            "Authenticated resume did not clear the collection pause.");
         var addressChanges = 0;
         server.PhoneAddressChanged += _ => addressChanges++;
         var addressNonce = Guid.NewGuid();
