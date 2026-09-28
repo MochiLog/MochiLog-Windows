@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Net;
 using System.Net.Sockets;
+using System.Globalization;
 
 namespace MochiLog_Windows.Services;
 
@@ -19,6 +20,9 @@ public sealed class CompanionRuntime : IDisposable
     private readonly List<string> _events = [];
     private readonly Dictionary<Guid, string> _lastAutomaticDecision = [];
     private static string EventsFile => Path.Combine(StateStore.Root, "support-events.json");
+    private static string ArchiveRoot => Path.Combine(StateStore.Root, "DebugLogs");
+    private static string RetentionFile => Path.Combine(StateStore.Root, "debug-retention-days.txt");
+    private static string MigrationFile => Path.Combine(StateStore.Root, "debug-archive-migrated");
     private bool _started;
 
     private CompanionRuntime()
@@ -27,6 +31,7 @@ public sealed class CompanionRuntime : IDisposable
         try { _events.AddRange(JsonSerializer.Deserialize<string[]>(File.ReadAllText(EventsFile)) ?? []); }
         catch (IOException) { }
         catch (JsonException) { }
+        MigrateLegacyEvents();
         Server = new TransferServer(State);
         Server.SupportReport = phone => JsonSerializer.SerializeToUtf8Bytes(new
         {
@@ -224,6 +229,91 @@ public sealed class CompanionRuntime : IDisposable
             string.Join(Environment.NewLine, _events); }
     }
 
+    public int DebugRetentionDays
+    {
+        get => int.TryParse(ReadRetention(), out var value) ? Math.Clamp(value, 1, 365) : 30;
+        set {
+            lock (_events) {
+                Directory.CreateDirectory(StateStore.Root);
+                File.WriteAllText(RetentionFile, Math.Clamp(value, 1, 365).ToString(CultureInfo.InvariantCulture));
+                PruneArchive();
+            }
+            Changed?.Invoke();
+        }
+    }
+
+    private static string? ReadRetention()
+    {
+        try { return File.ReadAllText(RetentionFile); }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+    }
+
+    public IReadOnlyList<string> DebugLogDays
+    {
+        get { lock (_events) return StoredDays(); }
+    }
+
+    public string DebugLogForDay(string? day)
+    {
+        if (day is null || !DateOnly.TryParseExact(day, "yyyy-MM-dd",
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return "";
+        lock (_events) {
+            try { return File.ReadAllText(Path.Combine(ArchiveRoot, day + ".log")); }
+            catch (IOException) { return ""; }
+            catch (UnauthorizedAccessException) { return ""; }
+        }
+    }
+
+    public void DeleteDebugLogs()
+    {
+        lock (_events) {
+            foreach (var day in StoredDays()) File.Delete(Path.Combine(ArchiveRoot, day + ".log"));
+            _events.Clear();
+            if (File.Exists(EventsFile)) File.Delete(EventsFile);
+            File.WriteAllText(MigrationFile, "1");
+        }
+        Changed?.Invoke();
+    }
+
+    private static string[] StoredDays() => Directory.Exists(ArchiveRoot)
+        ? Directory.EnumerateFiles(ArchiveRoot, "*.log")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(day => DateOnly.TryParseExact(day, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            .OrderByDescending(day => day).ToArray()! : [];
+
+    private static void AppendArchive(string eventText)
+    {
+        var day = eventText.Length >= 10 ? eventText[..10] : "";
+        if (!DateOnly.TryParseExact(day, "yyyy-MM-dd",
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return;
+        Directory.CreateDirectory(ArchiveRoot);
+        File.AppendAllText(Path.Combine(ArchiveRoot, day + ".log"),
+            eventText + Environment.NewLine);
+    }
+
+    private void MigrateLegacyEvents()
+    {
+        if (File.Exists(MigrationFile)) return;
+        try {
+            Directory.CreateDirectory(StateStore.Root);
+            foreach (var item in _events) AppendArchive(item);
+            File.WriteAllText(MigrationFile, "1");
+            PruneArchive();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        { /* Retry on the next launch. */ }
+    }
+
+    private void PruneArchive()
+    {
+        var cutoff = DateTime.Today.AddDays(1 - DebugRetentionDays)
+            .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        foreach (var day in StoredDays().Where(day => string.CompareOrdinal(day, cutoff) < 0))
+            File.Delete(Path.Combine(ArchiveRoot, day + ".log"));
+    }
+
     public string PhoneDiagnosticsText(PairedPhone? phone)
     {
         if (phone is null || !State.PhoneDiagnostics.TryGetValue(
@@ -271,13 +361,16 @@ public sealed class CompanionRuntime : IDisposable
     {
         lock (_events)
         {
-            _events.Add($"{DateTimeOffset.Now:O} | {new string(message.Replace('\n', ' ').Take(200).ToArray())}");
+            var eventText = $"{DateTimeOffset.Now:O} | {new string(message.Replace('\n', ' ').Take(200).ToArray())}";
+            _events.Add(eventText);
             if (_events.Count > 500) _events.RemoveRange(0, _events.Count - 500);
             try {
                 Directory.CreateDirectory(StateStore.Root);
                 var temporary = EventsFile + ".new";
                 File.WriteAllText(temporary, JsonSerializer.Serialize(_events));
                 File.Move(temporary, EventsFile, true);
+                AppendArchive(eventText);
+                PruneArchive();
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException)
             { /* Debug logging must not block transfers. */ }

@@ -123,7 +123,13 @@
     "win_intro_trust": "Device connected. Approve “Trust This Computer” on the device.",
     "win_intro_connected": "USB device detected. Set up trust below, then disconnect the cable.",
     "win_intro_wireless": "Device found over Wi-Fi. Check its connection below; USB setup may be unnecessary.",
-    "win_setup_steps_title": "Setup steps"
+    "win_setup_steps_title": "Setup steps",
+    "mt_log_date": "Log date",
+    "mt_log_retention": "Keep logs (days)",
+    "mt_log_delete": "Delete debug logs",
+    "mt_log_delete_confirm": "Delete all saved connection debug logs?",
+    "mt_log_incident": "When did the issue occur?",
+    "mt_log_support_days": "Debug logs for that day and the preceding two days will be attached."
   },
   "ja": {
     "win_unpair_button": "MochiLogの連携を解除",
@@ -249,7 +255,13 @@
     "win_intro_trust": "端末を検出しました。端末側で「このコンピュータを信頼」を許可してください。",
     "win_intro_connected": "USB接続を確認しました。下で信頼設定を行い、完了後にケーブルを外してください。",
     "win_intro_wireless": "端末を無線で検出しました。下で接続状態を確認してください。USB設定を省ける場合があります。",
-    "win_setup_steps_title": "設定の流れ"
+    "win_setup_steps_title": "設定の流れ",
+    "mt_log_date": "ログの日付",
+    "mt_log_retention": "保存日数",
+    "mt_log_delete": "デバッグログを削除",
+    "mt_log_delete_confirm": "保存済みの連携デバッグログをすべて削除しますか？",
+    "mt_log_incident": "問題が発生した日時",
+    "mt_log_support_days": "発生日とその前の2日分のデバッグログを添付します。"
   },
   "de": {
     "win_unpair_button": "MochiLog-Kopplung entfernen",
@@ -375,7 +387,13 @@
     "win_intro_trust": "Gerät verbunden. Bestätigen Sie „Diesem Computer vertrauen“.",
     "win_intro_connected": "USB-Gerät erkannt. Unten Vertrauen einrichten und dann Kabel trennen.",
     "win_intro_wireless": "Gerät im WLAN gefunden. Prüfen Sie unten die Verbindung; USB ist möglicherweise unnötig.",
-    "win_setup_steps_title": "Einrichtungsschritte"
+    "win_setup_steps_title": "Einrichtungsschritte",
+    "mt_log_date": "Log-Datum",
+    "mt_log_retention": "Logs behalten (Tage)",
+    "mt_log_delete": "Debug-Logs löschen",
+    "mt_log_delete_confirm": "Alle gespeicherten Verbindungslogs löschen?",
+    "mt_log_incident": "Wann ist das Problem aufgetreten?",
+    "mt_log_support_days": "Debug-Logs dieses Tages und der beiden Vortage werden angehängt."
   },
   "es": {
     "win_unpair_button": "Desvincular MochiLog",
@@ -501,7 +519,13 @@
     "win_intro_trust": "Dispositivo conectado. Acepta «Confiar en este ordenador».",
     "win_intro_connected": "Dispositivo USB detectado. Configura la confianza abajo y desconecta el cable.",
     "win_intro_wireless": "Dispositivo encontrado por Wi-Fi. Comprueba la conexión abajo; quizá no necesites USB.",
-    "win_setup_steps_title": "Pasos de configuración"
+    "win_setup_steps_title": "Pasos de configuración",
+    "mt_log_date": "Fecha del registro",
+    "mt_log_retention": "Conservar registros (días)",
+    "mt_log_delete": "Eliminar registros de depuración",
+    "mt_log_delete_confirm": "¿Eliminar todos los registros de conexión?",
+    "mt_log_incident": "¿Cuándo ocurrió el problema?",
+    "mt_log_support_days": "Se adjuntarán los registros de ese día y los dos anteriores."
   },
   "fr": {
     "win_unpair_button": "Dissocier MochiLog",
@@ -627,7 +651,13 @@
     "win_intro_trust": "Appareil connecté. Acceptez « Faire confiance à cet ordinateur ».",
     "win_intro_connected": "Appareil USB détecté. Établissez la confiance ci-dessous, puis débranchez-le.",
     "win_intro_wireless": "Appareil trouvé en Wi-Fi. Vérifiez la connexion ci-dessous ; l’USB peut être inutile.",
-    "win_setup_steps_title": "Étapes de configuration"
+    "win_setup_steps_title": "Étapes de configuration",
+    "mt_log_date": "Date du journal",
+    "mt_log_retention": "Conserver les journaux (jours)",
+    "mt_log_delete": "Supprimer les journaux de débogage",
+    "mt_log_delete_confirm": "Supprimer tous les journaux de connexion ?",
+    "mt_log_incident": "Quand le problème est-il survenu ?",
+    "mt_log_support_days": "Les journaux de ce jour et des deux jours précédents seront joints."
   },
   "ko": {
     "win_unpair_button": "MochiLog 페어링 해제",
@@ -753,7 +783,13 @@
     "win_intro_trust": "기기가 연결되었습니다. 기기에서 「이 컴퓨터를 신뢰」를 허용하세요.",
     "win_intro_connected": "USB 기기를 찾았습니다. 아래에서 신뢰를 설정한 뒤 케이블을 분리하세요.",
     "win_intro_wireless": "Wi-Fi에서 기기를 찾았습니다. 아래에서 연결을 확인하세요. USB 설정이 필요하지 않을 수 있습니다.",
-    "win_setup_steps_title": "설정 단계"
+    "win_setup_steps_title": "설정 단계",
+    "mt_log_date": "로그 날짜",
+    "mt_log_retention": "로그 보관 일수",
+    "mt_log_delete": "디버그 로그 삭제",
+    "mt_log_delete_confirm": "저장된 연결 디버그 로그를 모두 삭제할까요?",
+    "mt_log_incident": "문제 발생 날짜와 시간",
+    "mt_log_support_days": "해당 날짜와 이전 이틀의 디버그 로그를 첨부합니다."
   },
   "zh-Hans": {
     "win_unpair_button": "解除 MochiLog 配对",
@@ -879,7 +915,13 @@
     "win_intro_trust": "设备已连接。请在设备上允许“信任此电脑”。",
     "win_intro_connected": "检测到 USB 设备。请在下方设置信任，然后拔下连接线。",
     "win_intro_wireless": "通过 Wi-Fi 找到设备。请在下方检查连接，可能无需 USB 设置。",
-    "win_setup_steps_title": "设置步骤"
+    "win_setup_steps_title": "设置步骤",
+    "mt_log_date": "日志日期",
+    "mt_log_retention": "日志保留天数",
+    "mt_log_delete": "删除调试日志",
+    "mt_log_delete_confirm": "删除所有已保存的连接调试日志？",
+    "mt_log_incident": "问题发生时间",
+    "mt_log_support_days": "将附上当天及前两天的调试日志。"
   },
   "zh-Hant": {
     "win_unpair_button": "解除 MochiLog 配對",
@@ -1005,6 +1047,12 @@
     "win_intro_trust": "裝置已連接。請在裝置上允許「信任這部電腦」。",
     "win_intro_connected": "偵測到 USB 裝置。請在下方設定信任，然後拔除連接線。",
     "win_intro_wireless": "透過 Wi-Fi 找到裝置。請在下方檢查連線，可能無需 USB 設定。",
-    "win_setup_steps_title": "設定步驟"
+    "win_setup_steps_title": "設定步驟",
+    "mt_log_date": "記錄日期",
+    "mt_log_retention": "記錄保留天數",
+    "mt_log_delete": "刪除偵錯記錄",
+    "mt_log_delete_confirm": "刪除所有已儲存的連線偵錯記錄？",
+    "mt_log_incident": "問題發生時間",
+    "mt_log_support_days": "將附上當天及前兩天的偵錯記錄。"
   }
 }

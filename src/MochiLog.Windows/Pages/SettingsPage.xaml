@@ -22,6 +22,12 @@
                     <TextBox x:Name="EmailBox" TextChanged="SupportTextChanged" />
                     <TextBox x:Name="MessageBox" TextChanged="SupportTextChanged"
                              AcceptsReturn="True" TextWrapping="Wrap" Height="100" />
+                    <TextBlock x:Name="IncidentTitle" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <CalendarDatePicker x:Name="IncidentDatePicker" />
+                        <TimePicker x:Name="IncidentTimePicker" ClockIdentifier="24HourClock" />
+                    </StackPanel>
+                    <TextBlock x:Name="IncidentHint" TextWrapping="Wrap" Opacity="0.72" />
                     <TextBlock x:Name="PrivacyNote" TextWrapping="Wrap" Opacity="0.72" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button x:Name="ExportButton" Click="ExportClicked" />
@@ -32,6 +38,13 @@
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="12">
                     <TextBlock x:Name="DebugTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <ComboBox x:Name="DebugDayPicker" MinWidth="150"
+                                  SelectionChanged="DebugDayChanged" />
+                        <ComboBox x:Name="RetentionPicker" MinWidth="130"
+                                  SelectionChanged="RetentionChanged" />
+                        <Button x:Name="DeleteDebugButton" Click="DeleteDebugClicked" />
+                    </StackPanel>
                     <TextBox x:Name="DebugText" IsReadOnly="True" AcceptsReturn="True"
                              TextWrapping="Wrap" Height="190" FontFamily="Consolas" />
                     <StackPanel Orientation="Horizontal" Spacing="8">

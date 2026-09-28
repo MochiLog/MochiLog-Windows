@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using MochiLog_Windows.Services;
@@ -30,10 +31,19 @@ public sealed partial class SettingsPage : Page
         NicknameBox.Header = UiText.Get("win_support_nickname");
         EmailBox.Header = UiText.Get("win_support_email");
         MessageBox.Header = UiText.Get("win_support_message");
+        IncidentTitle.Text = UiText.Get("mt_log_incident");
+        IncidentHint.Text = UiText.Get("mt_log_support_days");
+        IncidentDatePicker.Date = DateTimeOffset.Now;
+        IncidentTimePicker.Time = DateTime.Now.TimeOfDay;
         PrivacyNote.Text = UiText.Get("win_privacy");
         ExportButton.Content = UiText.Get("win_export");
         MailButton.Content = UiText.Get("win_mail");
         DebugTitle.Text = UiText.Get("win_debug");
+        DebugDayPicker.Header = UiText.Get("mt_log_date");
+        RetentionPicker.Header = UiText.Get("mt_log_retention");
+        RetentionPicker.ItemsSource = new[] { 7, 30, 90, 180, 365 };
+        RetentionPicker.SelectedItem = _runtime.DebugRetentionDays;
+        DeleteDebugButton.Content = UiText.Get("mt_log_delete");
         CopyButton.Content = UiText.Get("win_copy");
         RefreshDebugButton.Content = UiText.Get("mt_015");
         PhoneTitle.Text = UiText.Get("win_phone_report");
@@ -62,7 +72,16 @@ public sealed partial class SettingsPage : Page
             SupportDevicePicker.SelectedIndex = selected >= 0 && selected < labels.Length ? selected :
                 labels.Length > 0 ? 0 : -1;
         }
-        DebugText.Text = _runtime.DebugLog;
+        var day = DebugDayPicker.SelectedItem as string;
+        var days = _runtime.DebugLogDays.ToArray();
+        if (DebugDayPicker.ItemsSource is not string[] currentDays ||
+            !currentDays.SequenceEqual(days)) {
+            DebugDayPicker.ItemsSource = days;
+            DebugDayPicker.SelectedItem = day is not null && days.Contains(day)
+                ? day : days.FirstOrDefault();
+        }
+        DebugText.Text = DebugDayPicker.SelectedItem is string selectedDay
+            ? _runtime.DebugLogForDay(selectedDay) : _runtime.DebugLog;
         PhoneText.Text = _runtime.PhoneDiagnosticsText(SelectedPhone());
         MailButton.IsEnabled = !string.IsNullOrWhiteSpace(NicknameBox.Text) &&
             !string.IsNullOrWhiteSpace(EmailBox.Text) &&
@@ -76,10 +95,36 @@ public sealed partial class SettingsPage : Page
     private void SupportTextChanged(object sender, TextChangedEventArgs args) => Render();
     private void RefreshDebugClicked(object sender, RoutedEventArgs args) => Render();
 
+    private void DebugDayChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (DebugText is not null) Render();
+    }
+
+    private void RetentionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (RetentionPicker.SelectedItem is int days && _runtime is not null) {
+            _runtime.DebugRetentionDays = days;
+            Render();
+        }
+    }
+
+    private async void DeleteDebugClicked(object sender, RoutedEventArgs args)
+    {
+        var result = await DialogCoordinator.ShowAsync(new ContentDialog {
+            XamlRoot = XamlRoot,
+            Title = UiText.Get("mt_log_delete_confirm"),
+            PrimaryButtonText = UiText.Get("mt_log_delete"),
+            CloseButtonText = UiText.Get("win_close")
+        });
+        if (result != ContentDialogResult.Primary) return;
+        _runtime.DeleteDebugLogs();
+        Render();
+    }
+
     private void CopyClicked(object sender, RoutedEventArgs args)
     {
         var package = new DataPackage();
-        package.SetText(_runtime.DebugLog);
+        package.SetText(DebugText.Text);
         Clipboard.SetContent(package);
     }
 
@@ -114,7 +159,10 @@ public sealed partial class SettingsPage : Page
         }
     }
 
-    private async Task<(string Computer, string? Phone)> ExportReportAsync()
+    private DateTime IncidentDateTime => (IncidentDatePicker.Date ?? DateTimeOffset.Now)
+        .Date.Add(IncidentTimePicker.Time);
+
+    private async Task<(string Computer, string? Phone, string[] Logs)> ExportReportAsync()
     {
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Downloads");
@@ -127,7 +175,15 @@ public sealed partial class SettingsPage : Page
             phone = Path.Combine(directory, $"MochiLog-iPhone-support-{stamp}.json");
             await File.WriteAllBytesAsync(phone, report);
         }
-        return (computer, phone);
+        var logs = new List<string>();
+        for (var offset = -2; offset <= 0; offset++) {
+            var day = IncidentDateTime.AddDays(offset)
+                .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var path = Path.Combine(directory, $"MochiLog-Windows-debug-{day}-{stamp}.log");
+            await File.WriteAllTextAsync(path, _runtime.DebugLogForDay(day));
+            logs.Add(path);
+        }
+        return (computer, phone, logs.ToArray());
     }
 
     private async void ExportClicked(object sender, RoutedEventArgs args)
@@ -151,11 +207,13 @@ public sealed partial class SettingsPage : Page
             var body = $"{UiText.Get("win_support_nickname")}: {NicknameBox.Text}\r\n" +
                 $"{UiText.Get("win_support_email")}: {EmailBox.Text}\r\n" +
                 $"{UiText.Get("win_support_device")}: {SelectedPhone()?.Model ?? "-"}\r\n\r\n" +
+                $"{UiText.Get("mt_log_incident")}: {IncidentDateTime:g}\r\n\r\n" +
                 $"{UiText.Get("win_support_message")}:\r\n{MessageBox.Text}";
             try {
                 var message = new EmailMessage { Subject = subject, Body = body };
                 message.To.Add(new EmailRecipient("support@mochilog.ryuya-dev.net"));
-                foreach (var file in new[] { files.Computer, files.Phone }.OfType<string>()) {
+                foreach (var file in new[] { files.Computer, files.Phone }.OfType<string>()
+                    .Concat(files.Logs)) {
                     var storage = await StorageFile.GetFileFromPathAsync(file);
                     message.Attachments.Add(new EmailAttachment(Path.GetFileName(file),
                         RandomAccessStreamReference.CreateFromFile(storage)));
@@ -164,7 +222,7 @@ public sealed partial class SettingsPage : Page
             }
             catch {
                 var url = $"mailto:support@mochilog.ryuya-dev.net?subject={Uri.EscapeDataString(subject)}" +
-                    $"&body={Uri.EscapeDataString(body + "\r\n\r\n" + UiText.Get("win_mail_body") + "\r\n" + files.Computer + (files.Phone is null ? "" : "\r\n" + files.Phone))}";
+                    $"&body={Uri.EscapeDataString(body + "\r\n\r\n" + UiText.Get("win_mail_body") + "\r\n" + string.Join("\r\n", new[] { files.Computer, files.Phone }.OfType<string>().Concat(files.Logs)))}";
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                 Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{files.Computer}\"") {
                     UseShellExecute = true
