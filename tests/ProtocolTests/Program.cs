@@ -67,9 +67,11 @@ static class Program
             });
             DebugArchiveSync.ReceivePhoneChunk(oldReport, deviceId, 30);
         }
-        Check(DebugArchiveSync.LocalManifest(deviceId).Count >= 5 &&
-            DebugArchiveSync.PhoneDays(deviceId).Count >= 5,
-            "Five archived days were not available on both sides.");
+        DebugArchiveSync.RefreshSnapshot(deviceId);
+        Check(DebugArchiveSync.LocalManifest(deviceId).Count >= 5,
+            "Five computer archive days were not available.");
+        Check(DebugArchiveSync.PhoneDays(deviceId).Count >= 5,
+            "Five phone archive days were not available.");
     }
 
     private static byte[] Derive(byte[] shared, Guid session, Guid host, Guid physical)
