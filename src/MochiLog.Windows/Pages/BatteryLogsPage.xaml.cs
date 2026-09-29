@@ -119,22 +119,28 @@ public sealed partial class BatteryLogsPage : Page
                 WinRT.Interop.WindowNative.GetWindowHandle(window));
             var folder = await picker.PickSingleFolderAsync();
             if (folder is null) return;
-            BatteryLogStorage.Export(selected, folder.Path);
+            ExportButton.IsEnabled = false;
+            await Task.Run(() => BatteryLogStorage.Export(selected, folder.Path));
             NoticeText.Text = $"{selected.Length} {UiText.Get("mt_battery_exported")}";
         }
         catch (Exception error) { NoticeText.Text = error.Message; }
+        finally { SelectionChanged(null!, null!); }
     }
 
-    private void ResendClicked(object sender, RoutedEventArgs args)
+    private async void ResendClicked(object sender, RoutedEventArgs args)
     {
+        var selected = Selected();
+        var phones = _runtime.State.Phones.ToArray();
+        ResendButton.IsEnabled = false;
         try
         {
-            var count = BatteryLogStorage.Requeue(Selected(), _runtime.State.Phones);
-            if (count > 0) _runtime.Server.AnnounceQueuedFiles();
+            var count = await Task.Run(() => BatteryLogStorage.Requeue(selected, phones));
+            if (count > 0) await Task.Run(_runtime.Server.AnnounceQueuedFiles);
             NoticeText.Text = $"{count} {UiText.Get("mt_battery_requeued")}";
             Refresh();
         }
         catch (Exception error) { NoticeText.Text = error.Message; }
+        finally { SelectionChanged(null!, null!); }
     }
 
     private async void DeleteClicked(object sender, RoutedEventArgs args)

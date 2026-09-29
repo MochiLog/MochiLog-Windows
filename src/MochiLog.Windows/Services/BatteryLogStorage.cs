@@ -85,7 +85,8 @@ public static class BatteryLogStorage
         lock (Gate)
         {
             var rows = new List<StoredBatteryLog>();
-            var names = phones.ToDictionary(phone => phone.PhysicalDeviceId, phone => phone.Name);
+            var names = phones.GroupBy(phone => phone.PhysicalDeviceId)
+                .ToDictionary(group => group.Key, group => group.Last().Name);
             foreach (var phone in phones)
             {
                 Scan(TransferServer.QueuePath(phone), phone.PhysicalDeviceId,
