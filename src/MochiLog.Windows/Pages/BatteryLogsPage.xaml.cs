@@ -98,7 +98,8 @@ public sealed partial class BatteryLogsPage : Page
     {
         var selected = Selected();
         ExportButton.IsEnabled = selected.Length > 0;
-        ResendButton.IsEnabled = selected.Any(row => !row.Pending);
+        ResendButton.IsEnabled = selected.Any(row => !row.Pending &&
+            _runtime.State.Phones.Any(phone => phone.PhysicalDeviceId == row.DeviceId));
         DeleteButton.IsEnabled = selected.Any(row => !row.Pending);
     }
 
@@ -129,6 +130,7 @@ public sealed partial class BatteryLogsPage : Page
         try
         {
             var count = BatteryLogStorage.Requeue(Selected(), _runtime.State.Phones);
+            if (count > 0) _runtime.Server.AnnounceQueuedFiles();
             NoticeText.Text = $"{count} {UiText.Get("mt_battery_requeued")}";
             Refresh();
         }

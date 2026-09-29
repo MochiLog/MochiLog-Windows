@@ -85,14 +85,18 @@ public sealed class TransferServer : IDisposable
     private void NetworkAddressChanged(object? sender, EventArgs args) =>
         Task.Run(AdvertiseCurrentAddresses);
 
-    private void AdvertiseCurrentAddresses()
+    private void AdvertiseCurrentAddresses() => AdvertiseCurrentAddresses(force: false);
+
+    public void AnnounceQueuedFiles() => AdvertiseCurrentAddresses(force: true);
+
+    private void AdvertiseCurrentAddresses(bool force)
     {
         lock (_gate)
         {
             var addresses = LanAddresses();
             var tailnet = TailnetAddress();
             var signature = string.Join(",", addresses) + "|" + tailnet;
-            if (_advertisedAddresses == signature) return;
+            if (!force && _advertisedAddresses == signature) return;
             try
             {
                 _discovery?.Dispose();

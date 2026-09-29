@@ -54,6 +54,8 @@ public sealed class CompanionRuntime : IDisposable
     {
         if (_started) return;
         _started = true;
+        try { BatteryLogStorage.Prune(); }
+        catch (Exception error) { Record("Battery log archive cleanup failed: " + error.Message); }
         try { Server.Start(); }
         catch (Exception error) { Record("Transfer server could not start: " + error.Message); }
         _ = PeriodicCollectionAsync(_lifetime.Token);
