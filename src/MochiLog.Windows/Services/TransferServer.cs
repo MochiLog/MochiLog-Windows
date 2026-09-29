@@ -431,7 +431,7 @@ public sealed class TransferServer : IDisposable
                         _state.Delivered.Add(Upper(phone.PhysicalDeviceId) + "|" + ack);
                         StateStore.Save(_state);
                     }
-                    File.Delete(file);
+                    BatteryLogStorage.ArchiveAcknowledged(file, phone);
                 }
             }
             // Only completed, classified files are transferable. A batch

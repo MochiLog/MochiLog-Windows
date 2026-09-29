@@ -26,7 +26,8 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         ((NavigationViewItem)NavView.MenuItems[0]).Content = UiText.Get("win_home");
-        ((NavigationViewItem)NavView.MenuItems[1]).Content = UiText.Get("win_about");
+        ((NavigationViewItem)NavView.MenuItems[1]).Content = UiText.Get("mt_battery_logs");
+        ((NavigationViewItem)NavView.MenuItems[2]).Content = UiText.Get("win_about");
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -149,6 +150,9 @@ public sealed partial class MainWindow : Window
                     break;
                 case "about":
                     NavFrame.Navigate(typeof(AboutPage));
+                    break;
+                case "battery":
+                    NavFrame.Navigate(typeof(BatteryLogsPage));
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown navigation item tag: {item.Tag}");

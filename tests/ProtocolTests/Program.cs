@@ -74,6 +74,41 @@ static class Program
             "Five phone archive days were not available.");
     }
 
+    private static void CheckBatteryLogStorage()
+    {
+        var phone = new PairedPhone { Udid = "storage-test", Name = "Storage Test",
+            Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid() };
+        var queue = Path.Combine(TransferServer.QueuePath(phone), "Host");
+        Directory.CreateDirectory(queue);
+        var file = Path.Combine(queue, "Analytics-2026-09-29-storage.ips.ca.synced");
+        var raw = Encoding.UTF8.GetBytes("raw diagnostic bytes");
+        BatteryLogStorage.UpdateSettings(false, 500, 1);
+        File.WriteAllBytes(file, raw);
+        BatteryLogStorage.ArchiveAcknowledged(file, phone);
+        Check(!File.Exists(file) && BatteryLogStorage.List([phone]).Count == 0,
+            "Immediate-delete mode retained an acknowledged log.");
+        BatteryLogStorage.UpdateSettings(true, 500, 1);
+        File.WriteAllBytes(file, raw);
+        BatteryLogStorage.ArchiveAcknowledged(file, phone);
+        var archived = BatteryLogStorage.List([phone]);
+        Check(archived.Count == 1 && !archived[0].Pending,
+            "Keep mode did not archive an acknowledged log.");
+        var export = Path.Combine(StateStore.Root, "test-export");
+        BatteryLogStorage.Export(archived, export);
+        Check(File.ReadAllBytes(Path.Combine(export, Upper(phone.PhysicalDeviceId),
+            "Host", Path.GetFileName(file))).SequenceEqual(raw),
+            "Battery log export changed the raw file.");
+        Check(BatteryLogStorage.Requeue(archived, [phone]) == 1 && File.Exists(file),
+            "Manual resend did not restore the pending queue file.");
+        Check(BatteryLogStorage.List([phone]).Count == 2,
+            "Pending and archived copies were not both listed.");
+        BatteryLogStorage.ArchiveAcknowledged(file, phone);
+        BatteryLogStorage.Delete(archived);
+        Check(BatteryLogStorage.List([phone]).Count == 0,
+            "Deleting the archived log left a copy.");
+        BatteryLogStorage.UpdateSettings(false, 500, 1);
+    }
+
     private static byte[] Derive(byte[] shared, Guid session, Guid host, Guid physical)
     {
         var salt = Encoding.UTF8.GetBytes(Upper(session));
@@ -115,6 +150,7 @@ static class Program
     public static async Task Main()
     {
         CheckArchiveExchange();
+        CheckBatteryLogStorage();
         var state = new CompanionState();
         using var server = new TransferServer(state);
         server.Start();
