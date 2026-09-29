@@ -298,7 +298,11 @@ public static partial class Collector
             var name = Path.GetFileName(item.Path);
             var token = (item.Source is null ? "Host::" : $"Watch::{item.Source}::") + name;
             var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
-            lock (state) { if (state.Delivered.Contains(deliveredKey)) continue; }
+            lock (state) {
+                if (state.Delivered.Contains(deliveredKey) ||
+                    state.RecheckAfter.TryGetValue(deliveredKey, out var retryAt) &&
+                    retryAt > DateTimeOffset.UtcNow) continue;
+            }
             if (new[] { "Host", "Watch" }.Any(kind => File.Exists(
                 Path.Combine(queue, kind, item.Source ?? "", name)))) continue;
             pending.Add(item);
@@ -319,7 +323,7 @@ public static partial class Collector
             var successful = results.RootElement.GetProperty("results").EnumerateArray()
                 .ToDictionary(result => result.GetProperty("index").GetInt32(),
                     result => result.GetProperty("ok").GetBoolean());
-            var saved = 0; var skipped = 0; var failed = 0;
+            var saved = 0; var skipped = 0; var failed = 0; string? lastError = null;
             for (var index = 0; index < pending.Count; index++)
             {
                 cancellation.ThrowIfCancellationRequested();
@@ -329,12 +333,20 @@ public static partial class Collector
                 var name = Path.GetFileName(item.Path);
                 var downloaded = Path.Combine(staging, index.ToString(), name);
                 var kind = BatteryLogKind(downloaded);
+                var token = (item.Source is null ? "Host::" : $"Watch::{item.Source}::") + name;
+                var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
                 if (kind is null)
                 {
-                    skipped++;
-                    var token = (item.Source is null ? "Host::" : $"Watch::{item.Source}::") + name;
                     lock (state) {
-                        state.Delivered.Add(phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token);
+                        if (ShouldRecheckUnclassified(downloaded)) {
+                            state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
+                            failed++;
+                            lastError = "Analytics file could not be verified; it will be checked again.";
+                        } else {
+                            state.Delivered.Add(deliveredKey);
+                            state.RecheckAfter.Remove(deliveredKey);
+                            skipped++;
+                        }
                         StateStore.Save(state);
                     }
                 }
@@ -343,12 +355,15 @@ public static partial class Collector
                     var folder = Path.Combine(queue, kind, item.Source ?? "");
                     Directory.CreateDirectory(folder);
                     File.Move(downloaded, Path.Combine(folder, name), true);
+                    lock (state) {
+                        if (state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
+                    }
                     saved++;
                 }
             }
             progress?.Invoke(pending.Count, pending.Count);
             return new CollectionResult(saved, skipped, failed,
-                failed == 0 ? null : "Some diagnostic files could not be downloaded.");
+                failed == 0 ? null : lastError ?? "Some diagnostic files could not be downloaded.");
         }
         finally { Directory.Delete(staging, true); }
     }
@@ -394,7 +409,11 @@ public static partial class Collector
             var token = tokenPrefix + name;
             progress?.Invoke(index, files.Count);
             var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
-            lock (state) { if (state.Delivered.Contains(deliveredKey)) continue; }
+            lock (state) {
+                if (state.Delivered.Contains(deliveredKey) ||
+                    state.RecheckAfter.TryGetValue(deliveredKey, out var retryAt) &&
+                    retryAt > DateTimeOffset.UtcNow) continue;
+            }
             var sourceFolder = item.Source ?? "";
             if (new[] { "Host", "Watch" }.Any(kind => File.Exists(
                 System.IO.Path.Combine(queue, kind, sourceFolder, name)))) continue;
@@ -407,8 +426,18 @@ public static partial class Collector
                 var downloaded = System.IO.Path.Combine(staging, name);
                 var kind = BatteryLogKind(downloaded);
                 if (kind is null) {
-                    skipped++;
-                    lock (state) { state.Delivered.Add(deliveredKey); StateStore.Save(state); }
+                    lock (state) {
+                        if (ShouldRecheckUnclassified(downloaded)) {
+                            state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
+                            failed++;
+                            lastError = "Analytics file could not be verified; it will be checked again.";
+                        } else {
+                            state.Delivered.Add(deliveredKey);
+                            state.RecheckAfter.Remove(deliveredKey);
+                            skipped++;
+                        }
+                        StateStore.Save(state);
+                    }
                 }
                 else
                 {
@@ -416,6 +445,9 @@ public static partial class Collector
                         item.Source is null ? "" : item.Source);
                     Directory.CreateDirectory(folder);
                     File.Move(downloaded, System.IO.Path.Combine(folder, name));
+                    lock (state) {
+                        if (state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
+                    }
                     saved++;
                 }
             }
@@ -447,6 +479,16 @@ public static partial class Collector
         }
         catch { }
         return null;
+    }
+
+    internal static bool ShouldRecheckUnclassified(string file)
+    {
+        if (!File.Exists(file)) return true;
+        if (new FileInfo(file).Length >= 1_000_000) return true;
+        var text = File.ReadAllText(file);
+        return text.Contains("last_value_CycleCount", StringComparison.Ordinal) ||
+            text.Contains("last_value_NominalChargeCapacity", StringComparison.Ordinal) ||
+            text.Contains("last_value_AppleRawMaxCapacity", StringComparison.Ordinal);
     }
 
     private static bool SupportedModel(string model) =>

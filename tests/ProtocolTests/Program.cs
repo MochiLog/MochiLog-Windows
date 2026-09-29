@@ -171,6 +171,14 @@ static class Program
 
         var queue = Path.Combine(TransferServer.QueuePath(state.Phones[0]), "Host");
         Directory.CreateDirectory(queue);
+        var uncertain = Path.Combine(queue, ".unclassified-test");
+        await File.WriteAllBytesAsync(uncertain, new byte[1_000_000]);
+        Check(Collector.ShouldRecheckUnclassified(uncertain),
+            "A large unclassified Analytics download must remain eligible for retry.");
+        await File.WriteAllTextAsync(uncertain, "short unrelated diagnostic");
+        Check(!Collector.ShouldRecheckUnclassified(uncertain),
+            "A small unrelated diagnostic should be excluded.");
+        File.Delete(uncertain);
         var name = "Analytics-2026-09-27-test.ips.ca.synced";
         var payload = Encoding.UTF8.GetBytes("diagnostic transport fixture");
         await File.WriteAllBytesAsync(Path.Combine(queue, name), payload);

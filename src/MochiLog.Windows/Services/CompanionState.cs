@@ -24,6 +24,9 @@ public sealed class CompanionState
     // These phones are excluded from discovery, collection and transfer.
     public List<PairedPhone> RevokedPhones { get; set; } = [];
     public HashSet<string> Delivered { get; set; } = [];
+    // Unclassified large Analytics files are retried rather than permanently
+    // excluded; this timestamp prevents repeated large downloads every 5 minutes.
+    public Dictionary<string, DateTimeOffset> RecheckAfter { get; set; } = [];
     public Dictionary<string, byte[]> PhoneDiagnostics { get; set; } = [];
     public Dictionary<string, CollectionResult> LastCollections { get; set; } = [];
 }
