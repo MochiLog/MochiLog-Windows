@@ -273,6 +273,7 @@ static class Program
             state.PhoneDiagnostics.TryGetValue(Upper(physical), out var storedDiagnostic) &&
             storedDiagnostic.SequenceEqual(diagnostic),
             "Encrypted phone diagnostics were not authenticated and saved.");
+        BatteryLogStorage.UpdateSettings(true, 500, 1);
         var ackNonce = Guid.NewGuid();
         var final = Open(await Pull(ackNonce, first.Name), key,
             invitation.HostId, physical, ackNonce);
@@ -280,6 +281,22 @@ static class Program
             "File acknowledgement did not complete the batch.");
         Check(state.Delivered.Contains(Upper(physical) + "|" + first.Name),
             "Delivered file was not marked.");
+        var archivedForResend = BatteryLogStorage.List(state.Phones).Where(row => !row.Pending).ToArray();
+        Check(archivedForResend.Length == 1 &&
+            BatteryLogStorage.Requeue(archivedForResend, state.Phones) == 1,
+            "Acknowledged log was not available for manual resend.");
+        var resendNonce = Guid.NewGuid();
+        var resent = Open(await Pull(resendNonce), key, invitation.HostId, physical, resendNonce);
+        Check(resent.Name == first.Name && resent.Content.SequenceEqual(payload),
+            "Manual resend did not deliver the selected raw log.");
+        var resendAckNonce = Guid.NewGuid();
+        var resendEnd = Open(await Pull(resendAckNonce, resent.Name), key,
+            invitation.HostId, physical, resendAckNonce);
+        Check(resendEnd.Name.Length == 0 &&
+            BatteryLogStorage.List(state.Phones).Count(row => row.Pending) == 0,
+            "Repeated acknowledgement left the resend pending.");
+        BatteryLogStorage.Delete(archivedForResend);
+        BatteryLogStorage.UpdateSettings(false, 500, 1);
         var pauseUntil = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
         var invalidPauseNonce = Guid.NewGuid();
         var invalidPause = Open(await ExchangeAsync(new {
