@@ -28,7 +28,7 @@ static class Program
             System.Globalization.CultureInfo.InvariantCulture);
         var local = Path.Combine(StateStore.Root, "DebugLogs");
         Directory.CreateDirectory(local);
-        var computerData = Encoding.UTF8.GetBytes("computer archive line\n");
+        var computerData = Encoding.UTF8.GetBytes(new string('x', 10_000));
         File.WriteAllBytes(Path.Combine(local, fullDay + ".log"), computerData);
         Check(DebugArchiveSync.LocalManifest(deviceId)[day] == computerData.Length,
             "Computer archive manifest omitted a day.");
@@ -40,9 +40,10 @@ static class Program
                 data = Convert.ToBase64String(phoneData) }
         });
         var chunk = DebugArchiveSync.ComputerChunk(report);
-        Check(chunk is not null && chunk["data"] as string ==
-            Convert.ToBase64String(computerData),
-            "Computer archive chunk did not match the requested day.");
+        Check(chunk is not null && chunk["data"] is string encodedChunk &&
+            Convert.FromBase64String(encodedChunk).Length == 8_192 &&
+            computerData.AsSpan(0, 8_192).SequenceEqual(Convert.FromBase64String(encodedChunk)),
+            "Computer archive chunk did not match the requested day or size.");
         DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30);
         DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30);
         Check(DebugArchiveSync.PhoneText(deviceId, fullDay) ==

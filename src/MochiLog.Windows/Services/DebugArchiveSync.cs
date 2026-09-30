@@ -122,7 +122,7 @@ public static class DebugArchiveSync
     }
 
     public static Dictionary<string, object>? ComputerChunk(byte[]? phoneReport,
-        int maximum = 4_096)
+        int maximum = 8_192)
     {
         if (phoneReport is null) return null;
         using var parsed = JsonDocument.Parse(phoneReport);
