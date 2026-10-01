@@ -161,8 +161,14 @@ public static class BatteryLogStorage
                 var destination = System.IO.Path.Combine(TransferServer.QueuePath(phone), relative);
                 if (File.Exists(destination)) continue;
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(destination)!);
-                File.Copy(row.Path, destination);
-                File.WriteAllBytes(destination + ".force-resend", []);
+                try {
+                    File.Copy(row.Path, destination);
+                    File.WriteAllBytes(destination + ".force-resend", []);
+                }
+                catch {
+                    File.Delete(destination);
+                    throw;
+                }
                 copied++;
             }
             return copied;
