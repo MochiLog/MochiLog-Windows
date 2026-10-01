@@ -62,7 +62,12 @@ public static class BatteryLogStorage
     {
         lock (Gate)
         {
-            if (!_settings.KeepAfterDelivery) { File.Delete(file); return; }
+            var resendMarker = file + ".force-resend";
+            if (!_settings.KeepAfterDelivery) {
+                File.Delete(file);
+                File.Delete(resendMarker);
+                return;
+            }
             var queue = System.IO.Path.GetFullPath(TransferServer.QueuePath(phone));
             var source = System.IO.Path.GetFullPath(file);
             if (!source.StartsWith(queue + System.IO.Path.DirectorySeparatorChar,
@@ -76,6 +81,7 @@ public static class BatteryLogStorage
                 File.Move(source, destination);
                 File.SetLastWriteTimeUtc(destination, DateTime.UtcNow);
             }
+            File.Delete(resendMarker);
             PruneLocked();
         }
     }
@@ -156,6 +162,7 @@ public static class BatteryLogStorage
                 if (File.Exists(destination)) continue;
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(destination)!);
                 File.Copy(row.Path, destination);
+                File.WriteAllBytes(destination + ".force-resend", []);
                 copied++;
             }
             return copied;

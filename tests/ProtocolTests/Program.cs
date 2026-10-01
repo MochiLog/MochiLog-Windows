@@ -247,6 +247,25 @@ static class Program
             mac = Hex(Hmac(key,
                 $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|{ack}"))
         });
+        async Task<(string Name, byte[] Content)> PullOffer(Guid nonce,
+            string? token = null, string? digest = null, string? decision = null) {
+            var fields = new Dictionary<string, string> {
+                ["version"] = "2", ["hostID"] = Upper(invitation.HostId),
+                ["physicalDeviceID"] = Upper(physical), ["nonce"] = Upper(nonce),
+                ["ack"] = "", ["mac"] = Hex(Hmac(key,
+                    $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|")),
+                ["offerVersion"] = "1", ["offerMAC"] = Hex(Hmac(key,
+                    $"file-offer|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}"))
+            };
+            if (token is not null && digest is not null && decision is not null) {
+                fields["offerToken"] = token;
+                fields["offerDigest"] = digest;
+                fields["offerDecision"] = decision;
+                fields["offerDecisionMAC"] = Hex(Hmac(key,
+                    $"file-decision|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|{token}|{digest}|{decision}"));
+            }
+            return Open(await ExchangeAsync(fields), key, invitation.HostId, physical, nonce);
+        }
         var badNonce = Guid.NewGuid();
         Check((await ExchangeAsync(new {
             version = "2", hostID = Upper(invitation.HostId),
@@ -316,6 +335,40 @@ static class Program
             "Repeated acknowledgement left the resend pending.");
         BatteryLogStorage.Delete(archivedForResend);
         BatteryLogStorage.UpdateSettings(false, 500, 1);
+        var duplicateName = "Analytics-2026-09-28-090000.ips.ca.synced";
+        var duplicatePath = Path.Combine(queue, duplicateName);
+        await File.WriteAllBytesAsync(duplicatePath, payload);
+        var offered = await PullOffer(Guid.NewGuid());
+        var offer = JsonDocument.Parse(offered.Content).RootElement;
+        var digest = Hex(SHA256.HashData(payload));
+        Check(offered.Name.Length == 0 && offer.GetProperty("type").GetString() == "file-offer" &&
+            offer.GetProperty("sha256").GetString() == digest &&
+            offer.GetProperty("token").GetString() == "Host::" + duplicateName,
+            "Preflight sent bytes or an incorrect digest.");
+        var mismatch = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName,
+            new string('0', 64), "have");
+        Check(mismatch.Name.Length == 0 && File.Exists(duplicatePath),
+            "Mismatched digest removed a queued log.");
+        var skipped = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName,
+            digest, "have");
+        Check(skipped.Name.Length == 0 && !File.Exists(duplicatePath),
+            "Matching mobile receipt did not suppress duplicate transfer.");
+        await File.WriteAllBytesAsync(duplicatePath, payload);
+        await File.WriteAllBytesAsync(duplicatePath + ".force-resend", []);
+        var forcedOffer = JsonDocument.Parse((await PullOffer(Guid.NewGuid())).Content)
+            .RootElement;
+        Check(forcedOffer.GetProperty("force").GetString() == "true",
+            "Manual resend was not identified.");
+        _ = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName, digest, "have");
+        Check(File.Exists(duplicatePath),
+            "A mobile duplicate decision cancelled an explicit manual resend.");
+        var sent = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName,
+            digest, "send");
+        Check(sent.Name == "Host::" + duplicateName && sent.Content.SequenceEqual(payload),
+            "Approved preflight did not deliver a manual resend.");
+        _ = await Pull(Guid.NewGuid(), sent.Name);
+        Check(!File.Exists(duplicatePath + ".force-resend"),
+            "Manual resend marker remained after acknowledgement.");
         var pauseUntil = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
         var invalidPauseNonce = Guid.NewGuid();
         var invalidPause = Open(await ExchangeAsync(new {

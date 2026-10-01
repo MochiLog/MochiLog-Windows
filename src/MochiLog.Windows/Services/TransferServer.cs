@@ -441,16 +441,63 @@ public sealed class TransferServer : IDisposable
             // Only completed, classified files are transferable. A batch
             // collector may be writing into .staging-* under this queue.
             var queueRoot = QueuePath(phone);
-            var next = new[] { "Host", "Watch" }
+            string? NextFile() => new[] { "Host", "Watch" }
                 .SelectMany(kind => Directory.Exists(Path.Combine(queueRoot, kind))
                     ? Directory.EnumerateFiles(Path.Combine(queueRoot, kind),
                         "Analytics-*.ips.ca.synced", SearchOption.AllDirectories)
                     : [])
                 .Order(StringComparer.Ordinal).FirstOrDefault();
+            var offerEnabled = Get(request, "offerVersion") == "1" &&
+                TryHex(Get(request, "offerMAC"), out var offerMac) &&
+                CryptographicOperations.FixedTimeEquals(offerMac, Hmac(phone.Secret,
+                    $"file-offer|v1|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}"));
+            if (offerEnabled && Get(request, "offerToken") is { } offeredToken &&
+                Get(request, "offerDigest") is { } offeredDigest &&
+                Get(request, "offerDecision") is { } decision &&
+                decision is "have" or "send" && ValidToken(offeredToken) &&
+                TryHex(offeredDigest, out _) &&
+                TryHex(Get(request, "offerDecisionMAC"), out var decisionMac) &&
+                CryptographicOperations.FixedTimeEquals(decisionMac, Hmac(phone.Secret,
+                    $"file-decision|v1|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}|{offeredToken}|{offeredDigest}|{decision}")))
+            {
+                var offeredFile = Path.Combine(queueRoot,
+                    offeredToken.Replace("::", Path.DirectorySeparatorChar.ToString()));
+                if (File.Exists(offeredFile) && new FileInfo(offeredFile).Length <= MaximumLogBytes)
+                {
+                    var bytes = File.ReadAllBytes(offeredFile);
+                    var actual = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+                    var forced = File.Exists(offeredFile + ".force-resend");
+                    if (actual == offeredDigest && decision == "have" && !forced)
+                    {
+                        lock (_state) {
+                            _state.Delivered.Add(Upper(phone.PhysicalDeviceId) + "|" + offeredToken);
+                            StateStore.Save(_state);
+                        }
+                        BatteryLogStorage.ArchiveAcknowledged(offeredFile, phone);
+                        StatusChanged?.Invoke($"{phone.Name}: skipped already received log {offeredToken}");
+                    }
+                    else if (actual == offeredDigest && decision == "send")
+                    {
+                        return EncryptLog(phone.Secret, hostId, physicalId, nonce,
+                            offeredToken, bytes);
+                    }
+                }
+            }
+            var next = NextFile();
             var token = next is null ? "" : Path.GetRelativePath(QueuePath(phone), next)
                 .Replace(Path.DirectorySeparatorChar.ToString(), "::");
             if (next is not null && (!ValidToken(token) || new FileInfo(next).Length > MaximumLogBytes))
                 return null;
+            if (offerEnabled && next is not null)
+            {
+                var digest = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(next)))
+                    .ToLowerInvariant();
+                var offer = JsonSerializer.SerializeToUtf8Bytes(new {
+                    type = "file-offer", token, sha256 = digest,
+                    force = File.Exists(next + ".force-resend") ? "true" : "false"
+                });
+                return EncryptLog(phone.Secret, hostId, physicalId, nonce, "", offer);
+            }
             var filename = Encoding.UTF8.GetBytes(token);
             var content = next is null ? SupportReport?.Invoke(phone) ??
                 JsonSerializer.SerializeToUtf8Bytes(new
@@ -467,6 +514,18 @@ public sealed class TransferServer : IDisposable
                 $"{phone.Name}: sending {token}");
             return frame;
         }
+    }
+
+    private static byte[] EncryptLog(byte[] secret, Guid hostId, Guid physicalId,
+        Guid nonce, string token, byte[] content)
+    {
+        var filename = Encoding.UTF8.GetBytes(token);
+        if (filename.Length > 1024) throw new InvalidDataException("Invalid log token");
+        var plain = new byte[2 + filename.Length + content.Length];
+        BinaryPrimitives.WriteUInt16BigEndian(plain, (ushort)filename.Length);
+        filename.CopyTo(plain.AsSpan(2));
+        content.CopyTo(plain.AsSpan(2 + filename.Length));
+        return EncryptResponse(secret, hostId, physicalId, nonce, plain);
     }
 
     private static byte[] EncryptResponse(byte[] secret, Guid hostId, Guid physicalId,
