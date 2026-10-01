@@ -75,6 +75,23 @@ static class Program
             "Five phone archive days were not available.");
     }
 
+    private static void CheckCurrentDiagnostics()
+    {
+        const string name = "Analytics-2026-10-01-090003.000.ips.ca.synced";
+        var current = Collector.AnalyticsEntries("/", null,
+            $"/{name}\n/Analytics-2026-10-01-023246.session.ips.ca.synced\n");
+        var retired = Collector.AnalyticsEntries("/Retired", null, $"/Retired/{name}\n");
+        Check(current.Count == 1 && current[0].Path == "/" + name &&
+            retired.Count == 1 && retired[0].Path == "/Retired/" + name,
+            "Current diagnostic files were hidden or session files were accepted.");
+        Check(Collector.IsLikelyDailyReport("/Retired/" + name, null) &&
+            Collector.IsLikelyDailyReport(
+                "/ProxiedDevice-abcdef/Retired/Analytics-2026-10-01-090017.ips.ca.synced",
+                "ProxiedDevice-abcdef") &&
+            !Collector.IsLikelyDailyReport("/Retired/Analytics-2026-10-01-090003.ips.ca.synced", null),
+            "A truncated daily battery report could be permanently excluded.");
+    }
+
     private static void CheckBatteryLogStorage()
     {
         var phone = new PairedPhone { Udid = "storage-test", Name = "Storage Test",
@@ -150,6 +167,7 @@ static class Program
 
     public static async Task Main()
     {
+        CheckCurrentDiagnostics();
         CheckArchiveExchange();
         CheckBatteryLogStorage();
         var state = new CompanionState();

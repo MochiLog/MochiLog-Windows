@@ -289,7 +289,8 @@ public static partial class Collector
         using var scan = JsonDocument.Parse(listing);
         var files = scan.RootElement.GetProperty("files").EnumerateArray().Select(item => new DirectFile(
             item.GetProperty("path").GetString()!, item.GetProperty("source").ValueKind == JsonValueKind.Null
-                ? null : item.GetProperty("source").GetString())).ToArray();
+                ? null : item.GetProperty("source").GetString()))
+            .DistinctBy(item => (item.Source, Path.GetFileName(item.Path))).ToArray();
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
         var pending = new List<DirectFile>();
@@ -338,7 +339,9 @@ public static partial class Collector
                 if (kind is null)
                 {
                     lock (state) {
-                        if (ShouldRecheckUnclassified(downloaded)) {
+                        if (ShouldRecheckUnclassified(downloaded) ||
+                            !item.Path.Contains("/Retired/", StringComparison.Ordinal) ||
+                            IsLikelyDailyReport(item.Path, item.Source)) {
                             state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
                             failed++;
                             lastError = "Analytics file could not be verified; it will be checked again.";
@@ -376,27 +379,24 @@ public static partial class Collector
         var sources = root.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim()).Where(line => ProxiedPath().IsMatch(line)).ToArray();
         var files = new List<(string Path, string? Source)>();
-        async Task AddDirectory(string path, string? source)
+        async Task AddDirectory(string path, string? source, string? cachedListing = null)
         {
             try
             {
-                var listing = await RunAsync(["crash", "ls", ..connection,
+                var listing = cachedListing ?? await RunAsync(["crash", "ls", ..connection,
                     "--remote-file", path, "--depth", "1"], TimeSpan.FromSeconds(90), cancellation);
-                foreach (var line in listing.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var remote = line.Trim();
-                    var filename = System.IO.Path.GetFileName(remote);
-                    if (remote.StartsWith(path + "/Analytics-", StringComparison.Ordinal) &&
-                        ValidLogName().IsMatch(filename) &&
-                        !filename.Contains("session", StringComparison.OrdinalIgnoreCase) &&
-                        !filename.StartsWith("Analytics-Census-", StringComparison.Ordinal))
-                        files.Add((remote, source));
-                }
+                files.AddRange(AnalyticsEntries(path, source, listing));
             }
             catch when (source is not null) { /* One unready Watch must not block iPhone logs. */ }
         }
         await AddDirectory("/Retired", null);
-        foreach (var source in sources) await AddDirectory(source + "/Retired", source[1..]);
+        await AddDirectory("/", null, root);
+        foreach (var source in sources) {
+            await AddDirectory(source + "/Retired", source[1..]);
+            await AddDirectory(source, source[1..]);
+        }
+        files = files.DistinctBy(item => (item.Source,
+            System.IO.Path.GetFileName(item.Path))).ToList();
         var saved = 0; var skipped = 0; var failed = 0; string? lastError = null;
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
@@ -427,7 +427,9 @@ public static partial class Collector
                 var kind = BatteryLogKind(downloaded);
                 if (kind is null) {
                     lock (state) {
-                        if (ShouldRecheckUnclassified(downloaded)) {
+                        if (ShouldRecheckUnclassified(downloaded) ||
+                            !item.Path.Contains("/Retired/", StringComparison.Ordinal) ||
+                            IsLikelyDailyReport(item.Path, item.Source)) {
                             state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
                             failed++;
                             lastError = "Analytics file could not be verified; it will be checked again.";
@@ -491,8 +493,28 @@ public static partial class Collector
             text.Contains("last_value_AppleRawMaxCapacity", StringComparison.Ordinal);
     }
 
+    internal static bool IsLikelyDailyReport(string path, string? source)
+    {
+        var name = System.IO.Path.GetFileName(path);
+        return Regex.IsMatch(name, @"^Analytics-[0-9]{4}-[0-9]{2}-[0-9]{2}-09[0-1][0-9][0-9][0-9]") &&
+            (source is not null || Regex.IsMatch(name, @"\.[0-9]+\.ips\.ca\.synced$"));
+    }
+
     private static bool SupportedModel(string model) =>
         model.StartsWith("iPhone", StringComparison.Ordinal) || model.StartsWith("iPad", StringComparison.Ordinal);
+
+    internal static List<(string Path, string? Source)> AnalyticsEntries(
+        string directory, string? source, string listing)
+    {
+        var prefix = directory.TrimEnd('/') + "/Analytics-";
+        return listing.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(path => path.StartsWith(prefix, StringComparison.Ordinal) &&
+                ValidLogName().IsMatch(System.IO.Path.GetFileName(path)) &&
+                !System.IO.Path.GetFileName(path).Contains("session", StringComparison.OrdinalIgnoreCase) &&
+                !System.IO.Path.GetFileName(path).StartsWith("Analytics-Census-", StringComparison.Ordinal))
+            .Select(path => (path, source)).ToList();
+    }
     [GeneratedRegex("^/ProxiedDevice-[a-fA-F0-9]+$")]
     private static partial Regex ProxiedPath();
     [GeneratedRegex(@"^Analytics-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}.*\.ips\.ca\.synced$")]
