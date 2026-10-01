@@ -451,6 +451,12 @@ public sealed class TransferServer : IDisposable
                 TryHex(Get(request, "offerMAC"), out var offerMac) &&
                 CryptographicOperations.FixedTimeEquals(offerMac, Hmac(phone.Secret,
                     $"file-offer|v1|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}"));
+            if (Get(request, "offerVersion") == "1" && !offerEnabled)
+                StatusChanged?.Invoke($"{phone.Name}: preflight rejected; capability authentication failed");
+            if (offerEnabled && Get(request, "offerToken") is not null &&
+                (Get(request, "offerDigest") is null || Get(request, "offerDecision") is null ||
+                 Get(request, "offerDecisionMAC") is null))
+                StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected; incomplete fields");
             if (offerEnabled && Get(request, "offerToken") is { } offeredToken &&
                 Get(request, "offerDigest") is { } offeredDigest &&
                 Get(request, "offerDecision") is { } decision &&
@@ -474,15 +480,23 @@ public sealed class TransferServer : IDisposable
                             StateStore.Save(_state);
                         }
                         BatteryLogStorage.ArchiveAcknowledged(offeredFile, phone);
-                        StatusChanged?.Invoke($"{phone.Name}: skipped already received log {offeredToken}");
+                        StatusChanged?.Invoke($"{phone.Name}: preflight decision=have, action=skip {offeredToken}; SHA-256 {offeredDigest[..12]}");
                     }
                     else if (actual == offeredDigest && decision == "send")
                     {
+                        StatusChanged?.Invoke($"{phone.Name}: preflight decision=send, action=transfer {offeredToken}; SHA-256 {offeredDigest[..12]}; bytes={bytes.Length}");
                         return EncryptLog(phone.Secret, hostId, physicalId, nonce,
                             offeredToken, bytes);
                     }
+                    else
+                        StatusChanged?.Invoke($"{phone.Name}: preflight decision={decision} not applied for {offeredToken}; {(actual != offeredDigest ? "digest changed" : "manual resend overrides skip")}; offering current file");
                 }
+                else
+                    StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected for {offeredToken}; queue file missing or too large");
             }
+            else if (offerEnabled && Get(request, "offerToken") is { } rejectedToken &&
+                     Get(request, "offerDigest") is not null && Get(request, "offerDecision") is not null)
+                StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected for {rejectedToken}; authentication or token invalid");
             var next = NextFile();
             var token = next is null ? "" : Path.GetRelativePath(QueuePath(phone), next)
                 .Replace(Path.DirectorySeparatorChar.ToString(), "::");
@@ -492,9 +506,11 @@ public sealed class TransferServer : IDisposable
             {
                 var digest = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(next)))
                     .ToLowerInvariant();
+                var forced = File.Exists(next + ".force-resend");
+                StatusChanged?.Invoke($"{phone.Name}: preflight offer {token}; SHA-256 {digest[..12]}; bytes={new FileInfo(next).Length}; forced={forced}");
                 var offer = JsonSerializer.SerializeToUtf8Bytes(new {
                     type = "file-offer", token, sha256 = digest,
-                    force = File.Exists(next + ".force-resend") ? "true" : "false"
+                    force = forced ? "true" : "false"
                 });
                 return EncryptLog(phone.Secret, hostId, physicalId, nonce, "", offer);
             }

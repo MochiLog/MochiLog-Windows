@@ -172,6 +172,11 @@ static class Program
         CheckBatteryLogStorage();
         var state = new CompanionState();
         using var server = new TransferServer(state);
+        var preflightEvents = new List<string>();
+        server.StatusChanged += message => {
+            if (message.Contains("preflight", StringComparison.Ordinal))
+                preflightEvents.Add(message);
+        };
         server.Start();
         try {
             server.BeginPairing(new ConnectedDevice("untrusted", "Untrusted iPad", ""));
@@ -353,6 +358,10 @@ static class Program
             digest, "have");
         Check(skipped.Name.Length == 0 && !File.Exists(duplicatePath),
             "Matching mobile receipt did not suppress duplicate transfer.");
+        Check(preflightEvents.Any(message => message.Contains("preflight offer Host::" + duplicateName)) &&
+            preflightEvents.Any(message => message.Contains("preflight decision=have, action=skip Host::" + duplicateName)) &&
+            preflightEvents.Any(message => message.Contains("digest changed")),
+            "Preflight offer, duplicate decision, or rejection was missing from the debug event stream.");
         await File.WriteAllBytesAsync(duplicatePath, payload);
         await File.WriteAllBytesAsync(duplicatePath + ".force-resend", []);
         var forcedOffer = JsonDocument.Parse((await PullOffer(Guid.NewGuid())).Content)
