@@ -77,6 +77,12 @@ static class Program
 
     private static void CheckCurrentDiagnostics()
     {
+        Check(Collector.ToolFailureLine(
+            "{\"results\":[{\"index\":0,\"ok\":false,\"error\":\"FILE_OPEN failed\"}]}",
+            "") is null,
+            "A file-level JSON error was mistaken for a failed collection command.");
+        Check(Collector.ToolFailureLine("", "ERROR: device connection failed") is not null,
+            "A real collector diagnostic was ignored.");
         const string name = "Analytics-2026-10-01-090003.000.ips.ca.synced";
         var current = Collector.AnalyticsEntries("/", null,
             $"/{name}\n/Analytics-2026-10-01-023246.session.ips.ca.synced\n");

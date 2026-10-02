@@ -44,18 +44,29 @@ public static partial class Collector
         catch (OperationCanceledException) { process.Kill(true); throw new TimeoutException("Device collection timed out."); }
         var stdout = await output;
         var stderr = await errors;
-        // The collector sometimes reports a failed device connection as a
-        // coloured ERROR line while still returning exit code 0. Do not treat
-        // that diagnostic as a directory listing or a completed download.
-        var cleanOutput = Regex.Replace(stdout + "\n" + stderr, "\\x1B\\[[0-9;]*m", "");
-        var toolError = cleanOutput.Split('\n').LastOrDefault(line =>
-            Regex.IsMatch(line, @"\bERROR\b", RegexOptions.IgnoreCase));
+        // A successful pull-batch can contain per-file failures in a JSON
+        // "error" field. Only standalone diagnostics, never JSON data, can
+        // turn the entire command into a failure.
+        var toolError = ToolFailureLine(stdout, stderr);
         if (process.ExitCode != 0 || toolError is not null)
         {
-            var detail = toolError?.Trim() ?? stderr.Trim();
+            var detail = toolError ?? Regex.Replace(stderr, "\\x1B\\[[0-9;]*m", "")
+                .Split('\n').LastOrDefault(line => !string.IsNullOrWhiteSpace(line))?.Trim()
+                ?? "No error detail returned.";
             throw new IOException($"Collector exited {process.ExitCode}: {detail}");
         }
         return stdout;
+    }
+
+    internal static string? ToolFailureLine(string stdout, string stderr)
+    {
+        static string[] Lines(string value) =>
+            Regex.Replace(value, "\\x1B\\[[0-9;]*m", "")
+                .Split('\n').Select(line => line.Trim()).ToArray();
+        return Lines(stderr).LastOrDefault(line =>
+            Regex.IsMatch(line, @"\b(?:ERROR|FATAL)\b", RegexOptions.IgnoreCase)) ??
+            Lines(stdout).LastOrDefault(line =>
+                Regex.IsMatch(line, @"^(?:ERROR|FATAL)\b", RegexOptions.IgnoreCase));
     }
 
     public static async Task<IReadOnlyList<ConnectedDevice>> BrowseAsync(
@@ -321,21 +332,37 @@ public static partial class Collector
                 "--manifest", manifest, "--output", staging],
                 TimeSpan.FromMinutes(Math.Max(3, pending.Count * 3)), cancellation);
             using var results = JsonDocument.Parse(output);
-            var successful = results.RootElement.GetProperty("results").EnumerateArray()
+            var batchResults = results.RootElement.GetProperty("results").EnumerateArray()
                 .ToDictionary(result => result.GetProperty("index").GetInt32(),
-                    result => result.GetProperty("ok").GetBoolean());
+                    result => result);
             var saved = 0; var skipped = 0; var failed = 0; string? lastError = null;
             for (var index = 0; index < pending.Count; index++)
             {
                 cancellation.ThrowIfCancellationRequested();
                 var item = pending[index];
                 progress?.Invoke(index, pending.Count);
-                if (!successful.TryGetValue(index, out var ok) || !ok) { failed++; continue; }
                 var name = Path.GetFileName(item.Path);
-                var downloaded = Path.Combine(staging, index.ToString(), name);
-                var kind = BatteryLogKind(downloaded);
                 var token = (item.Source is null ? "Host::" : $"Watch::{item.Source}::") + name;
                 var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
+                if (!batchResults.TryGetValue(index, out var fileResult) ||
+                    !fileResult.GetProperty("ok").GetBoolean())
+                {
+                    var reason = fileResult.ValueKind == JsonValueKind.Undefined ? "No result" :
+                        fileResult.TryGetProperty("error", out var detail) ? detail.GetString() ?? "Unknown error" :
+                        "Unknown error";
+                    reason = Regex.Replace(reason, @"\s+", " ").Trim();
+                    if (reason.Length > 120) reason = reason[..120];
+                    var retryAt = DateTimeOffset.UtcNow.AddMinutes(30);
+                    lock (state) {
+                        state.RecheckAfter[deliveredKey] = retryAt;
+                        StateStore.Save(state);
+                    }
+                    failed++;
+                    lastError = $"{name}: {reason}; retry={retryAt.ToLocalTime():O}";
+                    continue;
+                }
+                var downloaded = Path.Combine(staging, index.ToString(), name);
+                var kind = BatteryLogKind(downloaded);
                 if (kind is null)
                 {
                     lock (state) {
