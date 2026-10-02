@@ -412,7 +412,8 @@ public sealed class CompanionRuntime : IDisposable
     {
         lock (_events)
         {
-            var eventText = $"{DateTimeOffset.Now:O} | {new string(message.Replace('\n', ' ').Take(200).ToArray())}";
+            var detail = message.Replace('\r', ' ').Replace('\n', ' ');
+            var eventText = $"{DateTimeOffset.Now:O} | {new string(detail.Take(800).ToArray())}";
             _events.Add(eventText);
             if (_events.Count > 500) _events.RemoveRange(0, _events.Count - 500);
             try {
