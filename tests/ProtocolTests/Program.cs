@@ -133,6 +133,28 @@ static class Program
         BatteryLogStorage.UpdateSettings(false, 500, 1);
     }
 
+    private static void CheckDailyCollectionCoverage()
+    {
+        StoredBatteryLog Row(string kind, string? source, string day) =>
+            new(Guid.NewGuid().ToString(),
+                $"Analytics-{day}-090000.ips.ca.synced", Guid.NewGuid(), "Test",
+                kind, source, 100_000, DateTimeOffset.UtcNow, true);
+        var host = Row("Host", null, "2026-10-03");
+        var firstWatch = Row("Watch", "ProxiedDevice-a1", "2026-10-03");
+        var secondWatch = Row("Watch", "ProxiedDevice-b2", "2026-10-02");
+        Check(BatteryLogStorage.HasRequiredDailyLogs("iPad16,6", [host], "2026-10-03"),
+            "iPad host log did not stop collection.");
+        Check(!BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [host], "2026-10-03"),
+            "Unknown Watch state stopped iPhone collection.");
+        Check(!BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3",
+            [host, firstWatch, secondWatch], "2026-10-03"),
+            "A second known Watch was ignored.");
+        Check(BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3",
+            [host, firstWatch, secondWatch,
+                Row("Watch", "ProxiedDevice-b2", "2026-10-03")], "2026-10-03"),
+            "Complete iPhone and Watch logs did not stop collection.");
+    }
+
     private static byte[] Derive(byte[] shared, Guid session, Guid host, Guid physical)
     {
         var salt = Encoding.UTF8.GetBytes(Upper(session));
@@ -176,6 +198,7 @@ static class Program
         CheckCurrentDiagnostics();
         CheckArchiveExchange();
         CheckBatteryLogStorage();
+        CheckDailyCollectionCoverage();
         var state = new CompanionState();
         using var server = new TransferServer(state);
         var preflightEvents = new List<string>();

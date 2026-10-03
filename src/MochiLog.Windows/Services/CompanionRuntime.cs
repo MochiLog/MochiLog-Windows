@@ -161,6 +161,11 @@ public sealed class CompanionRuntime : IDisposable
                     var reason = !collectionOpen ? "before the daily collection window" :
                         phone.AutomaticPauseUntil > now ?
                         "mobile app confirmed all required daily logs" : null;
+                    if (reason is null && BatteryLogStorage.HasRequiredDailyLogs(phone,
+                        japanNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))) {
+                        reason = "verified current-day host and known Watch logs are stored";
+                        resume = nextWindow;
+                    }
                     if (reason is not null)
                     {
                         var key = $"{reason}|{resume:O}";

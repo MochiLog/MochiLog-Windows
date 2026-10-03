@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 
 namespace MochiLog_Windows.Services;
 
@@ -109,6 +110,31 @@ public static class BatteryLogStorage
             }
             return rows.OrderByDescending(row => row.StoredAt).ToArray();
         }
+    }
+
+    public static bool HasRequiredDailyLogs(PairedPhone phone, string day)
+    {
+        try { return HasRequiredDailyLogs(phone.Model, List([phone]), day); }
+        catch (IOException) { return false; }
+    }
+
+    public static bool HasRequiredDailyLogs(string model, IReadOnlyList<StoredBatteryLog> rows,
+        string day)
+    {
+        if (!rows.Any(row => row.Kind == "Host" && row.LogDay == day)) return false;
+        if (model.StartsWith("iPad", StringComparison.Ordinal)) return true;
+        if (!model.StartsWith("iPhone", StringComparison.Ordinal) ||
+            !DateOnly.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var date)) return false;
+        var oldestDay = date.AddDays(-6).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var expectedWatches = rows.Where(row => row.Kind == "Watch" &&
+            string.CompareOrdinal(row.LogDay, oldestDay) >= 0 &&
+            string.CompareOrdinal(row.LogDay, day) <= 0 && row.Source is not null)
+            .Select(row => row.Source!).ToHashSet(StringComparer.Ordinal);
+        if (expectedWatches.Count == 0) return false;
+        var todayWatches = rows.Where(row => row.Kind == "Watch" && row.LogDay == day &&
+            row.Source is not null).Select(row => row.Source!).ToHashSet(StringComparer.Ordinal);
+        return expectedWatches.IsSubsetOf(todayWatches);
     }
 
     private static void Scan(string root, Guid deviceId, string deviceName, bool pending,
