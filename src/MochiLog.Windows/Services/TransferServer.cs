@@ -30,26 +30,32 @@ internal sealed class PairingSession
 public sealed class TransferServer : IDisposable
 {
     #if MOCHILOG_PROTOCOL_TEST
-    public const int Port = 54566;
+    public const int PreferredPort = 54566;
     #else
-    public const int Port = 54556;
+    public const int PreferredPort = 54556;
     #endif
     private const int MaximumLogBytes = 64 * 1024 * 1024;
     private readonly object _gate = new();
     private readonly CompanionState _state;
+    private readonly int _preferredPort;
     private readonly Dictionary<Guid, DateTimeOffset> _nonces = [];
     private PairingSession? _session;
     private TcpListener? _listener;
     private CancellationTokenSource? _lifetime;
     private ServiceDiscovery? _discovery;
     private string? _advertisedAddresses;
+    public int ListeningPort { get; private set; }
     public event Action<string>? StatusChanged;
     public event Action<PairedPhone>? PhoneConfirmed;
     public event Action<PairedPhone>? PhoneAddressChanged;
     public event Action? PairingRevoked;
     public Func<PairedPhone, byte[]>? SupportReport { get; set; }
 
-    public TransferServer(CompanionState state) => _state = state;
+    public TransferServer(CompanionState state, int? preferredPort = null)
+    {
+        _state = state;
+        _preferredPort = preferredPort ?? PreferredPort;
+    }
 
     public void Revoke(PairedPhone phone)
     {
@@ -73,13 +79,41 @@ public sealed class TransferServer : IDisposable
     public void Start()
     {
         if (_listener is not null) return;
+        SocketException? bindError = null;
+        var candidates = new[] { _state.TransferPort, _preferredPort, 0 }
+            .Where(port => port is >= 0 and <= 65535)
+            .Select(port => port!.Value).Distinct();
+        foreach (var candidate in candidates)
+        {
+            var listener = new TcpListener(IPAddress.Any, candidate);
+            try
+            {
+                listener.Start(20);
+                _listener = listener;
+                ListeningPort = ((IPEndPoint)listener.LocalEndpoint).Port;
+                break;
+            }
+            catch (SocketException error) when (error.SocketErrorCode is
+                SocketError.AccessDenied or SocketError.AddressAlreadyInUse)
+            {
+                listener.Stop();
+                bindError = error;
+                StatusChanged?.Invoke($"Transfer port {candidate} unavailable ({error.SocketErrorCode}); trying another port.");
+            }
+        }
+        if (_listener is null)
+            throw new IOException("No available port for encrypted transfer.", bindError);
+        if (_state.TransferPort != ListeningPort)
+        {
+            _state.TransferPort = ListeningPort;
+            try { StateStore.Save(_state); }
+            catch (Exception error) { StatusChanged?.Invoke("Transfer port could not be saved: " + error.Message); }
+        }
         _lifetime = new CancellationTokenSource();
-        _listener = new TcpListener(IPAddress.Any, Port);
-        _listener.Start(20);
         _ = AcceptLoopAsync(_lifetime.Token);
         NetworkChange.NetworkAddressChanged += NetworkAddressChanged;
         AdvertiseCurrentAddresses();
-        StatusChanged?.Invoke($"Encrypted transfer server listening on port {Port}.");
+        StatusChanged?.Invoke($"Encrypted transfer server listening on port {ListeningPort}.");
     }
 
     private void NetworkAddressChanged(object? sender, EventArgs args) =>
@@ -101,15 +135,15 @@ public sealed class TransferServer : IDisposable
             {
                 _discovery?.Dispose();
                 _discovery = new ServiceDiscovery();
-                var profile = new ServiceProfile(Upper(_state.HostId), "_mochilog._tcp", Port,
+                var profile = new ServiceProfile(Upper(_state.HostId), "_mochilog._tcp", (ushort)ListeningPort,
                     addresses.Select(IPAddress.Parse));
                 profile.AddProperty("v", "1");
-                profile.AddProperty("port", Port.ToString());
+                profile.AddProperty("port", ListeningPort.ToString());
                 profile.AddProperty("ipv4", string.Join(",", addresses));
                 if (tailnet is not null)
                 {
                     profile.AddProperty("tailnet", tailnet);
-                    profile.AddProperty("tailnetPort", Port.ToString());
+                    profile.AddProperty("tailnetPort", ListeningPort.ToString());
                 }
                 _discovery.Advertise(profile);
                 _discovery.Announce(profile);
@@ -122,6 +156,8 @@ public sealed class TransferServer : IDisposable
 
     public PairingInvitation BeginPairing(ConnectedDevice device)
     {
+        if (_listener is null)
+            throw new InvalidOperationException("Encrypted transfer server is not running.");
         if (string.IsNullOrWhiteSpace(device.Model))
             throw new InvalidOperationException("A trusted device model is required before creating a pairing QR.");
         var privateKey = new X25519PrivateKeyParameters(new SecureRandom());
@@ -136,7 +172,7 @@ public sealed class TransferServer : IDisposable
         {
             ["v"] = "3", ["platform"] = "windows", ["host"] = Upper(host), ["session"] = Upper(sessionId),
             ["model"] = device.Model, ["public"] = Convert.ToBase64String(publicKey),
-            ["ipv4"] = string.Join(",", addresses), ["port"] = Port.ToString()
+            ["ipv4"] = string.Join(",", addresses), ["port"] = ListeningPort.ToString()
         };
         var previouslyPaired = _state.Phones.FirstOrDefault(phone => phone.Udid == device.Udid);
         if (previouslyPaired is not null)
@@ -144,7 +180,7 @@ public sealed class TransferServer : IDisposable
         if (tailnet is not null)
         {
             fields["tailnet"] = tailnet;
-            fields["tailnetPort"] = Port.ToString();
+            fields["tailnetPort"] = ListeningPort.ToString();
         }
         var url = "mochilog-mac://pair?" + string.Join("&", fields.Select(field =>
             Uri.EscapeDataString(field.Key) + "=" + Uri.EscapeDataString(field.Value)));

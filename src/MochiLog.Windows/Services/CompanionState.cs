@@ -19,6 +19,9 @@ public sealed class PairedPhone
 public sealed class CompanionState
 {
     public Guid HostId { get; set; } = Guid.NewGuid();
+    // Keep the selected listening port stable across restarts, including on PCs
+    // where Windows has reserved the usual port for another service.
+    public int? TransferPort { get; set; }
     public List<PairedPhone> Phones { get; set; } = [];
     // Revoked keys authenticate a delayed unpair acknowledgement only.
     // These phones are excluded from discovery, collection and transfer.

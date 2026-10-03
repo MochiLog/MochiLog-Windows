@@ -10,6 +10,7 @@ using Org.BouncyCastle.Security;
 
 static class Program
 {
+    private static int _serverPort;
     private static string Upper(Guid id) => id.ToString("D").ToUpperInvariant();
     private static byte[] Hmac(byte[] key, string text) =>
         HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(text));
@@ -166,7 +167,7 @@ static class Program
     private static async Task<byte[]> ExchangeAsync(object request)
     {
         using var client = new TcpClient();
-        await client.ConnectAsync(IPAddress.Loopback, TransferServer.Port);
+        await client.ConnectAsync(IPAddress.Loopback, _serverPort);
         var stream = client.GetStream();
         await stream.WriteAsync(JsonSerializer.SerializeToUtf8Bytes(request));
         await stream.WriteAsync(new byte[] { 10 });
@@ -199,6 +200,22 @@ static class Program
         CheckArchiveExchange();
         CheckBatteryLogStorage();
         CheckDailyCollectionCoverage();
+        using (var blocker = new TcpListener(IPAddress.Any, 0))
+        {
+            blocker.Start();
+            var blockedPort = ((IPEndPoint)blocker.LocalEndpoint).Port;
+            var fallbackState = new CompanionState();
+            using var fallback = new TransferServer(fallbackState, blockedPort);
+            fallback.Start();
+            Check(fallback.ListeningPort != blockedPort &&
+                fallbackState.TransferPort == fallback.ListeningPort &&
+                StateStore.Load().TransferPort == fallback.ListeningPort,
+                "Reserved transfer port did not fall back to a persisted available port.");
+            var fallbackInvitation = fallback.BeginPairing(new ConnectedDevice(
+                "fallback-device", "Fallback iPad", "iPad16,6"));
+            Check(fallbackInvitation.Url.Contains($"port={fallback.ListeningPort}"),
+                "Pairing QR did not advertise the selected transfer port.");
+        }
         var state = new CompanionState();
         using var server = new TransferServer(state);
         var preflightEvents = new List<string>();
@@ -207,6 +224,7 @@ static class Program
                 preflightEvents.Add(message);
         };
         server.Start();
+        _serverPort = server.ListeningPort;
         try {
             server.BeginPairing(new ConnectedDevice("untrusted", "Untrusted iPad", ""));
             throw new Exception("An untrusted device produced a pairing QR.");
