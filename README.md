@@ -1,5 +1,7 @@
 # MochiLog Windows
 
+User-facing setup and troubleshooting steps are in the [Japanese and English user guide](docs/USER_GUIDE.md).
+
 WinUI 3 companion app for MochiLog's optional iOS/iPadOS 27 wireless analytics transfer. This repository is an alpha under active development.
 
 The Windows app collects Apple analytics logs and sends them to the iPhone or iPad MochiLog app. Parsing and record storage remain on the mobile app. The Windows installer includes its collector and app runtimes, so users do not need Python, .NET, or the Windows App SDK installed separately. **The current alpha is not independent of Apple's Windows device software:** first-time USB trust and OS RemotePairing use Apple's mobile-device USB stack, supplied by Apple Devices or classic iTunes. The installer neither includes nor installs this stack. The installer registers an uninstaller in Windows Settings. Windows and Mac companions do not exchange data with each other.

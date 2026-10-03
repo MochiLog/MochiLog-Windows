@@ -1,0 +1,65 @@
+# MochiLog Windows アルファ版 利用ガイド / User guide
+
+## 日本語
+
+### できることと必要なもの
+
+MochiLog Windows は、iPhone・iPad の解析ログを PC に一時保管し、端末で MochiLog を開いたときに暗号化して渡します。iPhone に保存された Apple Watch のログも対象です。解析と記録はスマホ版が行います。PC 連携を設定しなくても、スマホ版の手動読み込みと記録は使えます。
+
+Windows 11 と iOS/iPadOS 27 以降が必要です。初回の USB 信頼設定には **Apple Devices** または **Apple 公式サイト配布のクラシック版 iTunes（EXE）** のどちらか一方が必要です。[Apple Devices の案内](https://support.apple.com/guide/devices-windows/mchl5ded2763/windows)／[クラシック版 iTunes](https://www.apple.com/itunes/download/win64)。Microsoft Store 版 iTunes と iCloud for Windows は、この信頼設定の代わりになりません。MochiLog のインストーラーに Python・.NET を別途追加する必要はありません。
+
+### 初回設定
+
+1. [GitHub Releases の最新版](https://github.com/MochiLog/MochiLog-Windows/releases)から `MochiLog-Windows-Alpha-Setup.exe` を入手してインストールします。現在のアルファ版インストーラーはコード署名されていません。Windows の設定からアンインストールできます。
+2. Apple Devices またはクラシック版 iTunes を起動し、iPhone・iPad をデータ対応 USB ケーブルで PC に接続します。端末のロックを解除して「このコンピュータを信頼」を許可し、そのアプリに端末が表示されることを確認します。
+3. MochiLog Windows の「端末」で設定する端末を選び、「USB の信頼設定」を進めます。初回は数分かかることがあります。進行中は画面の状態表示を確認し、端末のロックを解除したままにしてください。完了後は USB を外して、PC と端末を同じ Wi-Fi に置きます。
+4. 無線の診断接続が確認できたら、Windows 側でペアリング QR を表示します。端末の MochiLog で「設定 → 高度な設定 → Mac 連携」を開き、**Windows** を選んで QR を読み取り、PC に表示された6桁コードを入力します。画面名は Mac 連携ですが、Windows もここで管理できます。
+5. Windows アプリを起動したままにします。端末のロック解除中に解析ログを収集し、スマホ版を開くと受信・解析・記録が始まります。必要なときは PC の「今すぐログを収集」や端末の「今すぐ受信」を使えます。
+
+### 日々の使い方
+
+PC は端末のロック解除中に、ローカルの無線診断接続から新しいファイルを収集します。収集済みファイルは、スマホ版を開くまで転送待ちになります。必要な当日分が揃うと不要な自動再走査を休止しますが、手動操作と転送待受は続きます。複数の PC を同じ端末に連携しても、すでに受信したログは重複登録しないよう確認します。
+
+「電池ログ」画面では転送待ち・送信済みの生ログを確認、書き出し、再送できます。初期設定ではスマホ側の受信確認後に送信済みログを削除します。「送信後も保管」を選ぶと保存期間と容量上限を変更できます。未転送分は自動整理から保護されます。ログの中身を Windows アプリで解析することはありません。
+
+設定では Windows へのサインイン時の起動やタスクトレイでの常駐を選べます。トレイ常駐中にウィンドウを閉じても収集・転送は続き、トレイの「終了」で停止します。
+
+Tailscale は任意です。両端末で接続し、スマホ版でモバイル通信の転送を許可すると、PC に**収集済み**のファイルを外出先から受け取れます。モバイル通信だけで端末内の新しい解析ログを PC が収集することはできません。
+
+### 困ったときは
+
+- **Apple Devices に端末が出ない:** データ対応ケーブルを PC 本体へ直結し、ロック解除・信頼の確認をやり直します。Apple Devices または iTunes を更新・再起動し、再度端末が表示されてから MochiLog の USB 設定を試してください。エクスプローラーだけに端末が出ていても、信頼設定が完了しているとは限りません。
+- **ログが生成されない:** 端末の「設定 → プライバシーとセキュリティ → 解析と改善」で解析の共有を確認します。OS 更新後も再確認してください。オンにした直後は次のログ生成を待ちます。
+- **PC では収集済みだが記録が増えない:** 該当端末で MochiLog を開き、「Mac 連携」の接続状態と処理結果を確認します。すでに読み込んだログは重複として省略されます。
+- **接続できない:** 端末のロック、PC と端末の Wi-Fi、Windows アプリの起動状態を確認し、再検索します。ネットワークによっては IP の手動指定も利用できます。Windows が標準ポートを予約している場合、MochiLog Windows は別のポートを選んで端末に通知します。
+- **改善しない:** Windows と端末の「Mac 連携」で日付別のデバッグログを確認し、サポート画面から発生日を指定して関連ログを添付してください。生の解析ログとペアリング鍵は自動添付されません。
+
+これはアルファ版です。問題の解決には時間がかかり、個別に返信できない場合があります。[プライバシーポリシー](https://mochilog.ryuya-dev.net/privacy)と[利用規約](https://mochilog.ryuya-dev.net/terms)も参照してください。
+
+## English
+
+### What you need
+
+MochiLog Windows collects Apple analytics files from an iPhone or iPad and sends them over an encrypted connection when you open MochiLog on that device. Eligible Apple Watch files stored on its paired iPhone are included. The mobile app parses and records the files, and it also works without computer pairing.
+
+You need Windows 11 and iOS/iPadOS 27 or later. For initial USB trust, install **either Apple Devices or the classic iTunes EXE from Apple's website**: [Apple Devices help](https://support.apple.com/guide/devices-windows/mchl5ded2763/windows) / [classic iTunes](https://www.apple.com/itunes/download/win64). Microsoft Store iTunes and iCloud for Windows do not replace this setup. The MochiLog installer includes its other runtimes; users do not need to install Python or .NET separately.
+
+### Set up
+
+1. Download `MochiLog-Windows-Alpha-Setup.exe` from [GitHub Releases](https://github.com/MochiLog/MochiLog-Windows/releases) and install it. This alpha installer is not currently code signed. You can uninstall it in Windows Settings.
+2. Open Apple Devices or classic iTunes. Connect the unlocked device directly to the PC with a USB data cable, approve **Trust This Computer**, and confirm the device appears in Apple's app.
+3. Select the device in MochiLog Windows and run **Set Up USB Trust**. Initial setup can take a few minutes. Keep the device unlocked and watch the progress indicator. After it finishes, unplug the cable and put the PC and device on the same Wi-Fi.
+4. Once wireless diagnostic access is confirmed, show the pairing QR in MochiLog Windows. On the device, open **MochiLog → Settings → Advanced Settings → Mac Transfer**, select **Windows**, scan the QR, and enter the six-digit code shown on the PC. The screen also manages Windows pairings despite its name.
+5. Leave the Windows app running. It collects files while the device is unlocked; open the mobile app to receive and record them. Use **Collect Logs Now** or **Receive Now** to retry manually.
+
+### Everyday use and help
+
+New analytics collection needs an unlocked device and a local wireless diagnostic connection. Files already collected wait on the PC until the mobile app opens. Automatic rescans pause when the required daily files are present; manual actions and the transfer listener remain available. Multiple paired computers check for already received files before sending them again.
+
+The **Battery Logs** page lists pending and delivered raw files and supports export and resend. Delivered files are deleted after the phone confirms receipt by default. Optional retention has configurable time and size limits; pending files are protected from automatic cleanup. Windows does not parse the logs. Settings can launch the app at sign-in and keep it in the system tray; use **Quit MochiLog** in the tray menu to stop it.
+
+Tailscale is optional. With both devices connected and mobile transfer enabled, you can receive files **already collected** by the PC while away. Cellular plus Tailscale cannot collect new system analytics from the device.
+
+If Apple Devices does not show the device, try a known data cable, direct PC port, unlocked screen, and the Trust prompt; restart or update Apple's app. Seeing the device only in File Explorer does not establish trust. If logs do not appear, check **Settings → Privacy & Security → Analytics & Improvements** on the iPhone or iPad, especially after an OS update. If files are queued, open MochiLog on that device and inspect **Mac Transfer**. Already imported files are not recorded twice. For persistent problems, review the dated debug logs on both sides and use support to attach logs for the incident date. Raw analytics and pairing keys are not attached automatically.
+
+This is an alpha. Fixes may take time and individual replies may not always be possible. See the [privacy policy](https://mochilog.ryuya-dev.net/privacy) and [terms](https://mochilog.ryuya-dev.net/terms).
