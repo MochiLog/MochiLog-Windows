@@ -116,12 +116,18 @@ public static class UpdateService
     public static void LaunchInstallerAfterExit(string path)
     {
         // The installer cannot replace the self-contained .NET runtime while this process
-        // still has its DLLs open. A detached Windows PowerShell process waits for exit.
+        // still has its DLLs open. Restart only after Setup has finished replacing files.
         var escapedPath = path.Replace("'", "''", StringComparison.Ordinal);
+        var appPath = Environment.ProcessPath ??
+            throw new IOException("The installed application path is unavailable.");
+        var escapedAppPath = appPath.Replace("'", "''", StringComparison.Ordinal);
         var script = $"$app = Get-Process -Id {Environment.ProcessId} -ErrorAction SilentlyContinue; " +
             "if ($app) { $app.WaitForExit() }; " +
-            $"Start-Process -FilePath '{escapedPath}' " +
-            "-ArgumentList '/SILENT /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS'";
+            $"$setup = Start-Process -FilePath '{escapedPath}' " +
+            "-ArgumentList '/SILENT /NORESTART /CLOSEAPPLICATIONS /NORESTARTAPPLICATIONS' " +
+            "-Wait -PassThru; " +
+            $"if ($setup.ExitCode -eq 0 -and (Test-Path -LiteralPath '{escapedAppPath}')) " +
+            $"{{ Start-Process -FilePath '{escapedAppPath}' }}";
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         var start = new ProcessStartInfo("powershell.exe") {
             UseShellExecute = false, CreateNoWindow = true
