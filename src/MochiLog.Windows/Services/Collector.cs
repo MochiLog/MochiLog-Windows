@@ -7,7 +7,8 @@ namespace MochiLog_Windows.Services;
 
 public sealed record ConnectedDevice(string Udid, string Name, string Model,
     bool UsbConnected = false, bool UsbTrusted = false);
-public sealed record CollectionResult(int Saved, int Skipped, int Failed, string? LastError);
+public sealed record CollectionResult(int Saved, int Skipped, int Failed, string? LastError,
+    int Deferred = 0);
 
 public static partial class Collector
 {
@@ -335,7 +336,8 @@ public static partial class Collector
             var batchResults = results.RootElement.GetProperty("results").EnumerateArray()
                 .ToDictionary(result => result.GetProperty("index").GetInt32(),
                     result => result);
-            var saved = 0; var skipped = 0; var failed = 0; string? lastError = null;
+            var saved = 0; var skipped = 0; var failed = 0; var deferred = 0;
+            string? lastError = null;
             for (var index = 0; index < pending.Count; index++)
             {
                 cancellation.ThrowIfCancellationRequested();
@@ -370,8 +372,7 @@ public static partial class Collector
                             !item.Path.Contains("/Retired/", StringComparison.Ordinal) ||
                             IsLikelyDailyReport(item.Path, item.Source)) {
                             state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
-                            failed++;
-                            lastError = "Analytics file could not be verified; it will be checked again.";
+                            deferred++;
                         } else {
                             state.Delivered.Add(deliveredKey);
                             state.RecheckAfter.Remove(deliveredKey);
@@ -393,7 +394,8 @@ public static partial class Collector
             }
             progress?.Invoke(pending.Count, pending.Count);
             return new CollectionResult(saved, skipped, failed,
-                failed == 0 ? null : lastError ?? "Some diagnostic files could not be downloaded.");
+                failed == 0 ? null : lastError ?? "Some diagnostic files could not be downloaded.",
+                deferred);
         }
         finally { Directory.Delete(staging, true); }
     }
@@ -424,7 +426,8 @@ public static partial class Collector
         }
         files = files.DistinctBy(item => (item.Source,
             System.IO.Path.GetFileName(item.Path))).ToList();
-        var saved = 0; var skipped = 0; var failed = 0; string? lastError = null;
+        var saved = 0; var skipped = 0; var failed = 0; var deferred = 0;
+        string? lastError = null;
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
         for (var index = 0; index < files.Count; index++)
@@ -458,8 +461,7 @@ public static partial class Collector
                             !item.Path.Contains("/Retired/", StringComparison.Ordinal) ||
                             IsLikelyDailyReport(item.Path, item.Source)) {
                             state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
-                            failed++;
-                            lastError = "Analytics file could not be verified; it will be checked again.";
+                            deferred++;
                         } else {
                             state.Delivered.Add(deliveredKey);
                             state.RecheckAfter.Remove(deliveredKey);
@@ -484,7 +486,7 @@ public static partial class Collector
             finally { if (Directory.Exists(staging)) Directory.Delete(staging, true); }
         }
         progress?.Invoke(files.Count, files.Count);
-        return new CollectionResult(saved, skipped, failed, lastError);
+        return new CollectionResult(saved, skipped, failed, lastError, deferred);
     }
 
     private static string? BatteryLogKind(string file)

@@ -219,9 +219,12 @@ static class Program
         var state = new CompanionState();
         using var server = new TransferServer(state);
         var preflightEvents = new List<string>();
+        var idleEvents = new List<string>();
         server.StatusChanged += message => {
             if (message.Contains("preflight", StringComparison.Ordinal))
                 preflightEvents.Add(message);
+            if (message.Contains(": no new logs", StringComparison.Ordinal))
+                idleEvents.Add(message);
         };
         server.Start();
         _serverPort = server.ListeningPort;
@@ -371,6 +374,11 @@ static class Program
             "File acknowledgement did not complete the batch.");
         Check(state.Delivered.Contains(Upper(physical) + "|" + first.Name),
             "Delivered file was not marked.");
+        var repeatedIdleNonce = Guid.NewGuid();
+        var repeatedIdle = Open(await Pull(repeatedIdleNonce), key,
+            invitation.HostId, physical, repeatedIdleNonce);
+        Check(repeatedIdle.Name.Length == 0 && idleEvents.Count == 1,
+            "Repeated empty pulls produced duplicate idle status events.");
         var archivedForResend = BatteryLogStorage.List(state.Phones).Where(row => !row.Pending).ToArray();
         Check(archivedForResend.Length == 1 &&
             BatteryLogStorage.Requeue(archivedForResend, state.Phones) == 1,

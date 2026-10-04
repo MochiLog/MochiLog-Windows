@@ -39,6 +39,7 @@ public sealed class TransferServer : IDisposable
     private readonly CompanionState _state;
     private readonly int _preferredPort;
     private readonly Dictionary<Guid, DateTimeOffset> _nonces = [];
+    private readonly Dictionary<Guid, DateTimeOffset> _lastIdleLogAt = [];
     private PairingSession? _session;
     private TcpListener? _listener;
     private CancellationTokenSource? _lifetime;
@@ -562,8 +563,16 @@ public sealed class TransferServer : IDisposable
             filename.CopyTo(plain.AsSpan(2));
             content.CopyTo(plain.AsSpan(2 + filename.Length));
             var frame = EncryptResponse(phone.Secret, hostId, physicalId, nonce, plain);
-            StatusChanged?.Invoke(token.Length == 0 ? $"{phone.Name}: no new logs" :
-                $"{phone.Name}: sending {token}");
+            if (token.Length == 0) {
+                if (!_lastIdleLogAt.TryGetValue(physicalId, out var lastIdle) ||
+                    now - lastIdle >= TimeSpan.FromMinutes(1)) {
+                    StatusChanged?.Invoke($"{phone.Name}: no new logs");
+                    _lastIdleLogAt[physicalId] = now;
+                }
+            } else {
+                _lastIdleLogAt.Remove(physicalId);
+                StatusChanged?.Invoke($"{phone.Name}: sending {token}");
+            }
             return frame;
         }
     }

@@ -198,7 +198,7 @@ public sealed class CompanionRuntime : IDisposable
                     }
                     Record(CollectionStatus);
                     Record($"{phone.Name}: collection finished; saved={result.Saved}, " +
-                        $"excluded={result.Skipped}, failed={result.Failed}");
+                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}");
                 }
                 catch (Exception error) { Record($"{phone.Name}: collection failed; " +
                     $"trigger={(manual ? "manual request" : trigger)}; error={error.Message}"); }
