@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -368,16 +369,8 @@ public static partial class Collector
                 if (kind is null)
                 {
                     lock (state) {
-                        if (ShouldRecheckUnclassified(downloaded) ||
-                            !item.Path.Contains("/Retired/", StringComparison.Ordinal) ||
-                            IsLikelyDailyReport(item.Path, item.Source)) {
-                            state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
-                            deferred++;
-                        } else {
-                            state.Delivered.Add(deliveredKey);
-                            state.RecheckAfter.Remove(deliveredKey);
-                            skipped++;
-                        }
+                        if (RecordUnclassified(state, deliveredKey, downloaded, item.Path,
+                            item.Source)) deferred++; else skipped++;
                         StateStore.Save(state);
                     }
                 }
@@ -387,7 +380,8 @@ public static partial class Collector
                     Directory.CreateDirectory(folder);
                     File.Move(downloaded, Path.Combine(folder, name), true);
                     lock (state) {
-                        if (state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
+                        if (state.UnclassifiedObservations.Remove(deliveredKey) |
+                            state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
                     }
                     saved++;
                 }
@@ -457,16 +451,8 @@ public static partial class Collector
                 var kind = BatteryLogKind(downloaded);
                 if (kind is null) {
                     lock (state) {
-                        if (ShouldRecheckUnclassified(downloaded) ||
-                            !item.Path.Contains("/Retired/", StringComparison.Ordinal) ||
-                            IsLikelyDailyReport(item.Path, item.Source)) {
-                            state.RecheckAfter[deliveredKey] = DateTimeOffset.UtcNow.AddMinutes(30);
-                            deferred++;
-                        } else {
-                            state.Delivered.Add(deliveredKey);
-                            state.RecheckAfter.Remove(deliveredKey);
-                            skipped++;
-                        }
+                        if (RecordUnclassified(state, deliveredKey, downloaded, item.Path,
+                            item.Source)) deferred++; else skipped++;
                         StateStore.Save(state);
                     }
                 }
@@ -477,7 +463,8 @@ public static partial class Collector
                     Directory.CreateDirectory(folder);
                     File.Move(downloaded, System.IO.Path.Combine(folder, name));
                     lock (state) {
-                        if (state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
+                        if (state.UnclassifiedObservations.Remove(deliveredKey) |
+                            state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
                     }
                     saved++;
                 }
@@ -520,6 +507,46 @@ public static partial class Collector
         return text.Contains("last_value_CycleCount", StringComparison.Ordinal) ||
             text.Contains("last_value_NominalChargeCapacity", StringComparison.Ordinal) ||
             text.Contains("last_value_AppleRawMaxCapacity", StringComparison.Ordinal);
+    }
+
+    internal static UnclassifiedObservation? ObserveUnclassified(string file,
+        UnclassifiedObservation? previous)
+    {
+        var bytes = File.ReadAllBytes(file);
+        if (bytes.Length == 0) return null;
+        var fingerprint = Convert.ToHexString(SHA256.HashData(bytes));
+        return new UnclassifiedObservation {
+            Fingerprint = fingerprint,
+            Confirmations = previous?.Fingerprint == fingerprint
+                ? Math.Min(3, previous.Confirmations + 1) : 1
+        };
+    }
+
+    // Keep a plausible, incomplete report eligible for retry. A small report
+    // without battery markers is excluded only after three matching pulls;
+    // an empty pull never advances that confirmation count.
+    private static bool RecordUnclassified(CompanionState state, string key,
+        string file, string path, string? source)
+    {
+        var uncertain = ShouldRecheckUnclassified(file);
+        var plausible = uncertain || !path.Contains("/Retired/", StringComparison.Ordinal) ||
+            IsLikelyDailyReport(path, source);
+        if (plausible && !uncertain) {
+            state.UnclassifiedObservations.TryGetValue(key, out var previous);
+            var observation = ObserveUnclassified(file, previous);
+            if (observation is not null) {
+                state.UnclassifiedObservations[key] = observation;
+                if (observation.Confirmations >= 3) plausible = false;
+            }
+        }
+        if (plausible) {
+            state.RecheckAfter[key] = DateTimeOffset.UtcNow.AddMinutes(30);
+            return true;
+        }
+        state.Delivered.Add(key);
+        state.RecheckAfter.Remove(key);
+        state.UnclassifiedObservations.Remove(key);
+        return false;
     }
 
     internal static bool IsLikelyDailyReport(string path, string? source)

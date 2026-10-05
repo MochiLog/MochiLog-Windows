@@ -288,6 +288,18 @@ static class Program
         await File.WriteAllTextAsync(uncertain, "short unrelated diagnostic");
         Check(!Collector.ShouldRecheckUnclassified(uncertain),
             "A small unrelated diagnostic should be excluded.");
+        var firstObservation = Collector.ObserveUnclassified(uncertain, null);
+        var secondObservation = Collector.ObserveUnclassified(uncertain, firstObservation);
+        var thirdObservation = Collector.ObserveUnclassified(uncertain, secondObservation);
+        Check(firstObservation?.Confirmations == 1 && secondObservation?.Confirmations == 2 &&
+            thirdObservation?.Confirmations == 3,
+            "Stable non-battery downloads should stop after three checks.");
+        await File.WriteAllBytesAsync(uncertain, []);
+        Check(Collector.ObserveUnclassified(uncertain, thirdObservation) is null,
+            "An empty pull must not confirm a non-battery report.");
+        await File.WriteAllTextAsync(uncertain, "changed diagnostic");
+        Check(Collector.ObserveUnclassified(uncertain, thirdObservation)?.Confirmations == 1,
+            "A changed report must start a new confirmation count.");
         File.Delete(uncertain);
         var name = "Analytics-2026-09-27-test.ips.ca.synced";
         var payload = Encoding.UTF8.GetBytes("diagnostic transport fixture");
