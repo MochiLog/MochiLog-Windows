@@ -20,9 +20,34 @@ public sealed class BatteryStorageSettings
 
 public static class BatteryLogStorage
 {
+    public sealed record VerifiedBatteryReceipt(string Kind, string? Source, string Day);
     private static readonly object Gate = new();
     private static string ArchiveRoot => System.IO.Path.Combine(StateStore.Root, "BatteryLogArchive");
     private static string SettingsFile => System.IO.Path.Combine(StateStore.Root, "battery-storage.json");
+    private static string ReceiptsFile(PairedPhone phone) => System.IO.Path.Combine(StateStore.Root,
+        "verified-receipts-" + phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + ".json");
+
+    private static List<VerifiedBatteryReceipt> Receipts(PairedPhone phone)
+    {
+        try { return JsonSerializer.Deserialize<List<VerifiedBatteryReceipt>>(
+            File.ReadAllBytes(ReceiptsFile(phone))) ?? []; }
+        catch (IOException) { return []; }
+        catch (JsonException) { return []; }
+    }
+
+    private static void RecordReceipt(PairedPhone phone, VerifiedBatteryReceipt receipt)
+    {
+        var cutoff = DateOnly.FromDateTime(DateTime.Now.AddDays(-14))
+            .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var entries = Receipts(phone).Where(item => string.CompareOrdinal(item.Day, cutoff) >= 0)
+            .ToList();
+        if (!entries.Contains(receipt)) entries.Add(receipt);
+        Directory.CreateDirectory(StateStore.Root);
+        var file = ReceiptsFile(phone);
+        var temporary = file + ".new";
+        File.WriteAllBytes(temporary, JsonSerializer.SerializeToUtf8Bytes(entries));
+        File.Move(temporary, file, true);
+    }
     private static BatteryStorageSettings _settings = LoadSettings();
 
     public static BatteryStorageSettings Settings
@@ -64,16 +89,24 @@ public static class BatteryLogStorage
         lock (Gate)
         {
             var resendMarker = file + ".force-resend";
-            if (!_settings.KeepAfterDelivery) {
-                File.Delete(file);
-                File.Delete(resendMarker);
-                return;
-            }
             var queue = System.IO.Path.GetFullPath(TransferServer.QueuePath(phone));
             var source = System.IO.Path.GetFullPath(file);
             if (!source.StartsWith(queue + System.IO.Path.DirectorySeparatorChar,
                 StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Invalid battery log queue path");
             var relative = System.IO.Path.GetRelativePath(queue, source);
+            var parts = relative.Split(System.IO.Path.DirectorySeparatorChar);
+            if (!((parts.Length == 2 && parts[0] == "Host") ||
+                (parts.Length == 3 && parts[0] == "Watch")) ||
+                !parts[^1].StartsWith("Analytics-", StringComparison.Ordinal) ||
+                parts[^1].Length < 20) throw new InvalidDataException("Invalid battery log queue path");
+            RecordReceipt(phone, new VerifiedBatteryReceipt(parts[0],
+                parts.Length == 3 ? parts[1] : null,
+                parts[^1].Substring("Analytics-".Length, 10)));
+            if (!_settings.KeepAfterDelivery) {
+                File.Delete(file);
+                File.Delete(resendMarker);
+                return;
+            }
             var destination = System.IO.Path.Combine(ArchiveRoot,
                 phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), relative);
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(destination)!);
@@ -114,14 +147,16 @@ public static class BatteryLogStorage
 
     public static bool HasRequiredDailyLogs(PairedPhone phone, string day)
     {
-        try { return HasRequiredDailyLogs(phone.Model, List([phone]), day); }
+        try { return HasRequiredDailyLogs(phone.Model, List([phone]), day, Receipts(phone)); }
         catch (IOException) { return false; }
     }
 
     public static bool HasRequiredDailyLogs(string model, IReadOnlyList<StoredBatteryLog> rows,
-        string day)
+        string day, IReadOnlyList<VerifiedBatteryReceipt>? receipts = null)
     {
-        if (!rows.Any(row => row.Kind == "Host" && row.LogDay == day)) return false;
+        receipts ??= [];
+        if (!rows.Any(row => row.Kind == "Host" && row.LogDay == day) &&
+            !receipts.Any(row => row.Kind == "Host" && row.Day == day)) return false;
         if (model.StartsWith("iPad", StringComparison.Ordinal)) return true;
         if (!model.StartsWith("iPhone", StringComparison.Ordinal) ||
             !DateOnly.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture,
@@ -130,10 +165,15 @@ public static class BatteryLogStorage
         var expectedWatches = rows.Where(row => row.Kind == "Watch" &&
             string.CompareOrdinal(row.LogDay, oldestDay) >= 0 &&
             string.CompareOrdinal(row.LogDay, day) <= 0 && row.Source is not null)
-            .Select(row => row.Source!).ToHashSet(StringComparer.Ordinal);
+            .Select(row => row.Source!).Concat(receipts.Where(row => row.Kind == "Watch" &&
+                string.CompareOrdinal(row.Day, oldestDay) >= 0 &&
+                string.CompareOrdinal(row.Day, day) <= 0 && row.Source is not null)
+                .Select(row => row.Source!)).ToHashSet(StringComparer.Ordinal);
         if (expectedWatches.Count == 0) return false;
         var todayWatches = rows.Where(row => row.Kind == "Watch" && row.LogDay == day &&
-            row.Source is not null).Select(row => row.Source!).ToHashSet(StringComparer.Ordinal);
+            row.Source is not null).Select(row => row.Source!).Concat(receipts.Where(row =>
+                row.Kind == "Watch" && row.Day == day && row.Source is not null)
+                .Select(row => row.Source!)).ToHashSet(StringComparer.Ordinal);
         return expectedWatches.IsSubsetOf(todayWatches);
     }
 

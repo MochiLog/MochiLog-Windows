@@ -154,6 +154,14 @@ static class Program
             [host, firstWatch, secondWatch,
                 Row("Watch", "ProxiedDevice-b2", "2026-10-03")], "2026-10-03"),
             "Complete iPhone and Watch logs did not stop collection.");
+        var receipts = new BatteryLogStorage.VerifiedBatteryReceipt[] {
+            new("Host", null, "2026-10-03"),
+            new("Watch", "ProxiedDevice-a1", "2026-10-03")
+        };
+        Check(BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [], "2026-10-03", receipts),
+            "Deleting acknowledged raw files restarted daily collection.");
+        Check(!BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [], "2026-10-04", receipts),
+            "Yesterday's acknowledged logs stopped today's collection.");
     }
 
     private static byte[] Derive(byte[] shared, Guid session, Guid host, Guid physical)
