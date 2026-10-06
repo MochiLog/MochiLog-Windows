@@ -19,6 +19,8 @@ public sealed class CompanionRuntime : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<string> _events = [];
     private readonly Dictionary<Guid, string> _lastAutomaticDecision = [];
+    private readonly Dictionary<Guid, (string Error, DateTimeOffset First, int Count)>
+        _automaticFailures = [];
     private static string EventsFile => Path.Combine(StateStore.Root, "support-events.json");
     private static string ArchiveRoot => Path.Combine(StateStore.Root, "DebugLogs");
     private static string RetentionFile => Path.Combine(StateStore.Root, "debug-retention-days.txt");
@@ -135,6 +137,39 @@ public sealed class CompanionRuntime : IDisposable
             _ = CollectAsync(phone, trigger: "manual device address set");
     }
 
+    private void FinishAutomaticFailures(PairedPhone phone, string outcome)
+    {
+        if (!_automaticFailures.Remove(phone.PhysicalDeviceId, out var failure) ||
+            failure.Count <= 1) return;
+        Record($"{phone.Name}: automatic collection {outcome} after {failure.Count} attempts; " +
+            $"first={failure.First.ToLocalTime():O}; last error={failure.Error}");
+    }
+
+    private void RecordCollectionFailure(PairedPhone phone, string trigger,
+        Exception error, bool manual)
+    {
+        if (manual)
+        {
+            Record($"{phone.Name}: collection failed; trigger=manual request; error={error.Message}");
+            return;
+        }
+        if (_automaticFailures.TryGetValue(phone.PhysicalDeviceId, out var previous) &&
+            previous.Error == error.Message)
+        {
+            var count = previous.Count + 1;
+            _automaticFailures[phone.PhysicalDeviceId] = (previous.Error, previous.First, count);
+            if (count % 12 == 0)
+                Record($"{phone.Name}: automatic collection still waiting; trigger={trigger}; " +
+                    $"attempts={count}; first={previous.First.ToLocalTime():O}; error={error.Message}");
+        }
+        else
+        {
+            FinishAutomaticFailures(phone, "failure changed");
+            _automaticFailures[phone.PhysicalDeviceId] = (error.Message, DateTimeOffset.Now, 1);
+            Record($"{phone.Name}: collection failed; trigger={trigger}; error={error.Message}");
+        }
+    }
+
     public async Task CollectAsync(PairedPhone? selected = null, bool manual = false,
         string trigger = "5-minute timer")
     {
@@ -168,6 +203,7 @@ public sealed class CompanionRuntime : IDisposable
                     }
                     if (reason is not null)
                     {
+                        FinishAutomaticFailures(phone, "paused");
                         var key = $"{reason}|{resume:O}";
                         if (!_lastAutomaticDecision.TryGetValue(phone.PhysicalDeviceId,
                             out var previous) || previous != key)
@@ -181,7 +217,8 @@ public sealed class CompanionRuntime : IDisposable
                     if (_lastAutomaticDecision.Remove(phone.PhysicalDeviceId))
                         Record($"{phone.Name}: automatic collection resumed; trigger={trigger}");
                 }
-                Record($"{phone.Name}: collection started; trigger={(manual ? "manual request" : trigger)}");
+                if (manual || !_automaticFailures.ContainsKey(phone.PhysicalDeviceId))
+                    Record($"{phone.Name}: collection started; trigger={(manual ? "manual request" : trigger)}");
                 CollectionStatus = UiText.Format("win_reading", phone.Name);
                 Changed?.Invoke();
                 try
@@ -189,6 +226,7 @@ public sealed class CompanionRuntime : IDisposable
                     var result = await Task.Run(() => Collector.CollectAsync(phone, State,
                         (done, total) => { CollectionStatus = UiText.Format("win_progress", phone.Name, done, total);
                             Changed?.Invoke(); }, _lifetime.Token));
+                    FinishAutomaticFailures(phone, "recovered");
                     CollectionStatus = UiText.Format("win_collection_result", phone.Name,
                         result.Saved, result.Skipped, result.Failed);
                     if (result.LastError is not null) CollectionStatus += " " + result.LastError;
@@ -200,8 +238,12 @@ public sealed class CompanionRuntime : IDisposable
                     Record($"{phone.Name}: collection finished; saved={result.Saved}, " +
                         $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}");
                 }
-                catch (Exception error) { Record($"{phone.Name}: collection failed; " +
-                    $"trigger={(manual ? "manual request" : trigger)}; error={error.Message}"); }
+                catch (Exception error) {
+                    CollectionStatus = UiText.Format("win_collection_result", phone.Name, 0, 0, 1) +
+                        " " + error.Message;
+                    Changed?.Invoke();
+                    RecordCollectionFailure(phone, trigger, error, manual);
+                }
             }
         }
         finally { _collection.Release(); }
