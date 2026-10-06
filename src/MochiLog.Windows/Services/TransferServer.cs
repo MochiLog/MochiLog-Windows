@@ -38,7 +38,7 @@ public sealed class TransferServer : IDisposable
     private readonly object _gate = new();
     private readonly CompanionState _state;
     private readonly int _preferredPort;
-    private readonly Dictionary<Guid, DateTimeOffset> _nonces = [];
+    private readonly SemaphoreSlim _activeClients = new(16, 16);
     private readonly Dictionary<Guid, DateTimeOffset> _lastIdleLogAt = [];
     private PairingSession? _session;
     private TcpListener? _listener;
@@ -49,6 +49,8 @@ public sealed class TransferServer : IDisposable
     public event Action<string>? StatusChanged;
     public event Action<PairedPhone>? PhoneConfirmed;
     public event Action<PairedPhone>? PhoneAddressChanged;
+    public event Action<PairedPhone>? LegacyPhoneDetected;
+    public event Action<PairedPhone>? SecurePhoneDetected;
     public event Action? PairingRevoked;
     public Func<PairedPhone, byte[]>? SupportReport { get; set; }
 
@@ -171,7 +173,7 @@ public sealed class TransferServer : IDisposable
         var tailnet = TailnetAddress();
         var fields = new Dictionary<string, string>
         {
-            ["v"] = "3", ["platform"] = "windows", ["host"] = Upper(host), ["session"] = Upper(sessionId),
+            ["v"] = "3", ["transfer"] = "3", ["platform"] = "windows", ["host"] = Upper(host), ["session"] = Upper(sessionId),
             ["model"] = device.Model, ["public"] = Convert.ToBase64String(publicKey),
             ["ipv4"] = string.Join(",", addresses), ["port"] = ListeningPort.ToString()
         };
@@ -201,6 +203,10 @@ public sealed class TransferServer : IDisposable
             try
             {
                 var client = await _listener!.AcceptTcpClientAsync(token);
+                if (!_activeClients.Wait(0)) {
+                    client.Dispose();
+                    continue;
+                }
                 _ = HandleAsync(client, token);
             }
             catch (OperationCanceledException) { return; }
@@ -211,6 +217,7 @@ public sealed class TransferServer : IDisposable
 
     private async Task HandleAsync(TcpClient client, CancellationToken lifetime)
     {
+        try {
         using (client)
         using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(lifetime))
         {
@@ -220,13 +227,13 @@ public sealed class TransferServer : IDisposable
                 var stream = client.GetStream();
                 using var input = new MemoryStream();
                 var one = new byte[1];
-                while (input.Length < 16_384)
+                while (input.Length < 32_768)
                 {
                     if (await stream.ReadAsync(one, timeout.Token) == 0) return;
                     if (one[0] == 10) break;
                     input.WriteByte(one[0]);
                 }
-                if (input.Length >= 16_384) return;
+                if (input.Length >= 32_768) return;
                 using var json = JsonDocument.Parse(input.ToArray());
                 var root = json.RootElement;
                 var remoteAddress = (client.Client.RemoteEndPoint as IPEndPoint)?.Address;
@@ -258,6 +265,7 @@ public sealed class TransferServer : IDisposable
             catch (OperationCanceledException) { StatusChanged?.Invoke("Transfer timed out."); }
             catch (Exception error) { StatusChanged?.Invoke("Transfer rejected: " + error.Message); }
         }
+        } finally { _activeClients.Release(); }
     }
 
     private byte[]? Pair(JsonElement request, string? peer = null)
@@ -316,6 +324,7 @@ public sealed class TransferServer : IDisposable
                     _state.RevokedPhones.RemoveAll(existing =>
                         existing.PhysicalDeviceId == phone.PhysicalDeviceId);
                     _state.Phones.Add(phone);
+                    _state.SecureTransferPhones.Remove(phone.PhysicalDeviceId);
                     StateStore.Save(_state);
                 }
                 session.Confirmed = true;
@@ -354,6 +363,47 @@ public sealed class TransferServer : IDisposable
 
     private byte[]? Pull(JsonElement request, string? peer = null)
     {
+        if (Get(request, "version") == "3")
+        {
+            if (!Guid.TryParse(Get(request, "hostID"), out var outerHost) ||
+                outerHost != _state.HostId ||
+                !Guid.TryParse(Get(request, "physicalDeviceID"), out var outerPhysical) ||
+                !Guid.TryParse(Get(request, "nonce"), out var outerNonce) ||
+                !request.TryGetProperty("issuedAt", out var issuedField) ||
+                !issuedField.TryGetInt64(out var issuedAt) ||
+                Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - (double)issuedAt) > 300 ||
+                !TryBase64UpTo(Get(request, "box"), 24_576, out var box) ||
+                box.Length < 28) return null;
+            lock (_gate)
+            {
+                var device = _state.Phones.Concat(_state.RevokedPhones)
+                    .FirstOrDefault(p => p.PhysicalDeviceId == outerPhysical);
+                if (device is null) return null;
+                var plain = new byte[box.Length - 28];
+                var context = Encoding.UTF8.GetBytes(
+                    $"v3|request|{Upper(outerHost)}|{Upper(outerPhysical)}|{Upper(outerNonce)}|{issuedAt}");
+                try {
+                    using var aes = new AesGcm(device.Secret, 16);
+                    aes.Decrypt(box.AsSpan(0, 12), box.AsSpan(12, plain.Length),
+                        box.AsSpan(12 + plain.Length, 16), plain, context);
+                } catch (CryptographicException) { return null; }
+                using var inner = JsonDocument.Parse(plain);
+                var body = inner.RootElement;
+                if (Get(body, "version") != "2" ||
+                    !Guid.TryParse(Get(body, "hostID"), out var innerHost) ||
+                    innerHost != outerHost ||
+                    !Guid.TryParse(Get(body, "physicalDeviceID"), out var innerPhysical) ||
+                    innerPhysical != outerPhysical ||
+                    !Guid.TryParse(Get(body, "nonce"), out var innerNonce) ||
+                    innerNonce != outerNonce) return null;
+                return PullV2(body, peer, secure: true);
+            }
+        }
+        return PullV2(request, peer, secure: false);
+    }
+
+    private byte[]? PullV2(JsonElement request, string? peer, bool secure)
+    {
         if (Get(request, "version") != "2" ||
             !Guid.TryParse(Get(request, "hostID"), out var hostId) || hostId != _state.HostId ||
             !Guid.TryParse(Get(request, "physicalDeviceID"), out var physicalId) ||
@@ -365,9 +415,8 @@ public sealed class TransferServer : IDisposable
                 .FirstOrDefault(p => p.PhysicalDeviceId == physicalId);
             if (phone is null) return null;
             var now = DateTimeOffset.UtcNow;
-            foreach (var expired in _nonces.Where(n => now - n.Value > TimeSpan.FromMinutes(5))
-                .Select(n => n.Key).ToArray()) _nonces.Remove(expired);
-            if (_nonces.ContainsKey(nonce)) return null;
+            if (_state.SecureTransferPhones.Contains(physicalId) && !secure) return null;
+            if (_state.UsedRequestNonces.ContainsKey(nonce)) return null;
             var ack = Get(request, "ack") ?? "";
             var message = $"v2|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}|{ack}";
             var backgroundNotice = Get(request, "presence") == "background" && ack.Length == 0 &&
@@ -376,7 +425,19 @@ public sealed class TransferServer : IDisposable
             if (!backgroundNotice &&
                 !CryptographicOperations.FixedTimeEquals(supplied, Hmac(phone.Secret, message)))
                 return null;
-            _nonces[nonce] = now;
+            if (!secure) LegacyPhoneDetected?.Invoke(phone);
+            else SecurePhoneDetected?.Invoke(phone);
+            foreach (var expired in _state.UsedRequestNonces.Where(n =>
+                now - n.Value > TimeSpan.FromMinutes(10)).Select(n => n.Key).ToArray())
+                _state.UsedRequestNonces.Remove(expired);
+            _state.UsedRequestNonces[nonce] = now;
+            var newlyUpgraded = secure && _state.SecureTransferPhones.Add(physicalId);
+            try { StateStore.Save(_state); }
+            catch {
+                _state.UsedRequestNonces.Remove(nonce);
+                if (newlyUpgraded) _state.SecureTransferPhones.Remove(physicalId);
+                return null;
+            }
             if (_state.RevokedPhones.Contains(phone))
             {
                 if (backgroundNotice) return null;

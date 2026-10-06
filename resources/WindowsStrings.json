@@ -1,5 +1,8 @@
 {
   "en": {
+    "win_mobile_update_needed": "Update MochiLog on iPhone or iPad",
+    "win_mobile_update_detail": "The connected app uses the previous transfer protocol. Update it in TestFlight or the App Store.",
+    "win_mobile_update_link": "Open App Store",
     "win_unpair_button": "Remove MochiLog pairing",
     "win_unpair_title": "Remove pairing with {0}?",
     "win_unpair_detail": "This device stops exchanging logs immediately. The other side will remove this pairing when it next connects. Saved battery records and the computer's OS trust are kept.",
@@ -132,6 +135,9 @@
     "mt_log_support_days": "Debug logs for that day and the preceding two days will be attached."
   },
   "ja": {
+    "win_mobile_update_needed": "iPhone・iPadのMochiLogを更新",
+    "win_mobile_update_detail": "接続したアプリは旧方式で通信しています。TestFlightまたはApp Storeで更新してください。",
+    "win_mobile_update_link": "App Storeを開く",
     "win_unpair_button": "MochiLogの連携を解除",
     "win_unpair_title": "{0}との連携を解除しますか？",
     "win_unpair_detail": "この端末とのログ転送はすぐに停止します。相手側は次に接続したとき連携を解除します。保存済みの記録とOSの信頼設定は残ります。",
@@ -264,6 +270,9 @@
     "mt_log_support_days": "発生日とその前の2日分のデバッグログを添付します。"
   },
   "de": {
+    "win_mobile_update_needed": "MochiLog auf iPhone oder iPad aktualisieren",
+    "win_mobile_update_detail": "Die verbundene App verwendet das alte Protokoll. Aktualisieren Sie sie in TestFlight oder im App Store.",
+    "win_mobile_update_link": "App Store öffnen",
     "win_unpair_button": "MochiLog-Kopplung entfernen",
     "win_unpair_title": "Kopplung mit {0} entfernen?",
     "win_unpair_detail": "Die Logübertragung stoppt sofort. Die Gegenseite entfernt die Kopplung bei der nächsten Verbindung. Gespeicherte Einträge und das OS-Vertrauen bleiben erhalten.",
@@ -396,6 +405,9 @@
     "mt_log_support_days": "Debug-Logs dieses Tages und der beiden Vortage werden angehängt."
   },
   "es": {
+    "win_mobile_update_needed": "Actualiza MochiLog en iPhone o iPad",
+    "win_mobile_update_detail": "La app conectada usa el protocolo anterior. Actualízala en TestFlight o App Store.",
+    "win_mobile_update_link": "Abrir App Store",
     "win_unpair_button": "Desvincular MochiLog",
     "win_unpair_title": "¿Desvincular {0}?",
     "win_unpair_detail": "La transferencia de registros se detiene ahora. El otro lado se desvinculará al volver a conectarse. Se conservan los registros y la confianza del sistema.",
@@ -528,6 +540,9 @@
     "mt_log_support_days": "Se adjuntarán los registros de ese día y los dos anteriores."
   },
   "fr": {
+    "win_mobile_update_needed": "Mettre à jour MochiLog sur iPhone ou iPad",
+    "win_mobile_update_detail": "L’app connectée utilise l’ancien protocole. Mettez-la à jour via TestFlight ou l’App Store.",
+    "win_mobile_update_link": "Ouvrir l’App Store",
     "win_unpair_button": "Dissocier MochiLog",
     "win_unpair_title": "Dissocier {0} ?",
     "win_unpair_detail": "Le transfert des journaux s'arrête immédiatement. L'autre appareil se dissociera à sa prochaine connexion. Les données et la confiance du système sont conservées.",
@@ -660,6 +675,9 @@
     "mt_log_support_days": "Les journaux de ce jour et des deux jours précédents seront joints."
   },
   "ko": {
+    "win_mobile_update_needed": "iPhone 또는 iPad에서 MochiLog 업데이트",
+    "win_mobile_update_detail": "연결된 앱이 이전 전송 방식을 사용합니다. TestFlight 또는 App Store에서 업데이트하세요.",
+    "win_mobile_update_link": "App Store 열기",
     "win_unpair_button": "MochiLog 페어링 해제",
     "win_unpair_title": "{0} 페어링을 해제할까요?",
     "win_unpair_detail": "로그 전송이 즉시 중지됩니다. 상대 기기는 다음 연결 시 페어링을 해제합니다. 저장된 기록과 OS 신뢰 설정은 유지됩니다.",
@@ -792,6 +810,9 @@
     "mt_log_support_days": "해당 날짜와 이전 이틀의 디버그 로그를 첨부합니다."
   },
   "zh-Hans": {
+    "win_mobile_update_needed": "更新 iPhone 或 iPad 上的 MochiLog",
+    "win_mobile_update_detail": "已连接的应用使用旧版传输协议。请在 TestFlight 或 App Store 更新。",
+    "win_mobile_update_link": "打开 App Store",
     "win_unpair_button": "解除 MochiLog 配对",
     "win_unpair_title": "解除与 {0} 的配对？",
     "win_unpair_detail": "日志传输会立即停止。另一端下次连接时将解除配对。已保存的记录和系统信任设置会保留。",
@@ -924,6 +945,9 @@
     "mt_log_support_days": "将附上当天及前两天的调试日志。"
   },
   "zh-Hant": {
+    "win_mobile_update_needed": "更新 iPhone 或 iPad 上的 MochiLog",
+    "win_mobile_update_detail": "已連線的 App 使用舊版傳輸協定。請在 TestFlight 或 App Store 更新。",
+    "win_mobile_update_link": "開啟 App Store",
     "win_unpair_button": "解除 MochiLog 配對",
     "win_unpair_title": "解除與 {0} 的配對？",
     "win_unpair_detail": "日誌傳輸會立即停止。另一端下次連線時將解除配對。已儲存的記錄與系統信任設定會保留。",

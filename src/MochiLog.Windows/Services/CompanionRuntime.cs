@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Net;
 using System.Net.Sockets;
 using System.Globalization;
+using System.Collections.Concurrent;
 
 namespace MochiLog_Windows.Services;
 
@@ -15,6 +16,7 @@ public sealed class CompanionRuntime : IDisposable
     public string CollectionStatus { get; private set; } = "";
     public event Action? Changed;
     public event Action<PairedPhone>? PairingConfirmed;
+    public ConcurrentDictionary<Guid, byte> LegacyPhoneIds { get; } = new();
     private readonly SemaphoreSlim _collection = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<string> _events = [];
@@ -45,6 +47,15 @@ public sealed class CompanionRuntime : IDisposable
         Server.PhoneAddressChanged += phone => {
             Record($"{phone.Name}: authenticated network address updated");
             _ = CollectAsync(phone, trigger: "authenticated address changed");
+        };
+        Server.LegacyPhoneDetected += phone => {
+            if (LegacyPhoneIds.TryAdd(phone.PhysicalDeviceId, 0)) {
+                Record($"{phone.Name}: previous mobile transfer protocol; update MochiLog in TestFlight or App Store");
+                Changed?.Invoke();
+            }
+        };
+        Server.SecurePhoneDetected += phone => {
+            if (LegacyPhoneIds.TryRemove(phone.PhysicalDeviceId, out _)) Changed?.Invoke();
         };
         Server.PairingRevoked += () => {
             Record("MochiLog app pairing removed for one device");
@@ -326,9 +337,10 @@ public sealed class CompanionRuntime : IDisposable
     private static string[] StoredDays() => Directory.Exists(ArchiveRoot)
         ? Directory.EnumerateFiles(ArchiveRoot, "*.log")
             .Select(Path.GetFileNameWithoutExtension)
+            .OfType<string>()
             .Where(day => DateOnly.TryParseExact(day, "yyyy-MM-dd",
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
-            .OrderByDescending(day => day).ToArray()! : [];
+            .OrderByDescending(day => day).ToArray() : [];
 
     private static void AppendArchive(string eventText)
     {

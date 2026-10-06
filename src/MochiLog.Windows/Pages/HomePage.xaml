@@ -15,6 +15,13 @@
                 <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Opacity="0.68" />
             </StackPanel>
 
+            <InfoBar x:Name="LegacyMobileNotice" IsOpen="False" Severity="Warning"
+                     IsClosable="False">
+                <InfoBar.Content>
+                    <HyperlinkButton x:Name="LegacyMobileLink" Click="LegacyMobileClicked" />
+                </InfoBar.Content>
+            </InfoBar>
+
             <Border x:Name="FirstConnectionCard" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1" CornerRadius="24" Padding="32" Visibility="Collapsed">

@@ -521,6 +521,44 @@ static class Program
             Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid(), Secret = secondKey };
         state.Phones.Add(second);
         StateStore.Save(state);
+        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null) {
+            var at = timestamp ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var inner = JsonSerializer.SerializeToUtf8Bytes(new {
+                version = "2", hostID = Upper(invitation.HostId),
+                physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(nonce), ack = "",
+                mac = Hex(Hmac(secondKey,
+                    $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|"))
+            });
+            var iv = RandomNumberGenerator.GetBytes(12);
+            var cipher = new byte[inner.Length];
+            var tag = new byte[16];
+            var aad = Encoding.UTF8.GetBytes(
+                $"v3|request|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|{at}");
+            using (var aes = new AesGcm(secondKey, 16))
+                aes.Encrypt(iv, inner, cipher, tag, aad);
+            return await ExchangeAsync(new {
+                version = "3", hostID = Upper(invitation.HostId),
+                physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(nonce),
+                issuedAt = at, box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray())
+            });
+        }
+        var secureNonce = Guid.NewGuid();
+        _ = Open(await SecurePull(secureNonce), secondKey, invitation.HostId,
+            second.PhysicalDeviceId, secureNonce);
+        Check((await SecurePull(secureNonce)).Length == 0,
+            "Sealed transfer replay was accepted.");
+        Check((await SecurePull(Guid.NewGuid(),
+            DateTimeOffset.UtcNow.AddHours(-1).ToUnixTimeSeconds())).Length == 0,
+            "Expired sealed transfer was accepted.");
+        var oldNonce = Guid.NewGuid();
+        Check((await ExchangeAsync(new {
+            version = "2", hostID = Upper(invitation.HostId),
+            physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(oldNonce), ack = "",
+            mac = Hex(Hmac(secondKey,
+                $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(oldNonce)}|"))
+        })).Length == 0 && StateStore.Load().SecureTransferPhones.Contains(second.PhysicalDeviceId) &&
+            StateStore.Load().UsedRequestNonces.ContainsKey(secureNonce),
+            "Secure pairing downgraded after update or state reload.");
         server.Revoke(state.Phones[0]);
         Check(state.Phones.Count == 1 && state.Phones[0] == second &&
             state.RevokedPhones.Count == 1, "Revoking one phone removed another pairing.");
@@ -555,7 +593,7 @@ static class Program
         Check(secondReply.GetProperty("type").GetString() == "unpair-ack" &&
             state.Phones.Count == 0 && state.RevokedPhones.Count == 2,
             "Phone-initiated removal did not persist on Windows.");
-        Console.WriteLine("PASS: v3 identity pairing, encrypted v2 log, ACK, and replay rejection");
+        Console.WriteLine("PASS: v3 identity pairing, sealed transfer, ACK, replay and downgrade rejection");
         var directUdid = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_UDID");
         var directAddress = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_ADDRESS");
         if (!string.IsNullOrWhiteSpace(directUdid) && !string.IsNullOrWhiteSpace(directAddress))

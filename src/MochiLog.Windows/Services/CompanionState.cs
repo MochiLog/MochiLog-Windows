@@ -33,6 +33,8 @@ public sealed class CompanionState
     public Dictionary<string, UnclassifiedObservation> UnclassifiedObservations { get; set; } = [];
     public Dictionary<string, byte[]> PhoneDiagnostics { get; set; } = [];
     public Dictionary<string, CollectionResult> LastCollections { get; set; } = [];
+    public Dictionary<Guid, DateTimeOffset> UsedRequestNonces { get; set; } = [];
+    public HashSet<Guid> SecureTransferPhones { get; set; } = [];
 }
 
 public sealed class UnclassifiedObservation

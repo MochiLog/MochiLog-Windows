@@ -45,6 +45,9 @@ public sealed partial class HomePage : Page
     {
         InitializeComponent();
         SubtitleText.Text = UiText.Get("win_subtitle");
+        LegacyMobileNotice.Title = UiText.Get("win_mobile_update_needed");
+        LegacyMobileNotice.Message = UiText.Get("win_mobile_update_detail");
+        LegacyMobileLink.Content = UiText.Get("win_mobile_update_link");
         FirstConnectionTitle.Text = UiText.Get("win_intro_title");
         FirstConnectionDescription.Text = UiText.Get("win_intro_detail");
         StatusTitle.Text = UiText.Get("win_status_title");
@@ -91,6 +94,10 @@ public sealed partial class HomePage : Page
     }
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(Render);
+
+    private async void LegacyMobileClicked(object sender, RoutedEventArgs args) =>
+        await Windows.System.Launcher.LaunchUriAsync(
+            new Uri("https://apps.apple.com/app/mochilog/id6756904240"));
 
     private void ContentViewportSizeChanged(object sender, SizeChangedEventArgs args)
     {
@@ -153,6 +160,7 @@ public sealed partial class HomePage : Page
 
     private void Render()
     {
+        LegacyMobileNotice.IsOpen = _runtime.LegacyPhoneIds.Count > 0;
         FirstConnectionCard.Visibility = _runtime.State.Phones.Count == 0
             ? Visibility.Visible : Visibility.Collapsed;
         var usbDevices = _runtime.Available.Where(device => device.UsbConnected).ToArray();
