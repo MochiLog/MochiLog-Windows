@@ -219,7 +219,9 @@ static class Program
         foreach (var item in values) canonical[item.Key] = item.Value;
         canonical["IsCharging"] = false;
         var revision = Hex(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(canonical)));
-        server.LiveBattery.Set(id, new(values, revision, DateTimeOffset.UtcNow, false));
+        const string allFields = "[{\"path\":[\"BatteryData\",\"Huge\"],\"kind\":\"number\",\"value\":\"18446744073709551615\"}]";
+        var allFieldsHash = Hex(SHA256.HashData(Encoding.UTF8.GetBytes(allFields)));
+        server.LiveBattery.Set(id, new(values, revision, DateTimeOffset.UtcNow, false, allFields, allFieldsHash));
         server.LiveBatteryRequested += (_, _) => Console.WriteLine("authenticated live request");
         try {
             server.Start();
