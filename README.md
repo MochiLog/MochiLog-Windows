@@ -4,9 +4,13 @@ MochiLog Windows は、iPhone・iPad のバッテリー解析ログを PC で収
 
 Windows 11 と iOS/iPadOS 27 向けです。[GitHub Releases](https://github.com/MochiLog/MochiLog-Windows/releases)からインストーラーを入手してください。Python や .NET を別途入れる必要はありません。**初回の USB 信頼設定には、Apple Devices または Apple 公式サイト配布のクラシック版 iTunes が必要**です。どちらか一方を用意してください。現在のアルファ版インストーラーはコード署名されていません。
 
-初回は端末をロック解除して USB 接続し、「このコンピュータを信頼」を許可します。Windows アプリの「端末」で無線接続を確認したら、PC の QR を端末の「MochiLog → 設定 → 高度な設定 → Mac 連携」で読み取り、確認コードを入力します。以後は PC に収集済みのログを、端末で MochiLog を開くと受信できます。Windows もスマホ版の「Mac 連携」画面で管理します。
+初回は端末をロック解除して USB 接続し、「このコンピュータを信頼」を許可します。Windows アプリの「端末」で無線接続を確認したら、PC の QR を端末の「MochiLog → 設定 → 高度な設定 → PC 連携」で読み取り、確認コードを入力します。以後は PC に収集済みのログを、端末で MochiLog を開くと受信できます。Windows もスマホ版の「PC 連携」画面で管理します。
 
 詳しい画面ごとの手順、Apple Devices に端末が出ない場合の対処、日々の使い方は[日本語・英語の利用ガイド](docs/USER_GUIDE.md)をご覧ください。開発・ビルド・依存関係・転送プロトコルの情報は[開発者向け文書](docs/DEVELOPMENT.md)にあります。
+
+## 現在のバッテリー値（ベータ）
+
+スマホの高度な設定でオンにすると、新しいタブで現在の充放電回数・容量を確認できます。履歴には保存しません。PCの概要画面にも端末ごとに表示します。詳しくは利用ガイドをご覧ください。
 
 ---
 
@@ -14,6 +18,8 @@ MochiLog Windows is an alpha companion that collects iPhone and iPad battery ana
 
 It supports Windows 11 and iOS/iPadOS 27. Download the installer from [GitHub Releases](https://github.com/MochiLog/MochiLog-Windows/releases). Python and .NET are included. **Initial USB trust requires either Apple Devices or the classic iTunes EXE from Apple's website.** The current alpha installer is not code signed.
 
-Unlock the device, connect it by USB once, and approve **Trust This Computer**. After the Windows app confirms wireless access, scan its QR in **MochiLog → Settings → Advanced Settings → Mac Transfer** and enter the confirmation code. Windows pairings also appear on that mobile screen.
+Unlock the device, connect it by USB once, and approve **Trust This Computer**. After the Windows app confirms wireless access, scan its QR in **MochiLog → Settings → Advanced Settings → PC Transfer** and enter the confirmation code. Windows pairings also appear on that mobile screen.
 
 See the [Japanese and English user guide](docs/USER_GUIDE.md) for detailed setup, Apple Devices troubleshooting, and everyday use. Build, dependency, and protocol details are in the [developer notes](docs/DEVELOPMENT.md).
+
+Current battery values are also available in the computer dashboard and an optional mobile tab, disabled by default. These values are not saved as history. See the user guide for details.
