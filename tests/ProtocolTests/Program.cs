@@ -202,8 +202,42 @@ static class Program
         return (name, plain.AsSpan(2 + nameLength).ToArray());
     }
 
-    public static async Task Main()
+    // Isolated synthetic cross-platform fixture. No real pairing or collector.
+    private static async Task ServeLiveSimulator()
     {
+        var id = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var phone = new PairedPhone { Udid = "synthetic", Name = "iPhone Test", Model = "iPhone",
+            PhysicalDeviceId = id, Secret = Enumerable.Repeat((byte)7, 32).ToArray(),
+            ConfirmedAt = DateTimeOffset.UtcNow };
+        var state = new CompanionState {
+            HostId = Guid.Parse("00000000-0000-0000-0000-000000000001"), Phones = [phone] };
+        using var server = new TransferServer(state, 0);
+        var values = new Dictionary<string, int> { ["CycleCount"] = 245, ["DesignCapacity"] = 4000,
+            ["NominalChargeCapacity"] = 3820, ["AppleRawMaxCapacity"] = 3850,
+            ["FullChargeCapacity"] = 3800, ["CurrentCapacity"] = 67 };
+        var canonical = new SortedDictionary<string, object>(StringComparer.Ordinal);
+        foreach (var item in values) canonical[item.Key] = item.Value;
+        canonical["IsCharging"] = false;
+        var revision = Hex(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(canonical)));
+        server.LiveBattery.Set(id, new(values, revision, DateTimeOffset.UtcNow, false));
+        server.LiveBatteryRequested += (_, _) => Console.WriteLine("authenticated live request");
+        try {
+            server.Start();
+            Console.WriteLine("PORT=" + server.ListeningPort);
+            Console.Out.Flush();
+            await Task.Delay(TimeSpan.FromMinutes(10));
+        } finally {
+            server.Dispose();
+            if (Directory.Exists(StateStore.Root)) Directory.Delete(StateStore.Root, true);
+        }
+    }
+
+    public static async Task Main(string[] args)
+    {
+        if (args.SequenceEqual(new[] { "--live-simulator" })) {
+            await ServeLiveSimulator();
+            return;
+        }
         CheckCurrentDiagnostics();
         CheckArchiveExchange();
         CheckBatteryLogStorage();
