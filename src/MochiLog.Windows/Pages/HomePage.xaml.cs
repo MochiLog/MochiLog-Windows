@@ -45,7 +45,7 @@ public sealed partial class HomePage : Page
     {
         InitializeComponent();
         LiveBatteryTitle.Text = UiText.Get("live_title");
-        LiveBatteryNote.Text = UiText.Get("live_note");
+        LiveBatteryNote.Text = UiText.Get("live_note") + "\n" + UiText.Get("live_network_note");
         LiveBatteryReceive.Content = UiText.Get("live_receive");
         LiveBatterySend.Content = UiText.Get("live_send");
         SubtitleText.Text = UiText.Get("win_subtitle");
@@ -247,6 +247,30 @@ public sealed partial class HomePage : Page
             panel.Children.Add(grid);
             if (snapshot is not null) panel.Children.Add(new TextBlock {
                 Text = UiText.Get("live_last") + " · " + snapshot.AcquiredAt.ToLocalTime().ToString("G"), Opacity = 0.68 });
+            if (snapshot is not null) {
+                var details = new StackPanel { Spacing = 12 };
+                details.Children.Add(new TextBlock { Text = UiText.Get("live_details_note"), TextWrapping = TextWrapping.Wrap, Opacity = 0.68 });
+                var fields = snapshot.Fields;
+                if (fields.Length == 0) details.Children.Add(new TextBlock { Text = UiText.Get("live_details_missing"), TextWrapping = TextWrapping.Wrap });
+                foreach (var group in fields.GroupBy(f => f.Group).OrderBy(g => g.Key, StringComparer.Ordinal)) {
+                    var rows = new StackPanel { Spacing = 12 };
+                    foreach (var field in group) {
+                        var row = new Grid { ColumnSpacing = 16 };
+                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                        row.Children.Add(new TextBlock { Text = field.Label, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+                        var value = new TextBlock { Text = field.Kind == "boolean" ? UiText.Get(field.Value == "true" ? "live_true" : "live_false")
+                            : (field.Kind == "data" ? "Base64 · " : "") + field.Value,
+                            TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true,
+                            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono") };
+                        Grid.SetColumn(value, 1); row.Children.Add(value); rows.Children.Add(row);
+                    }
+                    details.Children.Add(new Expander { Header = (group.Key.Length == 0 ? UiText.Get("live_details_general") : group.Key) + " · " + group.Count(),
+                        Content = rows, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
+                }
+                panel.Children.Add(new Expander { Header = UiText.Get("live_details"), Content = details,
+                    HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
+            }
             if (_runtime.LiveBatteryFailures.ContainsKey(phone.PhysicalDeviceId))
                 panel.Children.Add(new TextBlock { Text = UiText.Get("live_unavailable"), TextWrapping = TextWrapping.Wrap,
                     Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange) });

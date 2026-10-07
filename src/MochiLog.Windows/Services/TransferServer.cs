@@ -467,7 +467,8 @@ public sealed class TransferServer : IDisposable
             if (Get(request, "liveBatteryVersion") is not null)
             {
                 if (!secure || Get(request, "liveBatteryVersion") != "1" || ack.Length != 0) return null;
-                var control = LiveBattery.Response(physicalId, Get(request, "liveBatteryRevision"));
+                var control = LiveBattery.Response(physicalId, Get(request, "liveBatteryRevision"),
+                    Get(request, "liveBatteryDetailsVersion") == "1", Get(request, "liveBatteryDetailsRevision"));
                 LiveBatteryRequested?.Invoke(phone, Get(request, "liveBatteryRefresh") == "1");
                 return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
                     new byte[] { 0, 0 }.Concat(control).ToArray());

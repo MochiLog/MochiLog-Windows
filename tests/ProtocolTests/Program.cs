@@ -555,7 +555,7 @@ static class Program
             Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid(), Secret = secondKey };
         state.Phones.Add(second);
         StateStore.Save(state);
-        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null, string? liveRevision = null) {
+        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null, string? liveRevision = null, string? detailsRevision = null) {
             var at = timestamp ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var inner = JsonSerializer.SerializeToUtf8Bytes(new {
                 version = "2", hostID = Upper(invitation.HostId),
@@ -563,7 +563,8 @@ static class Program
                 mac = Hex(Hmac(secondKey,
                     $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|")),
                 liveBatteryVersion = liveRevision is null ? null : "1",
-                liveBatteryRevision = liveRevision
+                liveBatteryRevision = liveRevision, liveBatteryDetailsVersion = detailsRevision is null ? null : "1",
+                liveBatteryDetailsRevision = detailsRevision
             });
             var iv = RandomNumberGenerator.GetBytes(12);
             var cipher = new byte[inner.Length];
@@ -583,6 +584,12 @@ static class Program
              "revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
              "acquiredAt":"2026-10-07T12:00:00Z"}
             """);
+        const string details = "[{\"path\":[\"BatteryData\",\"Huge\"],\"kind\":\"number\",\"value\":\"18446744073709551615\"}]";
+        var detailsHash = Hex(SHA256.HashData(Encoding.UTF8.GetBytes(details)));
+        liveFixture = liveFixture with { DetailsJSON = details, DetailsRevision = detailsHash };
+        Check(liveFixture.Fields[0].Value == "18446744073709551615", "Large integer lost precision");
+        try { RawBatteryField.Decode(details + " ", detailsHash); throw new Exception("Tampering accepted"); }
+        catch (InvalidDataException) { }
         server.LiveBattery.Set(second.PhysicalDeviceId, liveFixture);
         var liveNonce = Guid.NewGuid();
         var liveReply = Open(await SecurePull(liveNonce, liveRevision: ""), secondKey,
@@ -596,6 +603,19 @@ static class Program
         liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
         Check(!liveJson.TryGetProperty("values", out _) && liveJson.TryGetProperty("acquiredAt", out _),
             "Unchanged values were resent or acquisition timestamp omitted.");
+        Check(!liveJson.TryGetProperty("detailsJSON", out _), "Legacy client received raw details");
+        liveNonce = Guid.NewGuid();
+        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision, detailsRevision: ""),
+            secondKey, invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
+        Check(liveJson.GetProperty("detailsJSON").GetString() == details && !liveJson.TryGetProperty("values", out _),
+            "Detail changes were coupled to core revision");
+        liveNonce = Guid.NewGuid();
+        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision, detailsRevision: detailsHash),
+            secondKey, invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
+        Check(!liveJson.TryGetProperty("detailsJSON", out _) && liveJson.GetProperty("detailsRevision").GetString() == detailsHash,
+            "Unchanged details were resent");
         server.LiveBattery.Set(second.PhysicalDeviceId, null);
         liveNonce = Guid.NewGuid();
         liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision), secondKey,
