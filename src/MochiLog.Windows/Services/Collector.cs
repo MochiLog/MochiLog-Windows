@@ -60,6 +60,16 @@ public static partial class Collector
         return stdout;
     }
 
+    public static async Task<LiveBatterySnapshot> CurrentBatteryAsync(PairedPhone phone,
+        CancellationToken cancellation = default)
+    {
+        var arguments = new List<string> { "battery-snapshot", "--udid", phone.Udid };
+        var address = phone.ManualAddress ?? phone.LastKnownAddress;
+        if (!string.IsNullOrEmpty(address)) arguments.AddRange(["--host", address]);
+        // RunAsync uses private redirected streams, never log storage.
+        return LiveBatterySnapshot.Parse(await RunAsync(arguments, TimeSpan.FromSeconds(45), cancellation));
+    }
+
     internal static string? ToolFailureLine(string stdout, string stderr)
     {
         static string[] Lines(string value) =>

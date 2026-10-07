@@ -20,7 +20,7 @@ if ((& $venvPython -c 'import sys; print(sys.version_info >= (3, 13))') -ne 'Tru
 if ($LASTEXITCODE -ne 0) { throw "Could not install pinned collector build dependencies." }
 & $venvPython -m PyInstaller --noconfirm --clean --onefile `
     --collect-all pymobiledevice3 --collect-all pytun_pmd3 `
-    --hidden-import DirectRsd --collect-all sslpsk_pmd3 `
+    --hidden-import DirectRsd --hidden-import BatterySnapshot --collect-all sslpsk_pmd3 `
     --recursive-copy-metadata pymobiledevice3 --name pymobiledevice3 `
     --distpath Build\Collector --workpath Build\PyInstaller --specpath Build CollectorEntry.py
 if ($LASTEXITCODE -ne 0) { throw "Collector bundling failed." }

@@ -521,13 +521,15 @@ static class Program
             Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid(), Secret = secondKey };
         state.Phones.Add(second);
         StateStore.Save(state);
-        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null) {
+        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null, string? liveRevision = null) {
             var at = timestamp ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var inner = JsonSerializer.SerializeToUtf8Bytes(new {
                 version = "2", hostID = Upper(invitation.HostId),
                 physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(nonce), ack = "",
                 mac = Hex(Hmac(secondKey,
-                    $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|"))
+                    $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|")),
+                liveBatteryVersion = liveRevision is null ? null : "1",
+                liveBatteryRevision = liveRevision
             });
             var iv = RandomNumberGenerator.GetBytes(12);
             var cipher = new byte[inner.Length];
@@ -542,6 +544,31 @@ static class Program
                 issuedAt = at, box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray())
             });
         }
+        var liveFixture = LiveBatterySnapshot.Parse("""
+            {"version":1,"values":{"CycleCount":245,"DesignCapacity":4000},
+             "revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+             "acquiredAt":"2026-10-07T12:00:00Z"}
+            """);
+        server.LiveBattery.Set(second.PhysicalDeviceId, liveFixture);
+        var liveNonce = Guid.NewGuid();
+        var liveReply = Open(await SecurePull(liveNonce, liveRevision: ""), secondKey,
+            invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        var liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
+        Check(liveReply.Name.Length == 0 && liveJson.GetProperty("type").GetString() == "live-battery" &&
+            liveJson.TryGetProperty("values", out _), "Live battery returned a log or omitted values.");
+        liveNonce = Guid.NewGuid();
+        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision), secondKey,
+            invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
+        Check(!liveJson.TryGetProperty("values", out _) && liveJson.TryGetProperty("acquiredAt", out _),
+            "Unchanged values were resent or acquisition timestamp omitted.");
+        server.LiveBattery.Set(second.PhysicalDeviceId, null);
+        liveNonce = Guid.NewGuid();
+        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision), secondKey,
+            invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
+        Check(liveJson.GetProperty("state").GetString() == "stale", "Stale battery was shown as current.");
+        Check(!JsonSerializer.Serialize(state).Contains("DesignCapacity"), "Current values were persisted.");
         var secureNonce = Guid.NewGuid();
         _ = Open(await SecurePull(secureNonce), secondKey, invitation.HostId,
             second.PhysicalDeviceId, secureNonce);

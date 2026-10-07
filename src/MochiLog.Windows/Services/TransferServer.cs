@@ -52,6 +52,8 @@ public sealed class TransferServer : IDisposable
     public event Action<PairedPhone>? LegacyPhoneDetected;
     public event Action<PairedPhone>? SecurePhoneDetected;
     public event Action? PairingRevoked;
+    public LiveBatteryCache LiveBattery { get; } = new();
+    public event Action<PairedPhone, bool>? LiveBatteryRequested;
     public Func<PairedPhone, byte[]>? SupportReport { get; set; }
 
     public TransferServer(CompanionState state, int? preferredPort = null)
@@ -461,6 +463,14 @@ public sealed class TransferServer : IDisposable
                 phone.ConfirmedAt = now;
                 StateStore.Save(_state);
                 PhoneConfirmed?.Invoke(phone);
+            }
+            if (Get(request, "liveBatteryVersion") is not null)
+            {
+                if (!secure || Get(request, "liveBatteryVersion") != "1" || ack.Length != 0) return null;
+                var control = LiveBattery.Response(physicalId, Get(request, "liveBatteryRevision"));
+                LiveBatteryRequested?.Invoke(phone, Get(request, "liveBatteryRefresh") == "1");
+                return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
+                    new byte[] { 0, 0 }.Concat(control).ToArray());
             }
             if (Get(request, "clientDiagnosticsBox") is { } encoded &&
                 TryBase64UpTo(encoded, 8_256, out var diagnosticBox) &&

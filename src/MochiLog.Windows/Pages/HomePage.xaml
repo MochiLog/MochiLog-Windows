@@ -94,6 +94,20 @@
                 </Grid>
             </Border>
 
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="20" Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock x:Name="LiveBatteryTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="LiveBatteryNote" TextWrapping="Wrap" Opacity="0.68" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="LiveBatteryReceive" Click="LiveBatteryReceiveClicked" />
+                        <Button x:Name="LiveBatterySend" Click="LiveBatterySendClicked" />
+                    </StackPanel>
+                    <StackPanel x:Name="LiveBatteryCards" Spacing="20" />
+                </StackPanel>
+            </Border>
+
             <Grid x:Name="DashboardGrid" ColumnSpacing="20" RowSpacing="20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="MainColumn" Width="*" />

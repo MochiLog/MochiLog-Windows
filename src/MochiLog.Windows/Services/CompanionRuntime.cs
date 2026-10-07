@@ -27,6 +27,12 @@ public sealed class CompanionRuntime : IDisposable
     private static string ArchiveRoot => Path.Combine(StateStore.Root, "DebugLogs");
     private static string RetentionFile => Path.Combine(StateStore.Root, "debug-retention-days.txt");
     private static string MigrationFile => Path.Combine(StateStore.Root, "debug-archive-migrated");
+    public ConcurrentDictionary<Guid, LiveBatterySnapshot> LiveBatterySnapshots { get; } = new();
+    public ConcurrentDictionary<Guid, byte> LiveBatteryFailures { get; } = new();
+    public ConcurrentDictionary<Guid, byte> LiveBatteryBusy { get; } = new();
+    private readonly ConcurrentDictionary<Guid, DateTimeOffset> _batteryInterest = new();
+    private readonly ConcurrentDictionary<Guid, DateTimeOffset> _batteryAttempt = new();
+    private int _batteryViewers;
     private bool _started;
 
     private CompanionRuntime()
@@ -38,6 +44,10 @@ public sealed class CompanionRuntime : IDisposable
         MigrateLegacyEvents();
         Server = new TransferServer(State);
         Server.SupportReport = BuildTransferReport;
+        Server.LiveBatteryRequested += (phone, manual) => {
+            _batteryInterest[phone.PhysicalDeviceId] = DateTimeOffset.UtcNow;
+            _ = RefreshBatteryAsync(phone, manual);
+        };
         Server.StatusChanged += message => Record(message);
         Server.PhoneConfirmed += phone => {
             Record($"{phone.Name}: app pairing confirmed");
@@ -72,7 +82,75 @@ public sealed class CompanionRuntime : IDisposable
         try { Server.Start(); }
         catch (Exception error) { Record("Transfer server could not start: " + error.Message); }
         _ = PeriodicCollectionAsync(_lifetime.Token);
+        _ = PeriodicBatteryAsync(_lifetime.Token);
         _ = RefreshAsync();
+    }
+
+    public void WatchBattery(bool visible)
+    {
+        Interlocked.Exchange(ref _batteryViewers, visible ? 1 : 0);
+        if (visible) _ = RefreshAllBatteryAsync();
+    }
+
+    public async Task RefreshAllBatteryAsync()
+    {
+        PairedPhone[] phones;
+        lock (State) { phones = State.Phones.ToArray(); }
+        foreach (var phone in phones) await RefreshBatteryAsync(phone, true);
+    }
+
+    public async Task SendBatteryNowAsync()
+    {
+        await RefreshAllBatteryAsync();
+        Server.AnnounceQueuedFiles();
+    }
+
+    public async Task RefreshBatteryAsync(PairedPhone phone, bool manual = false)
+    {
+        var id = phone.PhysicalDeviceId;
+        if (!manual && _batteryAttempt.TryGetValue(id, out var previous) &&
+            DateTimeOffset.UtcNow - previous < TimeSpan.FromSeconds(LiveBatteryFailures.ContainsKey(id) ? 60 : 15)) return;
+        if (!await _collection.WaitAsync(0)) return;
+        try {
+            lock (State) { if (!State.Phones.Contains(phone)) return; }
+            _batteryAttempt[id] = DateTimeOffset.UtcNow;
+            LiveBatteryBusy[id] = 0;
+            Changed?.Invoke();
+            try {
+                var snapshot = await Task.Run(() => Collector.CurrentBatteryAsync(phone, _lifetime.Token));
+                lock (State) {
+                    if (!State.Phones.Contains(phone)) { Server.LiveBattery.Remove(id); return; }
+                }
+                LiveBatterySnapshots[id] = snapshot;
+                LiveBatteryFailures.TryRemove(id, out _);
+                Server.LiveBattery.Set(id, snapshot);
+            } catch {
+                LiveBatteryFailures[id] = 0;
+                Server.LiveBattery.Set(id, null);
+            }
+        } finally {
+            _batteryAttempt[id] = DateTimeOffset.UtcNow;
+            LiveBatteryBusy.TryRemove(id, out _);
+            _collection.Release();
+            Changed?.Invoke();
+        }
+    }
+
+    private async Task PeriodicBatteryAsync(CancellationToken cancellation)
+    {
+        try {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+            while (await timer.WaitForNextTickAsync(cancellation)) {
+                PairedPhone[] phones;
+                lock (State) { phones = State.Phones.ToArray(); }
+                foreach (var phone in phones) {
+                    if (Volatile.Read(ref _batteryViewers) > 0 ||
+                        (_batteryInterest.TryGetValue(phone.PhysicalDeviceId, out var contact) &&
+                         DateTimeOffset.UtcNow - contact < TimeSpan.FromSeconds(45)))
+                        await RefreshBatteryAsync(phone);
+                }
+            }
+        } catch (OperationCanceledException) { }
     }
 
     public async Task RefreshAsync()

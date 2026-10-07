@@ -36,6 +36,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Closing += (_, args) => {
             if (_quitting || _tray is null || !TrayPreferences.Enabled) return;
             args.Cancel = true;
+            CompanionRuntime.Shared.WatchBattery(false);
             AppWindow.Hide();
         };
         Closed += (_, _) => DisposeTray();
@@ -60,6 +61,7 @@ public sealed partial class MainWindow : Window
     public void Restore()
     {
         AppWindow.Show();
+        CompanionRuntime.Shared.WatchBattery(true);
         Activate();
         if (_pendingUpdate is not null) _ = PromptForUpdateAsync();
     }

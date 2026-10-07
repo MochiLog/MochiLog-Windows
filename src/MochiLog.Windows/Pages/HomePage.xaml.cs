@@ -44,6 +44,10 @@ public sealed partial class HomePage : Page
     public HomePage()
     {
         InitializeComponent();
+        LiveBatteryTitle.Text = UiText.Get("live_title");
+        LiveBatteryNote.Text = UiText.Get("live_note");
+        LiveBatteryReceive.Content = UiText.Get("live_receive");
+        LiveBatterySend.Content = UiText.Get("live_send");
         SubtitleText.Text = UiText.Get("win_subtitle");
         LegacyMobileNotice.Title = UiText.Get("win_mobile_update_needed");
         LegacyMobileNotice.Message = UiText.Get("win_mobile_update_detail");
@@ -89,8 +93,8 @@ public sealed partial class HomePage : Page
             UnpairButton.IsEnabled = PairedList.SelectedIndex >= 0 &&
                 PairedList.SelectedIndex < _runtime.State.Phones.Count;
         };
-        Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); _ = CheckAppleSoftwareAsync(); };
-        Unloaded += (_, _) => _runtime.Changed -= RuntimeChanged;
+        Loaded += (_, _) => { _runtime.WatchBattery(true); _runtime.Changed += RuntimeChanged; Render(); _ = CheckAppleSoftwareAsync(); };
+        Unloaded += (_, _) => { _runtime.WatchBattery(false); _runtime.Changed -= RuntimeChanged; };
     }
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(Render);
@@ -104,6 +108,7 @@ public sealed partial class HomePage : Page
         var viewport = (Application.Current as MochiLog_Windows.App)?.MainWindow?.ContentViewportWidth
             ?? args.NewSize.Width;
         ContentColumn.Width = Math.Min(1500, Math.Max(480, viewport - 32));
+        RenderLiveBattery();
         var usable = ContentColumn.Width - 72;
         DashboardGrid.Width = usable;
         StatusCard.Width = usable;
@@ -160,6 +165,7 @@ public sealed partial class HomePage : Page
 
     private void Render()
     {
+        RenderLiveBattery();
         LegacyMobileNotice.IsOpen = _runtime.LegacyPhoneIds.Count > 0;
         FirstConnectionCard.Visibility = _runtime.State.Phones.Count == 0
             ? Visibility.Visible : Visibility.Collapsed;
@@ -201,6 +207,54 @@ public sealed partial class HomePage : Page
             _usbDevice is not null;
         UnpairButton.IsEnabled = PairedList.SelectedIndex >= 0 &&
             PairedList.SelectedIndex < _runtime.State.Phones.Count;
+    }
+
+    private async void LiveBatteryReceiveClicked(object sender, RoutedEventArgs args) =>
+        await _runtime.RefreshAllBatteryAsync();
+    private async void LiveBatterySendClicked(object sender, RoutedEventArgs args) =>
+        await _runtime.SendBatteryNowAsync();
+
+    private void RenderLiveBattery()
+    {
+        LiveBatteryCards.Children.Clear();
+        foreach (var phone in _runtime.State.Phones.ToArray())
+        {
+            _runtime.LiveBatterySnapshots.TryGetValue(phone.PhysicalDeviceId, out var snapshot);
+            var panel = new StackPanel { Spacing = 12 };
+            panel.Children.Add(new TextBlock { Text = phone.Name + " · " + phone.Model,
+                FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            var grid = new Grid { ColumnSpacing = 20, RowSpacing = 16 };
+            var columns = ContentColumn.Width >= 900 ? 3 : 2;
+            for (var column = 0; column < columns; column++)
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            for (var row = 0; row < (6 + columns - 1) / columns; row++)
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var keys = new[] { "CycleCount", "DesignCapacity", "NominalChargeCapacity",
+                "AppleRawMaxCapacity", "FullChargeCapacity", "CurrentCapacity" };
+            for (var index = 0; index < keys.Length; index++)
+            {
+                var key = keys[index];
+                var cell = new StackPanel { Spacing = 5 };
+                cell.Children.Add(new TextBlock { Text = UiText.Get("live_" + key), Opacity = 0.68, TextWrapping = TextWrapping.Wrap });
+                cell.Children.Add(new TextBlock {
+                    Text = snapshot?.Values.TryGetValue(key, out var number) == true
+                        ? number.ToString("N0") + (key == "CycleCount" ? "" : key == "CurrentCapacity" ? "%" : " mAh")
+                        : UiText.Get("live_missing"),
+                    FontSize = 24, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+                Grid.SetRow(cell, index / columns); Grid.SetColumn(cell, index % columns);
+                grid.Children.Add(cell);
+            }
+            panel.Children.Add(grid);
+            if (snapshot is not null) panel.Children.Add(new TextBlock {
+                Text = UiText.Get("live_last") + " · " + snapshot.AcquiredAt.ToLocalTime().ToString("G"), Opacity = 0.68 });
+            if (_runtime.LiveBatteryFailures.ContainsKey(phone.PhysicalDeviceId))
+                panel.Children.Add(new TextBlock { Text = UiText.Get("live_unavailable"), TextWrapping = TextWrapping.Wrap,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange) });
+            LiveBatteryCards.Children.Add(new Border { Child = panel, Padding = new Thickness(16), CornerRadius = new CornerRadius(12),
+                Background = new SolidColorBrush(Microsoft.UI.Colors.Gray) { Opacity = 0.08 } });
+        }
+        LiveBatteryReceive.IsEnabled = _runtime.LiveBatteryBusy.IsEmpty && _runtime.State.Phones.Count > 0;
+        LiveBatterySend.IsEnabled = LiveBatteryReceive.IsEnabled;
     }
 
     private async void RefreshClicked(object sender, RoutedEventArgs args) =>
