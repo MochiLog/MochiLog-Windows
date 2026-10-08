@@ -37,6 +37,7 @@ public sealed class CompanionRuntime : IDisposable
 
     private CompanionRuntime()
     {
+        Collector.Trace = Record;
         State = StateStore.Load();
         try { _events.AddRange(JsonSerializer.Deserialize<string[]>(File.ReadAllText(EventsFile)) ?? []); }
         catch (IOException) { }
@@ -110,11 +111,12 @@ public sealed class CompanionRuntime : IDisposable
         var id = phone.PhysicalDeviceId;
         if (!manual && _batteryAttempt.TryGetValue(id, out var previous) &&
             DateTimeOffset.UtcNow - previous < TimeSpan.FromSeconds(LiveBatteryFailures.ContainsKey(id) ? 60 : 15)) return;
-        if (!await _collection.WaitAsync(0)) return;
+        if (!LiveBatteryBusy.TryAdd(id, 0)) return;
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        Record($"Battery snapshot started; device={id:D}, trigger={(manual ? "manual" : "automatic")}, independentOfLogCollection=true");
         try {
             lock (State) { if (!State.Phones.Contains(phone)) return; }
             _batteryAttempt[id] = DateTimeOffset.UtcNow;
-            LiveBatteryBusy[id] = 0;
             Changed?.Invoke();
             try {
                 var snapshot = await Task.Run(() => Collector.CurrentBatteryAsync(phone, _lifetime.Token));
@@ -124,14 +126,15 @@ public sealed class CompanionRuntime : IDisposable
                 LiveBatterySnapshots[id] = snapshot;
                 LiveBatteryFailures.TryRemove(id, out _);
                 Server.LiveBattery.Set(id, snapshot);
-            } catch {
+            } catch (Exception error) {
+                Record($"Battery snapshot failed; device={id:D}, error={error.Message}");
                 LiveBatteryFailures[id] = 0;
                 Server.LiveBattery.Set(id, null);
             }
         } finally {
             _batteryAttempt[id] = DateTimeOffset.UtcNow;
             LiveBatteryBusy.TryRemove(id, out _);
-            _collection.Release();
+            Record($"Battery snapshot finished; device={id:D}, elapsedMs={started.ElapsedMilliseconds}, failed={LiveBatteryFailures.ContainsKey(id)}");
             Changed?.Invoke();
         }
     }
@@ -308,6 +311,7 @@ public sealed class CompanionRuntime : IDisposable
                 }
                 if (manual || !_automaticFailures.ContainsKey(phone.PhysicalDeviceId))
                     Record($"{phone.Name}: collection started; trigger={(manual ? "manual request" : trigger)}");
+                var started = System.Diagnostics.Stopwatch.StartNew();
                 CollectionStatus = UiText.Format("win_reading", phone.Name);
                 Changed?.Invoke();
                 try
@@ -325,7 +329,7 @@ public sealed class CompanionRuntime : IDisposable
                     }
                     Record(CollectionStatus);
                     Record($"{phone.Name}: collection finished; saved={result.Saved}, " +
-                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}");
+                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, elapsedMs={started.ElapsedMilliseconds}");
                 }
                 catch (Exception error) {
                     CollectionStatus = UiText.Format("win_collection_result", phone.Name, 0, 0, 1) +

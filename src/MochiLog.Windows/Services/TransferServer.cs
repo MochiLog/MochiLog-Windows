@@ -59,6 +59,7 @@ public sealed class TransferServer : IDisposable
     public TransferServer(CompanionState state, int? preferredPort = null)
     {
         _state = state;
+        _cloudSharing.Audit = message => StatusChanged?.Invoke(message);
         _preferredPort = preferredPort ?? PreferredPort;
     }
 
@@ -261,8 +262,29 @@ public sealed class TransferServer : IDisposable
                     }
                     return;
                 }
+                var preparedAt = System.Diagnostics.Stopwatch.StartNew();
                 var packet = Pull(root, peer);
-                if (packet is not null) await stream.WriteAsync(packet, timeout.Token);
+                if (packet is not null) {
+                    var prepareMs = preparedAt.ElapsedMilliseconds;
+                    var requestId = Get(root, "nonce") ?? "control";
+                    var recipient = Get(root, "physicalDeviceID") ?? "control";
+                    var sent = 0;
+                    var started = System.Diagnostics.Stopwatch.StartNew();
+                    var lastProgress = 0L;
+                    try {
+                        // Request deadline ends here; the body has its own rolling idle deadline.
+                        timeout.CancelAfter(Timeout.InfiniteTimeSpan);
+                        await TransferWriteLoop.WriteAsync(stream, packet, TimeSpan.FromSeconds(25), timeout.Token, count => {
+                            sent = count;
+                            if (started.ElapsedMilliseconds - lastProgress >= 30000) {
+                                lastProgress = started.ElapsedMilliseconds;
+                                StatusChanged?.Invoke($"Transfer trace: write progress request={requestId}, recipient={recipient}, bytes={sent}/{packet.Length}, elapsedMs={started.ElapsedMilliseconds}");
+                            }
+                        });
+                    } finally {
+                        StatusChanged?.Invoke($"Transfer trace: write request={requestId}, recipient={recipient}, bytes={sent}/{packet.Length}, prepareMs={prepareMs}, writeMs={started.ElapsedMilliseconds}; TCP write only, awaiting app ACK");
+                    }
+                }
             }
             catch (OperationCanceledException) { StatusChanged?.Invoke("Transfer timed out."); }
             catch (Exception error) { StatusChanged?.Invoke("Transfer rejected: " + error.Message); }
@@ -404,6 +426,14 @@ public sealed class TransferServer : IDisposable
         return PullV2(request, peer, secure: false);
     }
 
+    private readonly CloudLogSharing _cloudSharing = new();
+
+    private sealed class PreparationTrace(Action<string> record, string context) : IDisposable
+    {
+        private readonly System.Diagnostics.Stopwatch started = System.Diagnostics.Stopwatch.StartNew();
+        public void Dispose() => record($"Transfer trace: prepared {context}, elapsedMs={started.ElapsedMilliseconds}");
+    }
+
     private byte[]? PullV2(JsonElement request, string? peer, bool secure)
     {
         if (Get(request, "version") != "2" ||
@@ -464,6 +494,17 @@ public sealed class TransferServer : IDisposable
                 StateStore.Save(_state);
                 PhoneConfirmed?.Invoke(phone);
             }
+            using var preparationTrace = Get(request, "liveBatteryVersion") is null
+                ? new PreparationTrace(message => StatusChanged?.Invoke(message), $"request={nonce:D}, recipient={physicalId:D}, cloudPolicy={Get(request, "cloudSharingOnly") is not null}") : null;
+            if (Get(request, "liveBatteryVersion") is null)
+                _cloudSharing.Update(physicalId, secure && Get(request, "cloudSharingVersion") == "1" ? Get(request, "cloudSharingScope") : null, now);
+            if (Get(request, "cloudSharingOnly") is not null)
+            {
+                if (!secure || Get(request, "cloudSharingOnly") != "1" || Get(request, "cloudSharingVersion") != "1" || ack.Length != 0 || Get(request, "offerToken") is not null) return null;
+                var pending = _cloudSharing.Next(physicalId, _state.Phones, now) is not null;
+                var policy = JsonSerializer.SerializeToUtf8Bytes(new { type = "cloud-sharing-policy", cloudSharingVersion = "1", pending = pending ? "true" : "false" });
+                return EncryptLog(phone.Secret, hostId, physicalId, nonce, "", policy);
+            }
             if (Get(request, "liveBatteryVersion") is not null)
             {
                 if (!secure || Get(request, "liveBatteryVersion") != "1" || ack.Length != 0) return null;
@@ -516,7 +557,7 @@ public sealed class TransferServer : IDisposable
                 StatusChanged?.Invoke($"{phone.Name}: automatic collection stopped; " +
                     $"trigger=confirmed daily receipt; resume={phone.AutomaticPauseUntil.Value.ToLocalTime():O}");
                 var control = JsonSerializer.SerializeToUtf8Bytes(new {
-                    type = "daily-pause-ack", until = untilText
+                    type = "daily-pause-ack", cloudSharingVersion = "1", until = untilText
                 });
                 return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
                     new byte[] { 0, 0 }.Concat(control).ToArray());
@@ -530,12 +571,20 @@ public sealed class TransferServer : IDisposable
                 StatusChanged?.Invoke($"{phone.Name}: automatic collection resumed; " +
                     $"trigger=authenticated mobile request at {DateTimeOffset.Now:O}");
                 var control = JsonSerializer.SerializeToUtf8Bytes(new {
-                    type = "daily-resume-ack"
+                    type = "daily-resume-ack", cloudSharingVersion = "1"
                 });
                 return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
                     new byte[] { 0, 0 }.Concat(control).ToArray());
             }
-            if (!string.IsNullOrEmpty(ack) && ValidToken(ack))
+            if (ack.StartsWith("Shared::", StringComparison.Ordinal))
+            {
+                var file = _cloudSharing.Resolve(ack, physicalId, _state.Phones, now);
+                if (file is not null) {
+                    _cloudSharing.Acknowledge(ack, file, physicalId);
+                    StatusChanged?.Invoke($"Cloud sharing: ACK request={nonce:D}, recipient={physicalId:D}, file={CloudLogSharing.DebugLabel(ack)}; source queue protected");
+                }
+            }
+            else if (!string.IsNullOrEmpty(ack) && ValidToken(ack))
             {
                 var file = Path.Combine(QueuePath(phone), ack.Replace("::", Path.DirectorySeparatorChar.ToString()));
                 if (File.Exists(file))
@@ -569,54 +618,59 @@ public sealed class TransferServer : IDisposable
             if (offerEnabled && Get(request, "offerToken") is { } offeredToken &&
                 Get(request, "offerDigest") is { } offeredDigest &&
                 Get(request, "offerDecision") is { } decision &&
-                decision is "have" or "send" && ValidToken(offeredToken) &&
+                decision is "have" or "send" && (ValidToken(offeredToken) || CloudLogSharing.Parse(offeredToken) is not null) &&
                 TryHex(offeredDigest, out _) &&
                 TryHex(Get(request, "offerDecisionMAC"), out var decisionMac) &&
                 CryptographicOperations.FixedTimeEquals(decisionMac, Hmac(phone.Secret,
                     $"file-decision|v1|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}|{offeredToken}|{offeredDigest}|{decision}")))
             {
-                var offeredFile = Path.Combine(queueRoot,
-                    offeredToken.Replace("::", Path.DirectorySeparatorChar.ToString()));
+                var sharedOffer = offeredToken.StartsWith("Shared::", StringComparison.Ordinal);
+                var offeredFile = sharedOffer ? _cloudSharing.Resolve(offeredToken, physicalId, _state.Phones, now)
+                    : Path.Combine(queueRoot, offeredToken.Replace("::", Path.DirectorySeparatorChar.ToString()));
                 if (File.Exists(offeredFile) && new FileInfo(offeredFile).Length <= MaximumLogBytes)
                 {
-                    var bytes = File.ReadAllBytes(offeredFile);
+                    var bytes = File.ReadAllBytes(offeredFile!);
                     var actual = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
                     var forced = File.Exists(offeredFile + ".force-resend");
                     if (actual == offeredDigest && decision == "have" && !forced)
                     {
-                        lock (_state) {
+                        if (sharedOffer) _cloudSharing.Acknowledge(offeredToken, offeredFile!, physicalId);
+                        else { lock (_state) {
                             _state.Delivered.Add(Upper(phone.PhysicalDeviceId) + "|" + offeredToken);
                             StateStore.Save(_state);
                         }
-                        BatteryLogStorage.ArchiveAcknowledged(offeredFile, phone);
-                        StatusChanged?.Invoke($"{phone.Name}: preflight decision=have, action=skip {offeredToken}; SHA-256 {offeredDigest[..12]}");
+                        BatteryLogStorage.ArchiveAcknowledged(offeredFile!, phone); }
+                        StatusChanged?.Invoke($"{phone.Name}: preflight decision=have, action=skip {CloudLogSharing.DebugLabel(offeredToken)}; SHA-256 {offeredDigest[..12]}");
                     }
                     else if (actual == offeredDigest && decision == "send")
                     {
-                        StatusChanged?.Invoke($"{phone.Name}: preflight decision=send, action=transfer {offeredToken}; SHA-256 {offeredDigest[..12]}; bytes={bytes.Length}");
+                        StatusChanged?.Invoke($"{phone.Name}: preflight decision=send, action=transfer {CloudLogSharing.DebugLabel(offeredToken)}; SHA-256 {offeredDigest[..12]}; bytes={bytes.Length}");
                         return EncryptLog(phone.Secret, hostId, physicalId, nonce,
                             offeredToken, bytes);
                     }
                     else
-                        StatusChanged?.Invoke($"{phone.Name}: preflight decision={decision} not applied for {offeredToken}; {(actual != offeredDigest ? "digest changed" : "manual resend overrides skip")}; offering current file");
+                        StatusChanged?.Invoke($"{phone.Name}: preflight decision={decision} not applied for {CloudLogSharing.DebugLabel(offeredToken)}; {(actual != offeredDigest ? "digest changed" : "manual resend overrides skip")}; offering current file");
                 }
                 else
-                    StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected for {offeredToken}; queue file missing or too large");
+                    StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected for {CloudLogSharing.DebugLabel(offeredToken)}; queue file missing or too large");
             }
             else if (offerEnabled && Get(request, "offerToken") is { } rejectedToken &&
                      Get(request, "offerDigest") is not null && Get(request, "offerDecision") is not null)
-                StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected for {rejectedToken}; authentication or token invalid");
-            var next = NextFile();
-            var token = next is null ? "" : Path.GetRelativePath(QueuePath(phone), next)
-                .Replace(Path.DirectorySeparatorChar.ToString(), "::");
-            if (next is not null && (!ValidToken(token) || new FileInfo(next).Length > MaximumLogBytes))
+                StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected for {CloudLogSharing.DebugLabel(rejectedToken)}; authentication or token invalid");
+            var own = NextFile();
+            var shared = own is null && secure && Get(request, "cloudSharingVersion") == "1" && offerEnabled
+                ? _cloudSharing.Next(physicalId, _state.Phones, now) : null;
+            var next = own ?? shared?.File;
+            var token = shared?.Token ?? (own is null ? "" : Path.GetRelativePath(QueuePath(phone), own)
+                .Replace(Path.DirectorySeparatorChar.ToString(), "::"));
+            if (next is not null && ((!ValidToken(token) && CloudLogSharing.Parse(token) is null) || new FileInfo(next).Length > MaximumLogBytes))
                 return null;
             if (offerEnabled && next is not null)
             {
                 var digest = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(next)))
                     .ToLowerInvariant();
                 var forced = File.Exists(next + ".force-resend");
-                StatusChanged?.Invoke($"{phone.Name}: preflight offer {token}; SHA-256 {digest[..12]}; bytes={new FileInfo(next).Length}; forced={forced}");
+                StatusChanged?.Invoke($"{phone.Name}: preflight offer {CloudLogSharing.DebugLabel(token)}; SHA-256 {digest[..12]}; bytes={new FileInfo(next).Length}; forced={forced}");
                 var offer = JsonSerializer.SerializeToUtf8Bytes(new {
                     type = "file-offer", token, sha256 = digest,
                     force = forced ? "true" : "false"
@@ -630,6 +684,7 @@ public sealed class TransferServer : IDisposable
                     schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
                     recentEvents = new[] { "Windows alpha companion connected" }
                 }) : File.ReadAllBytes(next);
+            if (next is null) content = CloudCapability(content);
             var plain = new byte[2 + filename.Length + content.Length];
             BinaryPrimitives.WriteUInt16BigEndian(plain, (ushort)filename.Length);
             filename.CopyTo(plain.AsSpan(2));
@@ -649,9 +704,18 @@ public sealed class TransferServer : IDisposable
         }
     }
 
+    private static byte[] CloudCapability(byte[] content)
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(content) as System.Text.Json.Nodes.JsonObject;
+        if (json is null) return content;
+        json["cloudSharingVersion"] = "1";
+        return JsonSerializer.SerializeToUtf8Bytes(json);
+    }
+
     private static byte[] EncryptLog(byte[] secret, Guid hostId, Guid physicalId,
         Guid nonce, string token, byte[] content)
     {
+        if (token.Length == 0) content = CloudCapability(content);
         var filename = Encoding.UTF8.GetBytes(token);
         if (filename.Length > 1024) throw new InvalidDataException("Invalid log token");
         var plain = new byte[2 + filename.Length + content.Length];

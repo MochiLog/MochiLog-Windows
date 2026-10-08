@@ -13,6 +13,7 @@ public sealed record CollectionResult(int Saved, int Skipped, int Failed, string
 
 public static partial class Collector
 {
+    public static Action<string>? Trace { get; set; }
     private static string? Tool => new[]
     {
         #if MOCHILOG_PROTOCOL_TEST
@@ -35,8 +36,15 @@ public static partial class Collector
             UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardOutput = true, RedirectStandardError = true
         };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        var command = arguments.ToArray();
+        var operation = string.Join(" ", command.Take(2).Where(v => !v.StartsWith("--", StringComparison.Ordinal)));
+        var job = Guid.NewGuid();
+        var started = Stopwatch.StartNew();
+        Trace?.Invoke($"Collector job started; job={job:D}, operation={operation}, timeoutSeconds={timeout.TotalSeconds}");
+        foreach (var argument in command) start.ArgumentList.Add(argument);
         start.Environment["NO_COLOR"] = "1";
+        var successful = false;
+        try {
         using var process = Process.Start(start) ?? throw new IOException("Collector did not start.");
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         limit.CancelAfter(timeout);
@@ -57,7 +65,9 @@ public static partial class Collector
                 ?? "No error detail returned.";
             throw new IOException($"Collector exited {process.ExitCode}: {detail}");
         }
+        successful = true;
         return stdout;
+        } finally { Trace?.Invoke($"Collector job finished; job={job:D}, operation={operation}, elapsedMs={started.ElapsedMilliseconds}, success={successful}"); }
     }
 
     public static async Task<LiveBatterySnapshot> CurrentBatteryAsync(PairedPhone phone,

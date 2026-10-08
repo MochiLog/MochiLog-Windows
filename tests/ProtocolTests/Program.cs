@@ -20,6 +20,114 @@ static class Program
         if (!condition) throw new Exception(message);
     }
 
+    private sealed class DelayedStream(int milliseconds) : MemoryStream
+    {
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken token = default)
+        {
+            await Task.Delay(milliseconds, token);
+            await base.WriteAsync(bytes, token);
+        }
+    }
+    private static async Task CheckSlowTransfer()
+    {
+        using var slow = new DelayedStream(250);
+        var packet = new byte[4 * 64 * 1024];
+        await TransferWriteLoop.WriteAsync(slow, packet, TimeSpan.FromMilliseconds(800), CancellationToken.None);
+        Check(slow.Length == packet.Length, "Progressing transfer was canceled by a whole-file deadline");
+        using var stalled = new DelayedStream(1000);
+        try {
+            await TransferWriteLoop.WriteAsync(stalled, packet, TimeSpan.FromMilliseconds(300), CancellationToken.None);
+            throw new Exception("Stalled transfer ignored idle timeout");
+        } catch (OperationCanceledException) { }
+        using var stopped = new CancellationTokenSource(); stopped.Cancel();
+        try {
+            await TransferWriteLoop.WriteAsync(slow, packet, TimeSpan.FromSeconds(25), stopped.Token);
+            throw new Exception("Canceled transfer ignored cancellation");
+        } catch (OperationCanceledException) { }
+        Console.WriteLine("PASS: slow progressing transfer, idle stall timeout and shutdown cancellation");
+    }
+
+    private static async Task CheckCloudSharing()
+    {
+        Console.WriteLine("Checking encrypted cloud sharing with four peers and protected source ACKs");
+        var peers = Enumerable.Range(0, 4).Select(i => new PairedPhone { Udid = "cloud-" + i,
+            Name = "Cloud peer " + i, Model = "iPad16,6", PhysicalDeviceId = Guid.NewGuid(),
+            Secret = Enumerable.Repeat((byte)(30 + i), 32).ToArray(), ConfirmedAt = DateTimeOffset.UtcNow }).ToArray();
+        var state = new CompanionState { HostId = Guid.NewGuid(), Phones = peers.ToList() };
+        var audit = new List<string>();
+        using var server = new TransferServer(state, 0);
+        server.StatusChanged += line => { lock (audit) audit.Add(line); };
+        server.Start(); _serverPort = server.ListeningPort;
+        var scope = new string('a', 64);
+        const string name = "Analytics-2026-10-08-090000.ips.ca.synced";
+        var file = Path.Combine(TransferServer.QueuePath(peers[1]), "Host", name);
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        var bytes = Encoding.UTF8.GetBytes("original-iPad-cloud-log");
+        File.WriteAllBytes(file, bytes);
+        async Task<(string Name, byte[] Content)> Pull(int i, string? account, bool policy = false,
+            string ack = "", string? token = null, string? digest = null, string? decision = null)
+        {
+            var peer = peers[i]; var nonce = Guid.NewGuid();
+            var fields = new Dictionary<string, string> { ["version"] = "2", ["hostID"] = Upper(state.HostId),
+                ["physicalDeviceID"] = Upper(peer.PhysicalDeviceId), ["nonce"] = Upper(nonce), ["ack"] = ack,
+                ["mac"] = Hex(Hmac(peer.Secret, $"v2|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{ack}")),
+                ["cloudSharingVersion"] = "1", ["cloudSharingScope"] = account ?? "" };
+            if (policy) fields["cloudSharingOnly"] = "1";
+            else {
+                fields["offerVersion"] = "1";
+                fields["offerMAC"] = Hex(Hmac(peer.Secret, $"file-offer|v1|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}"));
+            }
+            if (token is not null) {
+                fields["offerToken"] = token; fields["offerDigest"] = digest!; fields["offerDecision"] = decision!;
+                fields["offerDecisionMAC"] = Hex(Hmac(peer.Secret, $"file-decision|v1|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{token}|{digest}|{decision}"));
+            }
+            var at = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var plain = JsonSerializer.SerializeToUtf8Bytes(fields); var iv = RandomNumberGenerator.GetBytes(12);
+            var cipher = new byte[plain.Length]; var tag = new byte[16];
+            using (var aes = new AesGcm(peer.Secret, 16)) aes.Encrypt(iv, plain, cipher, tag,
+                Encoding.UTF8.GetBytes($"v3|request|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{at}"));
+            var response = await ExchangeAsync(new { version = "3", hostID = Upper(state.HostId),
+                physicalDeviceID = Upper(peer.PhysicalDeviceId), nonce = Upper(nonce), issuedAt = at,
+                box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray()) });
+            return Open(response, peer.Secret, state.HostId, peer.PhysicalDeviceId, nonce);
+        }
+        bool IsOffer((string Name, byte[] Content) reply) => JsonDocument.Parse(reply.Content).RootElement.TryGetProperty("type", out var type) && type.GetString() == "file-offer";
+        await Pull(0, scope, true);
+        Check(!IsOffer(await Pull(0, scope)), "Source without consent was shared");
+        await Pull(1, scope, true);
+        var offer = JsonDocument.Parse((await Pull(0, scope)).Content).RootElement;
+        var token = offer.GetProperty("token").GetString()!; var digest = offer.GetProperty("sha256").GetString()!;
+        Check(CloudLogSharing.Parse(token)?.Origin == peers[1].PhysicalDeviceId, "Origin ID was lost");
+        var body = await Pull(0, scope, token: token, digest: digest, decision: "send");
+        Check(body.Name == token && body.Content.SequenceEqual(bytes), "Foreign body was not delivered");
+        await Pull(0, scope, ack: token);
+        Check(File.Exists(file) && !state.Delivered.Contains(Upper(peers[1].PhysicalDeviceId) + "|Host::" + name), "Foreign ACK consumed source queue");
+        await Pull(2, scope, true);
+        Check(IsOffer(await Pull(2, scope)), "First recipient ACK suppressed third recipient");
+        await Pull(2, scope, token: token, digest: digest, decision: "have");
+        Check(File.Exists(file), "Foreign have deleted source");
+        Check(!IsOffer(await Pull(3, new string('b', 64))), "Different account received source");
+        await Pull(1, null, true);
+        Check((await Pull(3, scope, token: token, digest: digest, decision: "send")).Name.Length == 0,
+            "Source OFF did not revoke outstanding offer");
+        await Pull(3, scope, ack: token);
+        Check(File.Exists(file), "Revoked ACK consumed source");
+        lock (audit) {
+            Check(audit.Any(l => l.Contains("Cloud sharing: source=") && l.Contains("recipient=") && l.Contains("decision=")), "Sharing decision audit missing");
+            Check(audit.Any(l => l.Contains("Transfer trace:") && l.Contains("elapsedMs=")), "Transfer timing audit missing");
+            Check(!audit.Any(l => l.Contains(scope)), "Cloud account scope leaked into support logs");
+        }
+        Check(!CloudLogSharing.DebugLabel(token).Contains(scope) && CloudLogSharing.DebugLabel(token).Contains(peers[1].PhysicalDeviceId.ToString("D")), "Shared log label exposed scope or lost origin");
+        var grants = new CloudLogSharing(); var clock = DateTimeOffset.UtcNow;
+        grants.Update(peers[0].PhysicalDeviceId, scope, clock); grants.Update(peers[1].PhysicalDeviceId, scope, clock);
+        Check(grants.Eligible(scope, peers[1].PhysicalDeviceId, peers[0].PhysicalDeviceId, peers, clock), "Fresh grants failed");
+        Check(!grants.Eligible(scope, peers[1].PhysicalDeviceId, peers[0].PhysicalDeviceId, peers, clock.AddMinutes(15)), "Expired grant survived");
+        Check(!grants.Eligible(scope, peers[1].PhysicalDeviceId, peers[0].PhysicalDeviceId, [peers[0]], clock), "Removed source remained eligible");
+        Check(CloudLogSharing.Parse($"Shared::{scope}::{peers[1].PhysicalDeviceId:D}::Host::../Analytics-a.ips.ca.synced") is null, "Traversal accepted");
+        Check(!IsOffer(await Pull(3, null)), "Recipient OFF received foreign log");
+        Directory.Delete(TransferServer.QueuePath(peers[1]), true);
+    }
+
     private static void CheckArchiveExchange()
     {
         var deviceId = Guid.NewGuid();
@@ -241,6 +349,8 @@ static class Program
             return;
         }
         CheckCurrentDiagnostics();
+        await CheckSlowTransfer();
+        await CheckCloudSharing();
         CheckArchiveExchange();
         CheckBatteryLogStorage();
         CheckDailyCollectionCoverage();
