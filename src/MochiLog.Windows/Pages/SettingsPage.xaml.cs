@@ -18,6 +18,13 @@ public sealed partial class SettingsPage : Page
     {
         InitializeComponent();
         PageTitle.Text = UiText.Get("win_settings");
+        AutomaticUpdateToggle.Header = UiText.Get("update_optin_title");
+        AutomaticUpdateNote.Text = UiText.Get("update_optin_note");
+        AutomaticUpdateToggle.IsOn = UpdatePreferences.Enabled;
+        AutomaticUpdateToggle.Toggled += async (_, _) => {
+            UpdatePreferences.Enabled = AutomaticUpdateToggle.IsOn;
+            await ((App)Application.Current).MainWindow!.ConfigureAutomaticUpdatesAsync();
+        };
         StartupToggle.Header = UiText.Get("win_startup");
         StartupToggle.IsOn = StartupRegistration.Enabled;
         StartupToggle.Toggled += StartupToggled;

@@ -14,6 +14,7 @@
     <Compile Include="..\..\src\MochiLog.Windows\Services\TransferWriteLoop.cs" Link="TransferWriteLoop.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\CloudLogSharing.cs" Link="CloudLogSharing.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\CompanionState.cs" Link="CompanionState.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\LocalDiagnosticsPairing.cs" Link="LocalDiagnosticsPairing.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\TransferServer.cs" Link="TransferServer.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\BatteryLogStorage.cs" Link="BatteryLogStorage.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\DebugArchiveSync.cs" Link="DebugArchiveSync.cs" />

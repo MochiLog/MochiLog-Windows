@@ -65,14 +65,17 @@ static class Program
         var bytes = Encoding.UTF8.GetBytes("original-iPad-cloud-log");
         File.WriteAllBytes(file, bytes);
         async Task<(string Name, byte[] Content)> Pull(int i, string? account, bool policy = false,
-            string ack = "", string? token = null, string? digest = null, string? decision = null)
+            string ack = "", string? token = null, string? digest = null, string? decision = null, int? liveSource = null, bool deny = false)
         {
             var peer = peers[i]; var nonce = Guid.NewGuid();
             var fields = new Dictionary<string, string> { ["version"] = "2", ["hostID"] = Upper(state.HostId),
                 ["physicalDeviceID"] = Upper(peer.PhysicalDeviceId), ["nonce"] = Upper(nonce), ["ack"] = ack,
                 ["mac"] = Hex(Hmac(peer.Secret, $"v2|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{ack}")),
                 ["cloudSharingVersion"] = "1", ["cloudSharingScope"] = account ?? "" };
-            if (policy) fields["cloudSharingOnly"] = "1";
+            if (liveSource is not null) {
+                fields["liveBatteryVersion"] = "1"; fields["liveBatterySharedVersion"] = "1";
+                fields["liveBatterySourceID"] = Upper(peers[liveSource.Value].PhysicalDeviceId);
+            } else if (policy) fields["cloudSharingOnly"] = "1";
             else {
                 fields["offerVersion"] = "1";
                 fields["offerMAC"] = Hex(Hmac(peer.Secret, $"file-offer|v1|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}"));
@@ -89,6 +92,7 @@ static class Program
             var response = await ExchangeAsync(new { version = "3", hostID = Upper(state.HostId),
                 physicalDeviceID = Upper(peer.PhysicalDeviceId), nonce = Upper(nonce), issuedAt = at,
                 box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray()) });
+            if (deny) { Check(response.Length == 0, "Unauthorized current values returned"); return ("", Encoding.UTF8.GetBytes("{}")); }
             return Open(response, peer.Secret, state.HostId, peer.PhysicalDeviceId, nonce);
         }
         bool IsOffer((string Name, byte[] Content) reply) => JsonDocument.Parse(reply.Content).RootElement.TryGetProperty("type", out var type) && type.GetString() == "file-offer";
@@ -112,6 +116,20 @@ static class Program
             "Source OFF did not revoke outstanding offer");
         await Pull(3, scope, ack: token);
         Check(File.Exists(file), "Revoked ACK consumed source");
+        Console.WriteLine("Checking consent-scoped current values and isolated raw-log queues");
+        var liveValues = new Dictionary<string, int> { ["CycleCount"] = 245, ["DesignCapacity"] = 4000 };
+        var liveDigest = new string('a', 64);
+        server.LiveBattery.Set(peers[1].PhysicalDeviceId, new(liveValues, liveDigest, DateTimeOffset.UtcNow, false));
+        await Pull(0, scope, liveSource: 1, deny: true);
+        await Pull(1, scope, true);
+        var manifest = JsonDocument.Parse((await Pull(0, scope, liveSource: 0)).Content).RootElement;
+        Check(manifest.GetProperty("sources").EnumerateArray().Any(p => p.GetProperty("physicalDeviceID").GetString() == Upper(peers[1].PhysicalDeviceId)), "Eligible source absent");
+        var current = JsonDocument.Parse((await Pull(0, scope, liveSource: 1)).Content).RootElement;
+        Check(current.GetProperty("sourcePhysicalDeviceID").GetString() == Upper(peers[1].PhysicalDeviceId) && current.TryGetProperty("values", out _), "Current source identity/value lost");
+        await Pull(0, null, liveSource: 1, deny: true);
+        await Pull(0, new string('c', 64), liveSource: 1, deny: true);
+        await Pull(0, null, liveSource: 0);
+        Check(File.Exists(file), "Current values consumed raw source file");
         lock (audit) {
             Check(audit.Any(l => l.Contains("Cloud sharing: source=") && l.Contains("recipient=") && l.Contains("decision=")), "Sharing decision audit missing");
             Check(audit.Any(l => l.Contains("Transfer trace:") && l.Contains("elapsedMs=")), "Transfer timing audit missing");

@@ -496,8 +496,12 @@ public sealed class TransferServer : IDisposable
             }
             using var preparationTrace = Get(request, "liveBatteryVersion") is null
                 ? new PreparationTrace(message => StatusChanged?.Invoke(message), $"request={nonce:D}, recipient={physicalId:D}, cloudPolicy={Get(request, "cloudSharingOnly") is not null}") : null;
-            if (Get(request, "liveBatteryVersion") is null)
+            if (Get(request, "localDiagnosticsPairing") is null && (Get(request, "liveBatteryVersion") is null || Get(request, "liveBatterySharedVersion") == "1"))
                 _cloudSharing.Update(physicalId, secure && Get(request, "cloudSharingVersion") == "1" ? Get(request, "cloudSharingScope") : null, now);
+            if (Get(request, "localDiagnosticsPairing") is not null) {
+                if (!secure || Get(request, "localDiagnosticsPairing") != "1" || ack.Length != 0 || Get(request, "offerToken") is not null) return null;
+                return EncryptLog(phone.Secret, hostId, physicalId, nonce, "", LocalDiagnosticsPairing.Control(phone));
+            }
             if (Get(request, "cloudSharingOnly") is not null)
             {
                 if (!secure || Get(request, "cloudSharingOnly") != "1" || Get(request, "cloudSharingVersion") != "1" || ack.Length != 0 || Get(request, "offerToken") is not null) return null;
@@ -508,12 +512,30 @@ public sealed class TransferServer : IDisposable
             if (Get(request, "liveBatteryVersion") is not null)
             {
                 if (!secure || Get(request, "liveBatteryVersion") != "1" || ack.Length != 0) return null;
-                var control = LiveBattery.Response(physicalId, Get(request, "liveBatteryRevision"),
+                var scope = _cloudSharing.Scope(physicalId, now);
+                var allowed = _state.Phones.Where(source => source.PhysicalDeviceId == physicalId ||
+                    (Get(request, "liveBatterySharedVersion") == "1" && scope is not null &&
+                     _cloudSharing.Scope(source.PhysicalDeviceId, now) == scope)).Take(64).ToArray();
+                var sourceId = physicalId;
+                if (Get(request, "liveBatterySourceID") is { } requested && !Guid.TryParse(requested, out sourceId)) return null;
+                var source = allowed.FirstOrDefault(p => p.PhysicalDeviceId == sourceId);
+                if (source is null) return null;
+                var control = LiveBattery.Response(sourceId, Get(request, "liveBatteryRevision"),
                     Get(request, "liveBatteryDetailsVersion") == "1", Get(request, "liveBatteryDetailsRevision"));
-                LiveBatteryRequested?.Invoke(phone, Get(request, "liveBatteryRefresh") == "1");
+                if (Get(request, "liveBatterySharedVersion") == "1") {
+                    var data = System.Text.Json.Nodes.JsonNode.Parse(control)!.AsObject();
+                    data["sharedVersion"] = 1;
+                    data["sourcePhysicalDeviceID"] = sourceId.ToString("D").ToUpperInvariant();
+                    data["scope"] = scope ?? "";
+                    data["sources"] = JsonSerializer.SerializeToNode(allowed.Select(p => new {
+                        physicalDeviceID = p.PhysicalDeviceId.ToString("D").ToUpperInvariant(), model = p.Model }));
+                    control = JsonSerializer.SerializeToUtf8Bytes(data);
+                }
+                LiveBatteryRequested?.Invoke(source, Get(request, "liveBatteryRefresh") == "1");
                 return EncryptResponse(phone.Secret, hostId, physicalId, nonce,
                     new byte[] { 0, 0 }.Concat(control).ToArray());
             }
+
             if (Get(request, "clientDiagnosticsBox") is { } encoded &&
                 TryBase64UpTo(encoded, 8_256, out var diagnosticBox) &&
                 diagnosticBox.Length >= 28)

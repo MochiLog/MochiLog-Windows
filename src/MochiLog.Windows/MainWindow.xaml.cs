@@ -15,6 +15,10 @@ public sealed partial class MainWindow : Window
     private bool _quitting;
     private AvailableUpdate? _pendingUpdate;
     private bool _updatePromptOpen;
+    private bool _checkingUpdate;
+    private bool _consentPromptOpen;
+    private DateTimeOffset _lastAutomaticCheck = DateTimeOffset.MinValue;
+    private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromHours(1) };
     public bool IsTrayReady => _tray is not null;
     public string? TrayError { get; private set; }
     public double ContentViewportWidth =>
@@ -40,7 +44,10 @@ public sealed partial class MainWindow : Window
             CompanionRuntime.Shared.WatchBattery(false);
             AppWindow.Hide();
         };
-        Closed += (_, _) => DisposeTray();
+        Closed += (_, _) => { _updateTimer.Stop(); DisposeTray(); };
+        NavView.Loaded += async (_, _) => await ConfigureAutomaticUpdatesAsync();
+        _updateTimer.Tick += async (_, _) => await CheckForUpdatesAsync(false);
+        _updateTimer.Start();
         // The shell icon is registered after Activate(), when the HWND is ready.
     }
 
@@ -65,13 +72,34 @@ public sealed partial class MainWindow : Window
         CompanionRuntime.Shared.WatchBattery(NavFrame.Content is LiveBatteryPage);
         Activate();
         if (_pendingUpdate is not null) _ = PromptForUpdateAsync();
+        _ = ConfigureAutomaticUpdatesAsync();
+    }
+
+    public async Task ConfigureAutomaticUpdatesAsync()
+    {
+        if (!AppWindow.IsVisible || NavView.XamlRoot is null || _consentPromptOpen) return;
+        if (!UpdatePreferences.Answered) {
+            _consentPromptOpen = true;
+            try {
+                var choice = await DialogCoordinator.ShowAsync(new ContentDialog {
+                    XamlRoot = NavView.XamlRoot, Title = UiText.Get("update_optin_title"),
+                    Content = UiText.Get("update_optin_note"), PrimaryButtonText = UiText.Get("update_optin_yes"),
+                    CloseButtonText = UiText.Get("update_optin_no") });
+                UpdatePreferences.Enabled = choice == ContentDialogResult.Primary;
+            } finally { _consentPromptOpen = false; }
+        }
+        await CheckForUpdatesAsync(false);
     }
 
     public async Task CheckForUpdatesAsync(bool manual)
     {
+        if (_checkingUpdate || (!manual && (!UpdatePreferences.Enabled ||
+            DateTimeOffset.UtcNow - _lastAutomaticCheck < TimeSpan.FromHours(24)))) return;
+        _checkingUpdate = true;
         try
         {
             _pendingUpdate = await UpdateService.CheckAsync();
+            if (!manual) _lastAutomaticCheck = DateTimeOffset.UtcNow;
             if (_pendingUpdate is not null && AppWindow.IsVisible)
                 await PromptForUpdateAsync();
             else if (manual)
@@ -81,6 +109,7 @@ public sealed partial class MainWindow : Window
         {
             if (manual) await ShowUpdateMessageAsync(UiText.Format("win_update_failed", error.Message));
         }
+        finally { _checkingUpdate = false; }
     }
 
     private async Task PromptForUpdateAsync()

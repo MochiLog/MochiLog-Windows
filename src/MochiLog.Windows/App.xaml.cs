@@ -60,7 +60,7 @@ public partial class App : Application
         if (MainWindow?.IsTrayReady == true &&
             Environment.GetCommandLineArgs().Contains("--background"))
             _window.AppWindow.Hide();
-        _ = MainWindow?.CheckForUpdatesAsync(false);
+
         _ = Task.Run(() => {
             while (_ownsInstance) {
                 ShowRequest.WaitOne();

@@ -7,6 +7,8 @@
             <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}" />
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="12">
+                    <ToggleSwitch x:Name="AutomaticUpdateToggle" />
+                    <TextBlock x:Name="AutomaticUpdateNote" TextWrapping="Wrap" Opacity="0.72" />
                     <ToggleSwitch x:Name="StartupToggle" />
                     <ToggleSwitch x:Name="TrayToggle" />
                     <TextBlock x:Name="TrayStatus" TextWrapping="Wrap" Opacity="0.72" />
