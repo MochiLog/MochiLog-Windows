@@ -594,11 +594,12 @@ static class Program
             native.Fields.Any(f => f.Path.SequenceEqual(new[] { "EmptyArray" }) && f.Kind == "array"), "Typed leaves lost");
         var table = BatteryPresentation.Summary(native.Values, native.Charging, native.Fields);
         var optional = BatteryPresentation.Details(native.Values, native.Charging, native.Fields);
-        Check(table.Any(r => r.Key == "Voltage" && r.Value == "4010" && r.Unit == " mV") &&
+        Check(table.Any(r => r.Key == "DesignCapacity" && r.Value == 4000.ToString("N0")) &&
+            table.Any(r => r.Key == "Voltage" && r.Value == "4010" && r.Unit == " mV") &&
             table.Any(r => r.Key == "ExternalConnected" && r.Kind == "boolean") &&
-            !table.Any(r => r.Key is "UnknownCode" or "Huge"), "Summary guessed an unknown field");
+            !table.Any(r => r.Key is "UnknownCode" or "Huge" or "NominalChargeCapacity" or "AppleRawMaxCapacity" or "FullChargeCapacity" or "CurrentCapacity"), "Summary guessed an unknown field");
         Check(optional.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "CurrentCapacity" })) &&
-            optional.Any(f => f.Path.SequenceEqual(new[] { "DesignCapacity" }) && f.Value == "4000") &&
+            optional.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "DesignCapacity" }) && f.Value == "3000") &&
             optional.Any(f => f.Path[0] == "IOReportLegend") && !optional.Any(f => f.Path.SequenceEqual(new[] { "Voltage" })),
             "Details lost ambiguous fields or repeated verified rows");
         Check(BatteryPresentation.Details(new(), true, [new(["IsCharging"], "boolean", "false"), new(["Voltage"], "string", "4010")]).Length == 2,

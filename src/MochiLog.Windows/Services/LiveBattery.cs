@@ -38,8 +38,16 @@ public sealed record BatterySummaryRow(string Key, string? Value, string Kind = 
 // Exact paths only. New, ambiguous and invalid fields remain available in optional details.
 public static class BatteryPresentation
 {
-    public static readonly string[] PrimaryKeys = ["CycleCount", "DesignCapacity", "NominalChargeCapacity",
+    public static readonly string[] WireKeys = ["CycleCount", "DesignCapacity", "NominalChargeCapacity",
         "AppleRawMaxCapacity", "FullChargeCapacity", "CurrentCapacity"];
+    public static readonly string[] PrimaryKeys = ["CycleCount", "DesignCapacity"];
+    public static BatterySummaryRow? Primary(RawBatteryField field)
+    {
+        if (field.Path.Length != 1 || !PrimaryKeys.Contains(field.Path[0]) || field.Kind != "number" ||
+            !int.TryParse(field.Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var number) ||
+            (field.Path[0] == "CycleCount" ? number is < 0 or > 100000 : number is < 1 or > 200000)) return null;
+        return new(field.Path[0], number.ToString("N0"), Unit: field.Path[0] == "CycleCount" ? "" : " mAh");
+    }
     public static readonly string[] ExtraKeys = ["IsCharging", "FullyCharged", "ExternalConnected", "ExternalChargeCapable",
         "AppleRawExternalConnected", "BatteryInstalled", "AtCriticalLevel", "Voltage", "Amperage", "InstantAmperage", "Serial"];
     public static BatterySummaryRow? Extra(RawBatteryField field)
@@ -57,9 +65,11 @@ public static class BatteryPresentation
     }
     public static BatterySummaryRow[] Summary(Dictionary<string, int> values, bool? charging, RawBatteryField[] fields)
     {
-        var rows = PrimaryKeys.Select(key => new BatterySummaryRow(key,
-            values.TryGetValue(key, out var number) ? number.ToString("N0") : null,
-            Unit: key == "CycleCount" ? "" : key == "CurrentCapacity" ? "%" : " mAh")).ToList();
+        var rows = PrimaryKeys.Select(key => {
+            if (fields.FirstOrDefault(f => f.Path.SequenceEqual(new[] { key })) is { } field && Primary(field) is { } row) return row;
+            return new BatterySummaryRow(key, fields.Length == 0 && key == "CycleCount" && values.TryGetValue(key, out var number)
+                ? number.ToString("N0") : null, Unit: key == "CycleCount" ? "" : " mAh");
+        }).ToList();
         foreach (var key in ExtraKeys) {
             if (key == "IsCharging" && charging is not null) rows.Add(new(key, charging.Value ? "true" : "false", "boolean"));
             else if (fields.FirstOrDefault(field => field.Path.SequenceEqual(new[] { key })) is { } field && Extra(field) is { } row)
@@ -70,13 +80,7 @@ public static class BatteryPresentation
     public static RawBatteryField[] Details(Dictionary<string, int> values, bool? charging, RawBatteryField[] fields) => fields.Where(field => {
         if (Extra(field) is { } row)
             return row.Key == "IsCharging" && charging is not null && row.Value != (charging.Value ? "true" : "false");
-        var key = field.Path.Last();
-        if (!PrimaryKeys.Contains(key) || field.Kind != "number" || !int.TryParse(field.Value,
-            System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out var number) ||
-            !values.TryGetValue(key, out var displayed) || displayed != number) return true;
-        var isRoot = field.Path.SequenceEqual(new[] { key });
-        var isCapacity = field.Path.SequenceEqual(new[] { "BatteryData", key }) && key is not ("CycleCount" or "CurrentCapacity");
-        return !isRoot && !isCapacity;
+        return Primary(field) is null;
     }).ToArray();
 }
 
@@ -164,7 +168,7 @@ public sealed record LiveBatterySnapshot(Dictionary<string, int> Values, string 
         Visit(root.Elements().First(), []);
         if (fields.Count == 0) throw new InvalidDataException();
         var values = new Dictionary<string, int>();
-        foreach (var key in BatteryPresentation.PrimaryKeys) {
+        foreach (var key in BatteryPresentation.WireKeys) {
             var field = key is "CycleCount" or "CurrentCapacity" ? fields.FirstOrDefault(f => f.Path.SequenceEqual(new[] { key }))
                 : fields.FirstOrDefault(f => f.Path.SequenceEqual(new[] { "BatteryData", key }))
                     ?? fields.FirstOrDefault(f => f.Path.SequenceEqual(new[] { key }));
