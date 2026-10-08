@@ -13,7 +13,7 @@ Windows 11 と iOS/iPadOS 27 以降が必要です。初回の USB 信頼設定�
 1. [GitHub Releases の最新版](https://github.com/MochiLog/MochiLog-Windows/releases)から `MochiLog-Windows-Alpha-Setup.exe` を入手してインストールします。現在のアルファ版インストーラーはコード署名されていません。Windows の設定からアンインストールできます。
 2. Apple Devices またはクラシック版 iTunes を起動し、iPhone・iPad をデータ対応 USB ケーブルで PC に接続します。端末のロックを解除して「このコンピュータを信頼」を許可し、そのアプリに端末が表示されることを確認します。
 3. MochiLog Windows の「端末」で設定する端末を選び、「USB の信頼設定」を進めます。初回は数分かかることがあります。進行中は画面の状態表示を確認し、端末のロックを解除したままにしてください。完了後は USB を外して、PC と端末を同じ Wi-Fi に置きます。
-4. 無線の診断接続が確認できたら、Windows 側でペアリング QR を表示します。端末の MochiLog で「設定 → 高度な設定 → Mac 連携」を開き、**Windows** を選んで QR を読み取り、PC に表示された6桁コードを入力します。画面名は Mac 連携ですが、Windows もここで管理できます。
+4. 無線の診断接続が確認できたら、Windows 側でペアリング QR を表示します。端末の MochiLog で「設定 → 自動ログ収集 → パソコン連携」を開き、**Windows** を選んで QR を読み取り、PC に表示された6桁コードを入力します。Mac・Windowsのペアリングをここで管理できます。
 5. Windows アプリを起動したままにします。端末のロック解除中に解析ログを収集し、スマホ版を開くと受信・解析・記録が始まります。必要なときは PC の「今すぐログを収集」や端末の「今すぐ受信」を使えます。
 
 ### 日々の使い方
@@ -30,9 +30,9 @@ Tailscale は任意です。両端末で接続し、スマホ版でモバイル�
 
 - **Apple Devices に端末が出ない:** データ対応ケーブルを PC 本体へ直結し、ロック解除・信頼の確認をやり直します。Apple Devices または iTunes を更新・再起動し、再度端末が表示されてから MochiLog の USB 設定を試してください。エクスプローラーだけに端末が出ていても、信頼設定が完了しているとは限りません。
 - **ログが生成されない:** 端末の「設定 → プライバシーとセキュリティ → 解析と改善」で解析の共有を確認します。OS 更新後も再確認してください。オンにした直後は次のログ生成を待ちます。
-- **PC では収集済みだが記録が増えない:** 該当端末で MochiLog を開き、「Mac 連携」の接続状態と処理結果を確認します。すでに読み込んだログは重複として省略されます。
+- **PC では収集済みだが記録が増えない:** 該当端末で MochiLog を開き、「パソコン連携」の接続状態と処理結果を確認します。すでに読み込んだログは重複として省略されます。
 - **接続できない:** 端末のロック、PC と端末の Wi-Fi、Windows アプリの起動状態を確認し、再検索します。ネットワークによっては IP の手動指定も利用できます。Windows が標準ポートを予約している場合、MochiLog Windows は別のポートを選んで端末に通知します。
-- **改善しない:** Windows と端末の「Mac 連携」で日付別のデバッグログを確認し、サポート画面から発生日を指定して関連ログを添付してください。生の解析ログとペアリング鍵は自動添付されません。
+- **改善しない:** Windows と端末の「パソコン連携」で日付別のデバッグログを確認し、サポート画面から発生日を指定して関連ログを添付してください。生の解析ログとペアリング鍵は自動添付されません。
 
 これはアルファ版です。問題の解決には時間がかかり、個別に返信できない場合があります。[プライバシーポリシー](https://mochilog.ryuya-dev.net/privacy)と[利用規約](https://mochilog.ryuya-dev.net/terms)も参照してください。
 
@@ -49,7 +49,7 @@ You need Windows 11 and iOS/iPadOS 27 or later. For initial USB trust, install *
 1. Download `MochiLog-Windows-Alpha-Setup.exe` from [GitHub Releases](https://github.com/MochiLog/MochiLog-Windows/releases) and install it. This alpha installer is not currently code signed. You can uninstall it in Windows Settings.
 2. Open Apple Devices or classic iTunes. Connect the unlocked device directly to the PC with a USB data cable, approve **Trust This Computer**, and confirm the device appears in Apple's app.
 3. Select the device in MochiLog Windows and run **Set Up USB Trust**. Initial setup can take a few minutes. Keep the device unlocked and watch the progress indicator. After it finishes, unplug the cable and put the PC and device on the same Wi-Fi.
-4. Once wireless diagnostic access is confirmed, show the pairing QR in MochiLog Windows. On the device, open **MochiLog → Settings → Advanced Settings → Mac Transfer**, select **Windows**, scan the QR, and enter the six-digit code shown on the PC. The screen also manages Windows pairings despite its name.
+4. Once wireless diagnostic access is confirmed, show the pairing QR in MochiLog Windows. On the device, open **MochiLog → Settings → Automatic Log Collection → PC Link**, select **Windows**, scan the QR, and enter the six-digit code shown on the PC. This screen manages both Mac and Windows pairings.
 5. Leave the Windows app running. It collects files while the device is unlocked; open the mobile app to receive and record them. Use **Collect Logs Now** or **Receive Now** to retry manually.
 
 ### Everyday use and help
@@ -66,7 +66,7 @@ This is an alpha. Fixes may take time and individual replies may not always be p
 
 ## 現在のバッテリー値（ベータ）
 
-ペアリングしたiPhone・iPadの充放電回数、設計容量、最大容量などを、PCの概要画面で端末ごとに確認できます。スマホでも使う場合は **設定 → 高度な設定 → 現在のバッテリー** をオンにしてください。初期状態はオフです。既存のPCペアリングを使うため、この機能のための再ペアリングは不要です。
+ペアリングしたiPhone・iPadの充放電回数、設計容量、最大容量などを、PCの「現在のバッテリー」画面で端末ごとに確認できます。スマホでも使う場合は **設定 → 高度な設定 → 現在のバッテリー** をオンにしてください。初期状態はオフです。既存のPCペアリングを使うため、この機能のための再ペアリングは不要です。
 
 アプリを開いている間は定期的に取得し、変化した値だけを暗号化して送ります。最終取得日時を表示し、取得できない項目は空欄として扱います。接続できない場合は最後の値を過去の値として表示します。**今すぐ受信／送信**で手動更新もできます。スマホからのPC更新要求は、PCの取得完了後に次の受信で反映されます。
 
@@ -76,7 +76,7 @@ This is an alpha. Fixes may take time and individual replies may not always be p
 
 ## Current battery values (beta)
 
-View cycle count, design capacity and other current capacity fields for each paired iPhone or iPad on the computer dashboard. On mobile, enable **Settings → Advanced Settings → Live Battery** to show the new tab. It is **off by default**. It uses your existing computer pairing; no new pairing is required.
+View cycle count, design capacity and other current capacity fields for each paired iPhone or iPad in the computer’s Live Battery tab. On mobile, enable **Settings → Advanced Settings → Live Battery** to show the new tab. It is **off by default**. It uses your existing computer pairing; no new pairing is required.
 
 Values refresh periodically while the app is open. Only changed values are sent, using encrypted transfer. The display includes the last acquisition time; unavailable fields remain empty, and a failed refresh leaves the previous values marked as outdated. Use **Receive Now / Send Now** for a manual update. A mobile request to refresh the computer appears on a subsequent receive after acquisition completes.
 
@@ -95,3 +95,17 @@ Expand **All API fields** to view manufacturing metadata, flags, battery identif
 ### Receiving logs across devices
 
 Devices paired with the same computer can receive another device’s logs only when both have confirmed iCloud sync enabled on the same Apple Account. Sharing is withheld for disabled sync, different accounts or unconfirmed devices. If the source app has not been opened for a while, sharing waits for renewed confirmation. Records retain their original device identity; another recipient’s acknowledgement never deletes the source’s pending log.
+
+## 自動ログ収集と更新確認 / Automatic collection and updates
+
+スマホの「設定 → 自動ログ収集」では、パソコン連携と端末内取得（実験機能）を別々に選べます。端末内取得は初期状態でオフです。対応するVPN・リフレクター経路と、その端末自身のOS信頼設定が必要です。明示的に選ぶと認証済みPCから自分のOSペアリング情報だけを引き継げます。初回の完全無線化、バックグラウンド、Developer Modeオフでの取得は保証しません。共通の取り込み処理で重複を防ぎます。
+
+同じApple Accountで双方のiCloud同期がオンと確認できた端末は、現在のバッテリー値も共有できます。同期オフ・別アカウント・未確認では他の端末の値を共有しません。
+
+PCの自動更新確認は初期状態でオフです。初回の確認画面または設定で有効にできます。手動の更新確認はいつでも使えます。
+
+On mobile, **Settings → Automatic Log Collection** has separate controls for PC Link and experimental on-device collection. On-device collection is off by default and needs a compatible VPN/reflector route plus its own OS trust. Explicitly choosing reuse transfers only that device’s OS pairing over the authenticated PC connection. Fully wireless initial setup, background collection and Developer Mode-off operation are not guaranteed. Both routes use the same import and duplicate prevention.
+
+Current battery values can also be shared when both devices have confirmed iCloud sync enabled on the same Apple Account. Disabled sync, different accounts and unconfirmed devices do not share other devices’ values.
+
+Automatic update checks on the computer are off by default. Choose in the initial prompt or settings; manual checks remain available.
