@@ -603,8 +603,7 @@ static class Program
             "Details lost ambiguous fields or repeated verified rows");
         Check(BatteryPresentation.Details(new(), true, [new(["IsCharging"], "boolean", "false"), new(["Voltage"], "string", "4010")]).Length == 2,
             "Invalid or contradictory values disappeared");
-        var changedNative = LiveBatterySnapshot.Parse(registryXML.Replace("<key>UnknownCode</key>\n\t<integer>7</integer>",
-            "<key>UnknownCode</key>\n\t<integer>8</integer>"));
+        var changedNative = LiveBatterySnapshot.Parse(registryXML.Replace("<integer>7</integer>", "<integer>8</integer>", StringComparison.Ordinal));
         Check(native.Revision == changedNative.Revision && native.DetailsRevision != changedNative.DetailsRevision,
             "Details altered core revision");
         foreach (var invalid in new[] { new string('a', 1048577),
