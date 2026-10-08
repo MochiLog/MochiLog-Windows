@@ -23,7 +23,7 @@ public partial class App : Application
     private Window? _window;
     private bool _ownsInstance;
     public MainWindow? MainWindow => _window as MainWindow;
-    
+
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
     /// executed, and as such is the logical equivalent of main() or WinMain().
