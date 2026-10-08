@@ -94,20 +94,6 @@
                 </Grid>
             </Border>
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="20" Padding="24">
-                <StackPanel Spacing="16">
-                    <TextBlock x:Name="LiveBatteryTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock x:Name="LiveBatteryNote" TextWrapping="Wrap" Opacity="0.68" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button x:Name="LiveBatteryReceive" Click="LiveBatteryReceiveClicked" />
-                        <Button x:Name="LiveBatterySend" Click="LiveBatterySendClicked" />
-                    </StackPanel>
-                    <StackPanel x:Name="LiveBatteryCards" Spacing="20" />
-                </StackPanel>
-            </Border>
-
             <Grid x:Name="DashboardGrid" ColumnSpacing="20" RowSpacing="20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="MainColumn" Width="*" />
@@ -119,33 +105,21 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Border x:Name="GuideCard" Grid.Row="0" Grid.Column="0"
+                <Border x:Name="PairedCard" Grid.Row="0" Grid.Column="0"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="20" Padding="24">
-                    <StackPanel Spacing="17">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Border Width="40" Height="40" CornerRadius="12" Background="#184683DD">
-                                <FontIcon Glyph="&#xE80F;" FontSize="20" Foreground="#87B4FF" />
-                            </Border>
-                            <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <TextBlock x:Name="SetupRequirement" TextWrapping="Wrap" Opacity="0.7" />
-                        <InfoBar x:Name="SoftwareInfoBar" IsOpen="True" IsClosable="False"
-                                 Severity="Informational">
-                            <InfoBar.Content>
-                                <TextBlock x:Name="SoftwareStatus" TextWrapping="Wrap" />
-                            </InfoBar.Content>
-                        </InfoBar>
+                    <StackPanel Spacing="14">
+                        <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ListView x:Name="PairedList" MinHeight="110" MaxHeight="220" SelectionMode="Single" />
+                        <Button x:Name="UnpairButton" Click="UnpairClicked" HorizontalAlignment="Left" />
+                        <TextBlock x:Name="ManualAddressHint" TextWrapping="Wrap" Opacity="0.72" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <HyperlinkButton x:Name="AppleDevicesLink"
-                                NavigateUri="https://support.apple.com/guide/devices-windows/mchl5ded2763/windows" />
-                            <HyperlinkButton x:Name="ITunesLink"
-                                NavigateUri="https://www.apple.com/itunes/download/win64" />
-                            <Button x:Name="SoftwareRefreshButton" Click="SoftwareRefreshClicked" />
+                            <TextBox x:Name="ManualAddressBox" Width="220" PlaceholderText="192.168.1.20" />
+                            <Button x:Name="SaveManualAddressButton" Click="SaveManualAddressClicked" />
+                            <Button x:Name="ClearManualAddressButton" Click="ClearManualAddressClicked" />
                         </StackPanel>
-                        <TextBlock x:Name="ICloudNote" TextWrapping="Wrap" Opacity="0.68" />
+                        <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.68" />
                     </StackPanel>
                 </Border>
                 <Border x:Name="DeviceCard" Grid.Row="0" Grid.Column="1"
@@ -219,8 +193,36 @@
                                  Severity="Informational" />
                     </StackPanel>
                 </Border>
-
-                <Border x:Name="StepsCard" Grid.Row="1" Grid.Column="0"
+                <Border x:Name="GuideCard" Grid.Row="1" Grid.Column="0"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="20" Padding="24">
+                    <StackPanel Spacing="17">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="40" Height="40" CornerRadius="12" Background="#184683DD">
+                                <FontIcon Glyph="&#xE80F;" FontSize="20" Foreground="#87B4FF" />
+                            </Border>
+                            <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock x:Name="SetupRequirement" TextWrapping="Wrap" Opacity="0.7" />
+                        <InfoBar x:Name="SoftwareInfoBar" IsOpen="True" IsClosable="False"
+                                 Severity="Informational">
+                            <InfoBar.Content>
+                                <TextBlock x:Name="SoftwareStatus" TextWrapping="Wrap" />
+                            </InfoBar.Content>
+                        </InfoBar>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <HyperlinkButton x:Name="AppleDevicesLink"
+                                NavigateUri="https://support.apple.com/guide/devices-windows/mchl5ded2763/windows" />
+                            <HyperlinkButton x:Name="ITunesLink"
+                                NavigateUri="https://www.apple.com/itunes/download/win64" />
+                            <Button x:Name="SoftwareRefreshButton" Click="SoftwareRefreshClicked" />
+                        </StackPanel>
+                        <TextBlock x:Name="ICloudNote" TextWrapping="Wrap" Opacity="0.68" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="StepsCard" Grid.Row="1" Grid.Column="1"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="20" Padding="24">
@@ -249,23 +251,11 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border x:Name="PairedCard" Grid.Row="1" Grid.Column="1"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="20" Padding="24">
-                    <StackPanel Spacing="14">
-                        <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        <ListView x:Name="PairedList" MinHeight="110" MaxHeight="220" SelectionMode="Single" />
-                        <Button x:Name="UnpairButton" Click="UnpairClicked" HorizontalAlignment="Left" />
-                        <TextBlock x:Name="ManualAddressHint" TextWrapping="Wrap" Opacity="0.72" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBox x:Name="ManualAddressBox" Width="220" PlaceholderText="192.168.1.20" />
-                            <Button x:Name="SaveManualAddressButton" Click="SaveManualAddressClicked" />
-                            <Button x:Name="ClearManualAddressButton" Click="ClearManualAddressClicked" />
-                        </StackPanel>
-                        <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.68" />
-                    </StackPanel>
-                </Border>
+
+
+
+
+
 
             </Grid>
         </StackPanel>

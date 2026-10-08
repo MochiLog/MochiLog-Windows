@@ -1,0 +1,17 @@
+<Page x:Class="MochiLog_Windows.Pages.LiveBatteryPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer SizeChanged="ContentViewportSizeChanged"
+                  HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="ContentColumn" MaxWidth="1500" HorizontalAlignment="Left"
+                    Padding="36,32,36,48" Spacing="24">
+            <TextBlock x:Name="LiveBatteryTitle" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock x:Name="LiveBatteryNote" TextWrapping="Wrap" Opacity="0.68" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="LiveBatteryReceive" Click="LiveBatteryReceiveClicked" />
+                <Button x:Name="LiveBatterySend" Click="LiveBatterySendClicked" />
+            </StackPanel>
+            <StackPanel x:Name="LiveBatteryCards" Spacing="20" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

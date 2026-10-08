@@ -26,8 +26,9 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         ((NavigationViewItem)NavView.MenuItems[0]).Content = UiText.Get("win_home");
-        ((NavigationViewItem)NavView.MenuItems[1]).Content = UiText.Get("mt_battery_logs");
-        ((NavigationViewItem)NavView.MenuItems[2]).Content = UiText.Get("win_about");
+        ((NavigationViewItem)NavView.MenuItems[1]).Content = UiText.Get("live_title");
+        ((NavigationViewItem)NavView.MenuItems[2]).Content = UiText.Get("mt_battery_logs");
+        ((NavigationViewItem)NavView.MenuItems[3]).Content = UiText.Get("win_about");
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -61,7 +62,7 @@ public sealed partial class MainWindow : Window
     public void Restore()
     {
         AppWindow.Show();
-        CompanionRuntime.Shared.WatchBattery(true);
+        CompanionRuntime.Shared.WatchBattery(NavFrame.Content is LiveBatteryPage);
         Activate();
         if (_pendingUpdate is not null) _ = PromptForUpdateAsync();
     }
@@ -149,6 +150,9 @@ public sealed partial class MainWindow : Window
             {
                 case "home":
                     NavFrame.Navigate(typeof(HomePage));
+                    break;
+                case "liveBattery":
+                    NavFrame.Navigate(typeof(LiveBatteryPage));
                     break;
                 case "about":
                     NavFrame.Navigate(typeof(AboutPage));
