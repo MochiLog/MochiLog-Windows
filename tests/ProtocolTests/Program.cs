@@ -581,6 +581,40 @@ static class Program
                 issuedAt = at, box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray())
             });
         }
+        var registryXML = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "battery-registry.xml"));
+        var native = LiveBatterySnapshot.Parse(registryXML);
+        Check(native.Values.Count == 4 && native.Values["CycleCount"] == 245 && native.Values["DesignCapacity"] == 3000 &&
+            native.Values["FullChargeCapacity"] == 3100 && native.Values["CurrentCapacity"] == 67 && native.Charging == true,
+            "Native validation lost precedence or accepted boolean/unknown capacities");
+        Check(native.Fields.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "Huge" }) && f.Value == "18446744073709551615"),
+            "Native UInt64 lost precision");
+        Check(native.Fields.Any(f => f.Path.SequenceEqual(new[] { "Binary" }) && f.Kind == "data" && f.Value == "AQI=") &&
+            native.Fields.Any(f => f.Path.SequenceEqual(new[] { "Date" }) && f.Kind == "date") &&
+            native.Fields.Any(f => f.Path.SequenceEqual(new[] { "EmptyDictionary" }) && f.Kind == "dictionary") &&
+            native.Fields.Any(f => f.Path.SequenceEqual(new[] { "EmptyArray" }) && f.Kind == "array"), "Typed leaves lost");
+        var table = BatteryPresentation.Summary(native.Values, native.Charging, native.Fields);
+        var optional = BatteryPresentation.Details(native.Values, native.Charging, native.Fields);
+        Check(table.Any(r => r.Key == "Voltage" && r.Value == "4010" && r.Unit == " mV") &&
+            table.Any(r => r.Key == "ExternalConnected" && r.Kind == "boolean") &&
+            !table.Any(r => r.Key is "UnknownCode" or "Huge"), "Summary guessed an unknown field");
+        Check(optional.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "CurrentCapacity" })) &&
+            optional.Any(f => f.Path.SequenceEqual(new[] { "DesignCapacity" }) && f.Value == "4000") &&
+            optional.Any(f => f.Path[0] == "IOReportLegend") && !optional.Any(f => f.Path.SequenceEqual(new[] { "Voltage" })),
+            "Details lost ambiguous fields or repeated verified rows");
+        Check(BatteryPresentation.Details(new(), true, [new(["IsCharging"], "boolean", "false"), new(["Voltage"], "string", "4010")]).Length == 2,
+            "Invalid or contradictory values disappeared");
+        var changedNative = LiveBatterySnapshot.Parse(registryXML.Replace("<key>UnknownCode</key>\n\t<integer>7</integer>",
+            "<key>UnknownCode</key>\n\t<integer>8</integer>"));
+        Check(native.Revision == changedNative.Revision && native.DetailsRevision != changedNative.DetailsRevision,
+            "Details altered core revision");
+        foreach (var invalid in new[] { new string('a', 1048577),
+            registryXML.Replace("<integer>4010</integer>", "<string>" + new string('a', 131073) + "</string>"),
+            "<?xml version=\"1.0\"?><!DOCTYPE plist [<!ENTITY test SYSTEM \"file:///not-readable\">]><plist><dict><key>X</key><string>&test;</string></dict></plist>" }) {
+            var rejected = false;
+            try { _ = LiveBatterySnapshot.Parse(invalid); }
+            catch (Exception error) when (error is InvalidDataException or System.Xml.XmlException) { rejected = true; }
+            Check(rejected, "Invalid or oversized plist accepted");
+        }
         var liveFixture = LiveBatterySnapshot.Parse("""
             {"version":1,"values":{"CycleCount":245,"DesignCapacity":4000},
              "revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

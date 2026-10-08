@@ -40,6 +40,8 @@ public sealed partial class HomePage : Page
     private readonly CompanionRuntime _runtime = CompanionRuntime.Shared;
     private ConnectedDevice? _usbDevice;
     private string? _selectedUdid;
+    private readonly HashSet<Guid> _liveDetailsExpanded = [];
+    private readonly HashSet<(Guid Device, string Group)> _liveGroupsExpanded = [];
 
     public HomePage()
     {
@@ -223,35 +225,30 @@ public sealed partial class HomePage : Page
             var panel = new StackPanel { Spacing = 12 };
             panel.Children.Add(new TextBlock { Text = phone.Name + " · " + phone.Model,
                 FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-            var grid = new Grid { ColumnSpacing = 20, RowSpacing = 16 };
-            var columns = ContentColumn.Width >= 900 ? 3 : 2;
-            for (var column = 0; column < columns; column++)
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            for (var row = 0; row < (6 + columns - 1) / columns; row++)
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var keys = new[] { "CycleCount", "DesignCapacity", "NominalChargeCapacity",
-                "AppleRawMaxCapacity", "FullChargeCapacity", "CurrentCapacity" };
-            for (var index = 0; index < keys.Length; index++)
-            {
-                var key = keys[index];
-                var cell = new StackPanel { Spacing = 5 };
-                cell.Children.Add(new TextBlock { Text = UiText.Get("live_" + key), Opacity = 0.68, TextWrapping = TextWrapping.Wrap });
-                cell.Children.Add(new TextBlock {
-                    Text = snapshot?.Values.TryGetValue(key, out var number) == true
-                        ? number.ToString("N0") + (key == "CycleCount" ? "" : key == "CurrentCapacity" ? "%" : " mAh")
-                        : UiText.Get("live_missing"),
-                    FontSize = 24, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-                Grid.SetRow(cell, index / columns); Grid.SetColumn(cell, index % columns);
-                grid.Children.Add(cell);
+            var table = new Grid { ColumnSpacing = 24, RowSpacing = 12 };
+            table.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            table.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var summary = BatteryPresentation.Summary(snapshot?.Values ?? new(), snapshot?.Charging, snapshot?.Fields ?? []);
+            void AddRow(int index, string label, string value, bool heading = false) {
+                table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                var left = new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap, Opacity = heading ? 0.68 : 1 };
+                var right = new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = !heading,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Opacity = heading ? 0.68 : 1 };
+                Grid.SetRow(left, index); Grid.SetRow(right, index); Grid.SetColumn(right, 1);
+                table.Children.Add(left); table.Children.Add(right);
             }
-            panel.Children.Add(grid);
+            AddRow(0, UiText.Get("live_field"), UiText.Get("live_value"), true);
+            for (var index = 0; index < summary.Length; index++)
+                AddRow(index + 1, UiText.Get("live_" + summary[index].Key), summary[index].Display(UiText.Get));
+            panel.Children.Add(table);
             if (snapshot is not null) panel.Children.Add(new TextBlock {
                 Text = UiText.Get("live_last") + " · " + snapshot.AcquiredAt.ToLocalTime().ToString("G"), Opacity = 0.68 });
             if (snapshot is not null) {
                 var details = new StackPanel { Spacing = 12 };
                 details.Children.Add(new TextBlock { Text = UiText.Get("live_details_note"), TextWrapping = TextWrapping.Wrap, Opacity = 0.68 });
-                var fields = snapshot.Fields;
-                if (fields.Length == 0) details.Children.Add(new TextBlock { Text = UiText.Get("live_details_missing"), TextWrapping = TextWrapping.Wrap });
+                var fields = BatteryPresentation.Details(snapshot.Values, snapshot.Charging, snapshot.Fields);
+                if (snapshot.Fields.Length == 0) details.Children.Add(new TextBlock { Text = UiText.Get("live_details_missing"), TextWrapping = TextWrapping.Wrap });
+                if (snapshot.Fields.Length > 0 && fields.Length == 0) details.Children.Add(new TextBlock { Text = UiText.Get("live_details_empty"), TextWrapping = TextWrapping.Wrap });
                 foreach (var group in fields.GroupBy(f => f.Group).OrderBy(g => g.Key, StringComparer.Ordinal)) {
                     var rows = new StackPanel { Spacing = 12 };
                     foreach (var field in group) {
@@ -265,11 +262,20 @@ public sealed partial class HomePage : Page
                             FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono") };
                         Grid.SetColumn(value, 1); row.Children.Add(value); rows.Children.Add(row);
                     }
-                    details.Children.Add(new Expander { Header = (group.Key.Length == 0 ? UiText.Get("live_details_general") : group.Key) + " · " + group.Count(),
-                        Content = rows, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
+                    var groupKey = (phone.PhysicalDeviceId, group.Key);
+                    var groupExpander = new Expander { Header = (group.Key.Length == 0 ? UiText.Get("live_details_general") : group.Key) + " · " + group.Count(),
+                        Content = rows, IsExpanded = _liveGroupsExpanded.Contains(groupKey),
+                        HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+                    groupExpander.Expanding += (_, _) => _liveGroupsExpanded.Add(groupKey);
+                    groupExpander.Collapsed += (_, _) => _liveGroupsExpanded.Remove(groupKey);
+                    details.Children.Add(groupExpander);
                 }
-                panel.Children.Add(new Expander { Header = UiText.Get("live_details"), Content = details,
-                    HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
+                var detailExpander = new Expander { Header = UiText.Get("live_details"), Content = details,
+                    IsExpanded = _liveDetailsExpanded.Contains(phone.PhysicalDeviceId),
+                    HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+                detailExpander.Expanding += (_, _) => _liveDetailsExpanded.Add(phone.PhysicalDeviceId);
+                detailExpander.Collapsed += (_, _) => _liveDetailsExpanded.Remove(phone.PhysicalDeviceId);
+                panel.Children.Add(detailExpander);
             }
             if (_runtime.LiveBatteryFailures.ContainsKey(phone.PhysicalDeviceId))
                 panel.Children.Add(new TextBlock { Text = UiText.Get("live_unavailable"), TextWrapping = TextWrapping.Wrap,

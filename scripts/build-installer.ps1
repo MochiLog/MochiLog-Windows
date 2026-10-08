@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.12",
+    [string]$Version = "0.1.13",
     [string]$Python = "python",
     [string]$InnoCompiler = "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
 )

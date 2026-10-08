@@ -313,6 +313,7 @@ public static partial class Collector
         var files = scan.RootElement.GetProperty("files").EnumerateArray().Select(item => new DirectFile(
             item.GetProperty("path").GetString()!, item.GetProperty("source").ValueKind == JsonValueKind.Null
                 ? null : item.GetProperty("source").GetString()))
+            .Where(item => CandidateLogPath(item.Path, item.Source))
             .DistinctBy(item => (item.Source, Path.GetFileName(item.Path))).ToArray();
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
@@ -569,6 +570,17 @@ public static partial class Collector
     private static bool SupportedModel(string model) =>
         model.StartsWith("iPhone", StringComparison.Ordinal) || model.StartsWith("iPad", StringComparison.Ordinal);
 
+    internal static bool CandidateLogPath(string path, string? source)
+    {
+        var directory = source is null ? "/" : $"/{source}/";
+        var name = Path.GetFileName(path);
+        return (source is null || ProxiedPath().IsMatch("/" + source)) &&
+            (path.StartsWith(directory + "Analytics-", StringComparison.Ordinal) ||
+             path.StartsWith(directory + "Retired/Analytics-", StringComparison.Ordinal)) &&
+            ValidLogName().IsMatch(name) && !name.Contains("session", StringComparison.OrdinalIgnoreCase) &&
+            !name.StartsWith("Analytics-Census-", StringComparison.Ordinal);
+    }
+
     internal static List<(string Path, string? Source)> AnalyticsEntries(
         string directory, string? source, string listing)
     {
@@ -576,13 +588,11 @@ public static partial class Collector
         return listing.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim())
             .Where(path => path.StartsWith(prefix, StringComparison.Ordinal) &&
-                ValidLogName().IsMatch(System.IO.Path.GetFileName(path)) &&
-                !System.IO.Path.GetFileName(path).Contains("session", StringComparison.OrdinalIgnoreCase) &&
-                !System.IO.Path.GetFileName(path).StartsWith("Analytics-Census-", StringComparison.Ordinal))
+                CandidateLogPath(path, source))
             .Select(path => (path, source)).ToList();
     }
     [GeneratedRegex("^/ProxiedDevice-[a-fA-F0-9]+$")]
     private static partial Regex ProxiedPath();
-    [GeneratedRegex(@"^Analytics-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}.*\.ips\.ca\.synced$")]
+    [GeneratedRegex(@"^Analytics-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}[A-Za-z0-9._-]*\.ips\.ca\.synced$")]
     private static partial Regex ValidLogName();
 }
