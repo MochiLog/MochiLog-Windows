@@ -362,6 +362,10 @@ static class Program
 
     public static async Task Main(string[] args)
     {
+        Check(LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local") == "A4374A9C-4036-30DE-AD77-D8C2176D6D2F",
+            "Existing Python UUIDv3 pairing identity must preserve hostname case");
+        Check(LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local") != LocalDiagnosticsPairing.Identifier("mixedcase-mac.local"),
+            "Hostname normalization must not replace a trusted host identity");
         if (args.SequenceEqual(new[] { "--live-simulator" })) {
             await ServeLiveSimulator();
             return;

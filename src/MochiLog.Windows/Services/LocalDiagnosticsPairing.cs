@@ -26,10 +26,9 @@ public static class LocalDiagnosticsPairing
                 !values.TryGetValue("private_key", out var priv) || priv.Name != "data" ||
                 Convert.FromBase64String(pub.Value).Length != 32 || Convert.FromBase64String(priv.Value).Length != 32) return Unavailable();
             // UUID v3 is upstream's host identifier, not a password/hash scheme.
-            var ns = Convert.FromHexString("6ba7b8109dad11d180b400c04fd430c8");
-            var digest = MD5.HashData(ns.Concat(Encoding.UTF8.GetBytes(Environment.MachineName)).ToArray());
-            digest[6] = (byte)((digest[6] & 15) | 0x30); digest[8] = (byte)((digest[8] & 63) | 0x80);
-            var id = new Guid(digest, bigEndian: true).ToString("D").ToUpperInvariant();
+            // Match Python platform.node()/socket.gethostname() exactly. MachineName
+            // uppercases some hostnames, changing the UUID of an existing pairing.
+            var id = Identifier(System.Net.Dns.GetHostName());
             foreach (var key in new[] { "identifier", "host_identifier" }) {
                 if (values.TryGetValue(key, out var identifier) && identifier.Name == "string") { id = identifier.Value; break; }
             }
@@ -41,6 +40,13 @@ public static class LocalDiagnosticsPairing
             var bytes = Encoding.UTF8.GetBytes(new XDocument(new XElement("plist", new XAttribute("version", "1.0"), pair)).ToString());
             return JsonSerializer.SerializeToUtf8Bytes(new { type = "local-diagnostics-pairing", version = 1,
                 expectedUDID = phone.Udid, physicalDeviceID = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), pairing = Convert.ToBase64String(bytes) });
-        } catch (Exception e) when (e is IOException or XmlException or FormatException or UnauthorizedAccessException) { return Unavailable(); }
+        } catch (Exception e) when (e is IOException or XmlException or FormatException or UnauthorizedAccessException or System.Net.Sockets.SocketException) { return Unavailable(); }
+    }
+    internal static string Identifier(string hostname)
+    {
+        var ns = Convert.FromHexString("6ba7b8109dad11d180b400c04fd430c8");
+        var digest = MD5.HashData(ns.Concat(Encoding.UTF8.GetBytes(hostname)).ToArray());
+        digest[6] = (byte)((digest[6] & 15) | 0x30); digest[8] = (byte)((digest[8] & 63) | 0x80);
+        return new Guid(digest, bigEndian: true).ToString("D").ToUpperInvariant();
     }
 }
