@@ -10,7 +10,22 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+            <Style x:Key="CompanionPageScrollStyle" TargetType="ScrollViewer">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="HorizontalScrollMode" Value="Disabled" />
+                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+                <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            </Style>
+            <Style x:Key="CompanionPageColumnStyle" TargetType="StackPanel">
+                <Setter Property="MaxWidth" Value="1440" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="Padding" Value="32,28,32,48" />
+                <Setter Property="Spacing" Value="24" />
+            </Style>
+            <Style x:Key="CompanionPageGridStyle" TargetType="Grid">
+                <Setter Property="MaxWidth" Value="1440" />
+                <Setter Property="Padding" Value="32,28,32,48" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

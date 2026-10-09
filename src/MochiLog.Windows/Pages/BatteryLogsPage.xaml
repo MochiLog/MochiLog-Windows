@@ -1,10 +1,13 @@
 <Page x:Class="MochiLog_Windows.Pages.BatteryLogsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer>
-        <StackPanel MaxWidth="1200" Padding="28" Spacing="20">
+    <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}">
+        <StackPanel x:Name="ContentColumn" Style="{StaticResource CompanionPageColumnStyle}"
+                    Width="{Binding ActualWidth, ElementName=ContentScroll}"
+                    AutomationProperties.AutomationId="PageColumn">
             <StackPanel Spacing="4">
-                <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}"
+                       AutomationProperties.AutomationId="PageHeading" />
                 <TextBlock x:Name="PageIntro" TextWrapping="Wrap" Opacity="0.7" />
             </StackPanel>
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"

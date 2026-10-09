@@ -6,12 +6,14 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-    <ScrollViewer x:Name="ContentScroll" SizeChanged="ContentViewportSizeChanged"
-                  HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel x:Name="ContentColumn" MaxWidth="1500" HorizontalAlignment="Left"
-                    Padding="36,32,36,48" Spacing="24">
+    <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}"
+                  SizeChanged="ContentViewportSizeChanged">
+        <StackPanel x:Name="ContentColumn" Style="{StaticResource CompanionPageColumnStyle}"
+                    Width="{Binding ActualWidth, ElementName=ContentScroll}"
+                    AutomationProperties.AutomationId="PageColumn">
             <StackPanel Spacing="5">
-                <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}"
+                           AutomationProperties.AutomationId="PageHeading" />
                 <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Opacity="0.68" />
             </StackPanel>
 

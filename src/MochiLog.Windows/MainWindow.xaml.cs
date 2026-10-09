@@ -21,9 +21,6 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromHours(1) };
     public bool IsTrayReady => _tray is not null;
     public string? TrayError { get; private set; }
-    public double ContentViewportWidth =>
-        AppWindow.Size.Width / (NavView.XamlRoot?.RasterizationScale ?? 1) -
-        (NavView.IsPaneOpen ? NavView.OpenPaneLength : NavView.CompactPaneLength);
 
     public MainWindow()
     {

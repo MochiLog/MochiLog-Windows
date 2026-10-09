@@ -2,9 +2,12 @@
 <Page x:Class="MochiLog_Windows.Pages.SettingsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer>
-        <StackPanel MaxWidth="920" Padding="28" Spacing="22">
-            <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}" />
+    <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}">
+        <StackPanel x:Name="ContentColumn" Style="{StaticResource CompanionPageColumnStyle}"
+                    Width="{Binding ActualWidth, ElementName=ContentScroll}"
+                    AutomationProperties.AutomationId="PageColumn">
+            <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}"
+                       AutomationProperties.AutomationId="PageHeading" />
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
                 <StackPanel Spacing="12">
                     <ToggleSwitch x:Name="AutomaticUpdateToggle" />

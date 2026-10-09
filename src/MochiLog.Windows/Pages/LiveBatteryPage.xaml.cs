@@ -24,11 +24,7 @@ public sealed partial class LiveBatteryPage : Page
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(RenderLiveBattery);
 
-    private void ContentViewportSizeChanged(object sender, SizeChangedEventArgs args)
-    {
-        var viewport = (Application.Current as App)?.MainWindow?.ContentViewportWidth ?? args.NewSize.Width;
-        ContentColumn.Width = Math.Min(1500, Math.Max(480, viewport - 32));
-    }
+
 
     private async void LiveBatteryReceiveClicked(object sender, RoutedEventArgs args) =>
         await _runtime.RefreshAllBatteryAsync();

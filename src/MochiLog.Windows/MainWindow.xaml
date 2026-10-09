@@ -34,30 +34,31 @@
             x:Name="NavView"
             Grid.Row="1"
             IsBackButtonVisible="Collapsed"
-            IsPaneOpen="False"
-            PaneDisplayMode="LeftCompact"
+            PaneDisplayMode="Auto"
+            CompactModeThresholdWidth="680"
+            ExpandedModeThresholdWidth="1100"
             CompactPaneLength="64"
-            OpenPaneLength="220"
+            OpenPaneLength="272"
             IsPaneToggleButtonVisible="False"
             SelectionChanged="NavView_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem
                     Content="Home"
                     IsSelected="True"
-                    Tag="home">
+                    Tag="home" AutomationProperties.AutomationId="NavHome">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE80F;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Live Battery" Tag="liveBattery">
+                <NavigationViewItem Content="Live Battery" Tag="liveBattery" AutomationProperties.AutomationId="NavLiveBattery">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE850;" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Battery logs" Tag="battery">
+                <NavigationViewItem Content="Battery logs" Tag="battery" AutomationProperties.AutomationId="NavBatteryLogs">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE7B8;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="About" Tag="about">
+                <NavigationViewItem Content="About" Tag="about" AutomationProperties.AutomationId="NavAbout">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xEA3A;" />
                     </NavigationViewItem.Icon>

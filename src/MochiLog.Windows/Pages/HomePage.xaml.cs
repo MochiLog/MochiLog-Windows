@@ -101,10 +101,10 @@ public sealed partial class HomePage : Page
 
     private void ContentViewportSizeChanged(object sender, SizeChangedEventArgs args)
     {
-        var viewport = (Application.Current as MochiLog_Windows.App)?.MainWindow?.ContentViewportWidth
-            ?? args.NewSize.Width;
-        ContentColumn.Width = Math.Min(1500, Math.Max(480, viewport - 32));
-        var usable = ContentColumn.Width - 72;
+        // The ScrollViewer already excludes the navigation pane and accounts for DPI.
+        // Its measured viewport changes on resize and pane expansion alike.
+        var usable = Math.Max(0, Math.Min(1440, args.NewSize.Width) -
+            ContentColumn.Padding.Left - ContentColumn.Padding.Right);
         DashboardGrid.Width = usable;
         StatusCard.Width = usable;
         FirstConnectionCard.Width = usable;
@@ -113,7 +113,7 @@ public sealed partial class HomePage : Page
         FirstConnectionIllustration.Visibility = showIllustration
             ? Visibility.Visible : Visibility.Collapsed;
 
-        var wide = usable >= 1120;
+        var wide = usable >= 1000;
         var left = wide ? Math.Round((usable - 20) * 0.53) : usable;
         var right = wide ? usable - 20 - left : 0;
         MainColumn.Width = new GridLength(left);
