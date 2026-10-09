@@ -99,11 +99,11 @@ public sealed partial class HomePage : Page
         await Windows.System.Launcher.LaunchUriAsync(
             new Uri("https://apps.apple.com/app/mochilog/id6756904240"));
 
-    private void ContentViewportSizeChanged(object sender, SizeChangedEventArgs args)
+    private void ContentColumnSizeChanged(object sender, SizeChangedEventArgs args)
     {
-        // The ScrollViewer already excludes the navigation pane and accounts for DPI.
-        // Its measured viewport changes on resize and pane expansion alike.
-        var usable = Math.Max(0, Math.Min(1440, args.NewSize.Width) -
+        // Measure the styled column after its padding and maximum width are applied.
+        // This also runs after the initial layout, not just after window resizes.
+        var usable = Math.Max(0, args.NewSize.Width -
             ContentColumn.Padding.Left - ContentColumn.Padding.Right);
         DashboardGrid.Width = usable;
         StatusCard.Width = usable;

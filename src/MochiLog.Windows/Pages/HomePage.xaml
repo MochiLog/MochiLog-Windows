@@ -6,11 +6,11 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-    <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}"
-                  SizeChanged="ContentViewportSizeChanged">
+    <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}">
         <StackPanel x:Name="ContentColumn" Style="{StaticResource CompanionPageColumnStyle}"
                     Width="{Binding ActualWidth, ElementName=ContentScroll}"
-                    AutomationProperties.AutomationId="PageColumn">
+                    AutomationProperties.AutomationId="PageColumn"
+                    SizeChanged="ContentColumnSizeChanged">
             <StackPanel Spacing="5">
                 <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}"
                            AutomationProperties.AutomationId="PageHeading" />
