@@ -1,0 +1,205 @@
+{
+  "sourceCommit": "f8d2ead64a583e0b830cb076111abbbf356b2026",
+  "platform": "Windows 11",
+  "scalePercent": 150,
+  "measurements": [
+    {
+      "width": 1920,
+      "page": "home",
+      "headingX": 469,
+      "headingY": 117,
+      "headingWidth": 1439,
+      "navWidth": 407,
+      "dpi": 144
+    },
+    {
+      "width": 1920,
+      "page": "battery",
+      "headingX": 469,
+      "headingY": 117,
+      "headingWidth": 1391,
+      "navWidth": 395,
+      "dpi": 144
+    },
+    {
+      "width": 1920,
+      "page": "logs",
+      "headingX": 469,
+      "headingY": 117,
+      "headingWidth": 1391,
+      "navWidth": 395,
+      "dpi": 144
+    },
+    {
+      "width": 1920,
+      "page": "about",
+      "headingX": 469,
+      "headingY": 117,
+      "headingWidth": 1391,
+      "navWidth": 395,
+      "dpi": 144
+    },
+    {
+      "width": 1920,
+      "page": "settings",
+      "headingX": 469,
+      "headingY": 117,
+      "headingWidth": 1391,
+      "navWidth": 395,
+      "dpi": 144
+    },
+    {
+      "width": 1920,
+      "page": "licenses",
+      "headingX": 469,
+      "headingY": 117,
+      "headingWidth": 1391,
+      "navWidth": 395,
+      "dpi": 144
+    },
+    {
+      "width": 1440,
+      "page": "home",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 1224,
+      "navWidth": 94,
+      "dpi": 144
+    },
+    {
+      "width": 1440,
+      "page": "battery",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 1224,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1440,
+      "page": "logs",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 1224,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1440,
+      "page": "about",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 1224,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1440,
+      "page": "settings",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 1224,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1440,
+      "page": "licenses",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 1224,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1000,
+      "page": "home",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 784,
+      "navWidth": 94,
+      "dpi": 144
+    },
+    {
+      "width": 1000,
+      "page": "battery",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 784,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1000,
+      "page": "logs",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 784,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1000,
+      "page": "about",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 784,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1000,
+      "page": "settings",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 784,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 1000,
+      "page": "licenses",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 784,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 760,
+      "page": "home",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 544,
+      "navWidth": 94,
+      "dpi": 144
+    },
+    {
+      "width": 760,
+      "page": "battery",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 544,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 760,
+      "page": "logs",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 544,
+      "navWidth": 84,
+      "dpi": 144
+    },
+    {
+      "width": 760,
+      "page": "about",
+      "headingX": 157,
+      "headingY": 117,
+      "headingWidth": 544,
+      "navWidth": 84,
+      "dpi": 144
+    }
+  ]
+}
