@@ -10,6 +10,15 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
+            <DataTemplate x:Key="DiagnosticLineTemplate">
+                <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12"
+                           TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+            </DataTemplate>
+            <Style x:Key="DiagnosticLineContainerStyle" TargetType="ListViewItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="4,0" />
+                <Setter Property="MinHeight" Value="0" />
+            </Style>
             <Style x:Key="CompanionPageScrollStyle" TargetType="ScrollViewer">
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="HorizontalScrollMode" Value="Disabled" />

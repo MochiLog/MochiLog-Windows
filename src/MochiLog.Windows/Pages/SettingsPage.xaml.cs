@@ -14,6 +14,10 @@ public sealed partial class SettingsPage : Page
 {
     private readonly CompanionRuntime _runtime = CompanionRuntime.Shared;
 
+    private bool _rendering;
+    private string _debugContent = "";
+    private string _phoneContent = "";
+
     public SettingsPage()
     {
         InitializeComponent();
@@ -73,38 +77,55 @@ public sealed partial class SettingsPage : Page
     }
     private void Render()
     {
-        var selected = SupportDevicePicker.SelectedIndex;
-        var labels = _runtime.State.Phones.Select(phone => $"{phone.Name} ({phone.Model})").ToArray();
-        if (SupportDevicePicker.ItemsSource is not string[] current || !current.SequenceEqual(labels)) {
-            SupportDevicePicker.ItemsSource = labels;
-            SupportDevicePicker.SelectedIndex = selected >= 0 && selected < labels.Length ? selected :
-                labels.Length > 0 ? 0 : -1;
-        }
-        var day = DebugDayPicker.SelectedItem as string;
-        var days = _runtime.DebugLogDays.ToArray();
-        if (DebugDayPicker.ItemsSource is not string[] currentDays ||
-            !currentDays.SequenceEqual(days)) {
-            DebugDayPicker.ItemsSource = days;
-            DebugDayPicker.SelectedItem = day is not null && days.Contains(day)
-                ? day : days.FirstOrDefault();
-        }
-        DebugText.Text = DebugDayPicker.SelectedItem is string selectedDay
-            ? _runtime.DebugLogForDay(selectedDay) : _runtime.DebugLog;
-        var phoneDay = PhoneDayPicker.SelectedItem as string;
-        var phoneDays = _runtime.PhoneDebugDays(SelectedPhone()).ToArray();
-        if (PhoneDayPicker.ItemsSource is not string[] currentPhoneDays ||
-            !currentPhoneDays.SequenceEqual(phoneDays)) {
-            PhoneDayPicker.ItemsSource = phoneDays;
-            PhoneDayPicker.SelectedItem = phoneDay is not null && phoneDays.Contains(phoneDay)
-                ? phoneDay : phoneDays.FirstOrDefault();
-        }
-        PhoneText.Text = PhoneDayPicker.SelectedItem is string selectedPhoneDay
-            ? _runtime.PhoneDebugForDay(SelectedPhone(), selectedPhoneDay)
-            : _runtime.PhoneDiagnosticsText(SelectedPhone());
-        MailButton.IsEnabled = !string.IsNullOrWhiteSpace(NicknameBox.Text) &&
-            !string.IsNullOrWhiteSpace(EmailBox.Text) &&
-            !string.IsNullOrWhiteSpace(MessageBox.Text);
+        // Updating picker selections can synchronously raise SelectionChanged.
+        if (_rendering) return;
+        _rendering = true;
+        try {
+            var selected = SupportDevicePicker.SelectedIndex;
+            var labels = _runtime.State.Phones.Select(phone => $"{phone.Name} ({phone.Model})").ToArray();
+            if (SupportDevicePicker.ItemsSource is not string[] current || !current.SequenceEqual(labels)) {
+                SupportDevicePicker.ItemsSource = labels;
+                SupportDevicePicker.SelectedIndex = selected >= 0 && selected < labels.Length ? selected :
+                    labels.Length > 0 ? 0 : -1;
+            }
+            var day = DebugDayPicker.SelectedItem as string;
+            var days = _runtime.DebugLogDays.ToArray();
+            if (DebugDayPicker.ItemsSource is not string[] currentDays ||
+                !currentDays.SequenceEqual(days)) {
+                DebugDayPicker.ItemsSource = days;
+                DebugDayPicker.SelectedItem = day is not null && days.Contains(day)
+                    ? day : days.FirstOrDefault();
+            }
+            var debugContent = DebugDayPicker.SelectedItem is string selectedDay
+                ? _runtime.DebugLogForDay(selectedDay) : _runtime.DebugLog;
+            if (_debugContent != debugContent) {
+                _debugContent = debugContent;
+                DebugText.ItemsSource = DiagnosticLines(debugContent);
+            }
+            var phoneDay = PhoneDayPicker.SelectedItem as string;
+            var phoneDays = _runtime.PhoneDebugDays(SelectedPhone()).ToArray();
+            if (PhoneDayPicker.ItemsSource is not string[] currentPhoneDays ||
+                !currentPhoneDays.SequenceEqual(phoneDays)) {
+                PhoneDayPicker.ItemsSource = phoneDays;
+                PhoneDayPicker.SelectedItem = phoneDay is not null && phoneDays.Contains(phoneDay)
+                    ? phoneDay : phoneDays.FirstOrDefault();
+            }
+            var phoneContent = PhoneDayPicker.SelectedItem is string selectedPhoneDay
+                ? _runtime.PhoneDebugForDay(SelectedPhone(), selectedPhoneDay)
+                : _runtime.PhoneDiagnosticsText(SelectedPhone());
+            if (_phoneContent != phoneContent) {
+                _phoneContent = phoneContent;
+                PhoneText.ItemsSource = DiagnosticLines(phoneContent);
+            }
+            MailButton.IsEnabled = !string.IsNullOrWhiteSpace(NicknameBox.Text) &&
+                !string.IsNullOrWhiteSpace(EmailBox.Text) &&
+                !string.IsNullOrWhiteSpace(MessageBox.Text);
+        } finally { _rendering = false; }
     }
+
+    // ListView virtualizes the visible rows; copying retains the complete original text.
+    private static string[] DiagnosticLines(string content) =>
+        content.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
 
     private PairedPhone? SelectedPhone() => SupportDevicePicker.SelectedIndex is >= 0 and var index &&
         index < _runtime.State.Phones.Count ? _runtime.State.Phones[index] : null;
@@ -147,14 +168,14 @@ public sealed partial class SettingsPage : Page
     private void CopyClicked(object sender, RoutedEventArgs args)
     {
         var package = new DataPackage();
-        package.SetText(DebugText.Text);
+        package.SetText(_debugContent);
         Clipboard.SetContent(package);
     }
 
     private void CopyPhoneClicked(object sender, RoutedEventArgs args)
     {
         var package = new DataPackage();
-        package.SetText(PhoneText.Text);
+        package.SetText(_phoneContent);
         Clipboard.SetContent(package);
     }
 

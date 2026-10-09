@@ -50,8 +50,9 @@
                                   SelectionChanged="RetentionChanged" />
                         <Button x:Name="DeleteDebugButton" Click="DeleteDebugClicked" />
                     </StackPanel>
-                    <TextBox x:Name="DebugText" IsReadOnly="True" AcceptsReturn="True"
-                             TextWrapping="Wrap" Height="190" FontFamily="Consolas" />
+                    <ListView x:Name="DebugText" Height="190" SelectionMode="None"
+                              ItemTemplate="{StaticResource DiagnosticLineTemplate}"
+                              ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="CopyButton" Click="CopyClicked" />
                         <Button x:Name="RefreshDebugButton" Click="RefreshDebugClicked" />
@@ -63,8 +64,9 @@
                     <TextBlock x:Name="PhoneTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <ComboBox x:Name="PhoneDayPicker" MinWidth="150" HorizontalAlignment="Left"
                               SelectionChanged="PhoneDayChanged" />
-                    <TextBox x:Name="PhoneText" IsReadOnly="True" AcceptsReturn="True"
-                             TextWrapping="Wrap" Height="140" FontFamily="Consolas" />
+                    <ListView x:Name="PhoneText" Height="140" SelectionMode="None"
+                              ItemTemplate="{StaticResource DiagnosticLineTemplate}"
+                              ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />
                     <Button x:Name="CopyPhoneButton" Click="CopyPhoneClicked" HorizontalAlignment="Left" />
                 </StackPanel>
             </Border>
