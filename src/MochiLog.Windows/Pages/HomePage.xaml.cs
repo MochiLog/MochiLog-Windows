@@ -113,7 +113,7 @@ public sealed partial class HomePage : Page
         FirstConnectionIllustration.Visibility = showIllustration
             ? Visibility.Visible : Visibility.Collapsed;
 
-        var wide = usable >= 1000;
+        var wide = usable >= 900;
         var left = wide ? Math.Round((usable - 20) * 0.53) : usable;
         var right = wide ? usable - 20 - left : 0;
         MainColumn.Width = new GridLength(left);
