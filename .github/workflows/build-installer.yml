@@ -3,11 +3,21 @@ name: Build Windows alpha installer
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -25,10 +35,22 @@ jobs:
       - name: Build self-contained installer
         shell: pwsh
         run: |
-          ./scripts/build-installer.ps1 -Python python `
+          ./scripts/build-installer.ps1 -Python python -CompilerJobs 2 `
             -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+      - name: Verify install, uninstall and runtime without Python
+        shell: pwsh
+        run: |
+          ./scripts/test-installer.ps1
+          python scripts/test-compiled-collector.py "$env:LOCALAPPDATA\Programs\MochiLog Windows\Collector\pymobiledevice3.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: MochiLog-Windows-Alpha-Setup
           path: Build/MochiLog-Windows-Alpha-Setup.exe
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Collector-compilation-report
+          path: Build/Nuitka/compilation-report.xml
+          if-no-files-found: ignore
+          retention-days: 14

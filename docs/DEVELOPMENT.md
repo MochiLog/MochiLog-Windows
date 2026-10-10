@@ -44,3 +44,7 @@ Verification: Python whitelist/revision tests; secure transfer protocol tests co
 Windowsの合成サーバーは`dotnet run --project tests/ProtocolTests/ProtocolTests.csproj -c Release -- --live-simulator`で起動できます。毎回専用のテスト保管先を使い、実ペアリング・実ログは読みません。10分で終了し、テストデータを削除します。2026-10-08、SSHのループバック転送を介したiPhoneシミュレータで、Windowsサーバーのv3暗号化要求・SHA-256照合・値の表示・値が同じ場合の再受信が成功しました。
 
 Full-field verification: six Python tests, core/full-detail compatibility, changed/unchanged detail responses, 64-bit precision and tamper rejection. Tailscale acquisition was verified from Mac to iPad; this is not evidence of cellular-radio operation until that physical switch is tested. Mac learns only authenticated Tailnet socket peers in memory and tries the existing native path before a remote fallback. The mobile cellular permission remains opt-in.
+
+## コンパイルされた端末通信ヘルパー
+
+ローカルとCIで同じNuitkaビルドを使います。前提条件、実行コマンド、ランタイム依存の切り分けは[COMPILED_COLLECTOR.md](COMPILED_COLLECTOR.md)を参照してください。

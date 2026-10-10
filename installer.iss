@@ -1,6 +1,6 @@
 #define AppName "MochiLog Windows"
 #ifndef AppVersion
-  #define AppVersion "0.1.21"
+  #define AppVersion "0.1.22"
 #endif
 #define AppPublisher "MochiLog"
 #define AppExe "MochiLog.Windows.exe"
@@ -39,12 +39,13 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 Source: "Build\Publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "Build\Collector\pymobiledevice3.exe"; DestDir: "{app}\Collector"; Flags: ignoreversion
+Source: "Build\Collector\*"; DestDir: "{app}\Collector"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "LICENSE"; DestDir: "{app}\Licenses"; DestName: "MochiLog-GPL-3.0.txt"; Flags: ignoreversion
 Source: "Build\Licenses\*"; DestDir: "{app}\Licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "resources\RuntimeLicenses\*"; DestDir: "{app}\Licenses\Runtime"; Flags: ignoreversion
 
 [InstallDelete]
+Type: filesandordirs; Name: "{app}\Collector"
 Type: filesandordirs; Name: "{app}\Licenses\Python"
 Type: filesandordirs; Name: "{app}\Licenses\NuGet"
 Type: filesandordirs; Name: "{app}\Licenses\Runtime"

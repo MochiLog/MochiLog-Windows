@@ -20,10 +20,7 @@ public static partial class Collector
         Environment.GetEnvironmentVariable("MOCHILOG_TEST_COLLECTOR") ?? "",
         #endif
         Path.Combine(AppContext.BaseDirectory, "Collector", "pymobiledevice3.exe"),
-        Path.Combine(AppContext.BaseDirectory, "pymobiledevice3.exe"),
-        // Only for development on the configured Windows build host.
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Temp", "mochilog-win-collector", "Scripts", "pymobiledevice3.exe")
+        Path.Combine(AppContext.BaseDirectory, "pymobiledevice3.exe")
     }.FirstOrDefault(File.Exists);
 
     public static async Task<string> RunAsync(IEnumerable<string> arguments, TimeSpan timeout,
