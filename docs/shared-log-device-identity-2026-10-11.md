@@ -5,3 +5,5 @@ The mobile October 10 defect used the receiver model for an Analytics log with n
 The protocol suite passed on Windows 11 with real DPAPI StateStore persistence, including four-peer sharing, authenticated source model, old client capability gating, scope revocation, encrypted transfer/ACK, replay rejection, idle timeout and shutdown cancellation. The macOS-hosted net10.0-windows test cannot exercise DPAPI and was not used as a Windows pass.
 
 Only native C# transfer metadata changed. The unchanged collector and dependency license bundle are reused from the verified 0.1.22 Release installation for the incremental local installer. The standard local/CI build script still compiles the maintained Python library with Nuitka and includes its runtime.
+
+The secure consent policy includes source models even when no log body remains pending. Tests verify the already-delivered source is present and an unconsented peer is absent; the scope lease rules are unchanged.
