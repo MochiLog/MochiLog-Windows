@@ -647,7 +647,8 @@ public sealed class TransferServer : IDisposable
                     $"file-decision|v1|{Upper(hostId)}|{Upper(physicalId)}|{Upper(nonce)}|{offeredToken}|{offeredDigest}|{decision}")))
             {
                 var sharedOffer = offeredToken.StartsWith("Shared::", StringComparison.Ordinal);
-                var offeredFile = sharedOffer ? _cloudSharing.Resolve(offeredToken, physicalId, _state.Phones, now)
+                var offeredFile = sharedOffer ? (secure && Get(request, "logSourceIdentityVersion") == "1"
+                    ? _cloudSharing.Resolve(offeredToken, physicalId, _state.Phones, now) : null)
                     : Path.Combine(queueRoot, offeredToken.Replace("::", Path.DirectorySeparatorChar.ToString()));
                 if (File.Exists(offeredFile) && new FileInfo(offeredFile).Length <= MaximumLogBytes)
                 {
@@ -680,7 +681,8 @@ public sealed class TransferServer : IDisposable
                      Get(request, "offerDigest") is not null && Get(request, "offerDecision") is not null)
                 StatusChanged?.Invoke($"{phone.Name}: preflight decision rejected for {CloudLogSharing.DebugLabel(rejectedToken)}; authentication or token invalid");
             var own = NextFile();
-            var shared = own is null && secure && Get(request, "cloudSharingVersion") == "1" && offerEnabled
+            var shared = own is null && secure && Get(request, "cloudSharingVersion") == "1" &&
+                Get(request, "logSourceIdentityVersion") == "1" && offerEnabled
                 ? _cloudSharing.Next(physicalId, _state.Phones, now) : null;
             var next = own ?? shared?.File;
             var token = shared?.Token ?? (own is null ? "" : Path.GetRelativePath(QueuePath(phone), own)
@@ -693,8 +695,11 @@ public sealed class TransferServer : IDisposable
                     .ToLowerInvariant();
                 var forced = File.Exists(next + ".force-resend");
                 StatusChanged?.Invoke($"{phone.Name}: preflight offer {CloudLogSharing.DebugLabel(token)}; SHA-256 {digest[..12]}; bytes={new FileInfo(next).Length}; forced={forced}");
+                var sourceId = CloudLogSharing.Parse(token)?.Origin ?? physicalId;
+                var sourceModel = _state.Phones.FirstOrDefault(p => p.PhysicalDeviceId == sourceId)?.Model ?? "";
+                StatusChanged?.Invoke($"Import identity offer: source={sourceId:D}, recipient={physicalId:D}, model={sourceModel}");
                 var offer = JsonSerializer.SerializeToUtf8Bytes(new {
-                    type = "file-offer", token, sha256 = digest,
+                    type = "file-offer", token, sha256 = digest, sourceModel,
                     force = forced ? "true" : "false"
                 });
                 return EncryptLog(phone.Secret, hostId, physicalId, nonce, "", offer);

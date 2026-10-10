@@ -65,13 +65,14 @@ static class Program
         var bytes = Encoding.UTF8.GetBytes("original-iPad-cloud-log");
         File.WriteAllBytes(file, bytes);
         async Task<(string Name, byte[] Content)> Pull(int i, string? account, bool policy = false,
-            string ack = "", string? token = null, string? digest = null, string? decision = null, int? liveSource = null, bool deny = false)
+            string ack = "", string? token = null, string? digest = null, string? decision = null, int? liveSource = null, bool deny = false, bool sourceIdentity = true)
         {
             var peer = peers[i]; var nonce = Guid.NewGuid();
             var fields = new Dictionary<string, string> { ["version"] = "2", ["hostID"] = Upper(state.HostId),
                 ["physicalDeviceID"] = Upper(peer.PhysicalDeviceId), ["nonce"] = Upper(nonce), ["ack"] = ack,
                 ["mac"] = Hex(Hmac(peer.Secret, $"v2|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{ack}")),
                 ["cloudSharingVersion"] = "1", ["cloudSharingScope"] = account ?? "" };
+            if (sourceIdentity) fields["logSourceIdentityVersion"] = "1";
             if (liveSource is not null) {
                 fields["liveBatteryVersion"] = "1"; fields["liveBatterySharedVersion"] = "1";
                 fields["liveBatterySourceID"] = Upper(peers[liveSource.Value].PhysicalDeviceId);
@@ -99,7 +100,9 @@ static class Program
         await Pull(0, scope, true);
         Check(!IsOffer(await Pull(0, scope)), "Source without consent was shared");
         await Pull(1, scope, true);
+        Check(!IsOffer(await Pull(0, scope, sourceIdentity: false)), "Old recipient received foreign logs without origin model support");
         var offer = JsonDocument.Parse((await Pull(0, scope)).Content).RootElement;
+        Check(offer.GetProperty("sourceModel").GetString() == peers[1].Model, "Offer used recipient model");
         var token = offer.GetProperty("token").GetString()!; var digest = offer.GetProperty("sha256").GetString()!;
         Check(CloudLogSharing.Parse(token)?.Origin == peers[1].PhysicalDeviceId, "Origin ID was lost");
         var body = await Pull(0, scope, token: token, digest: digest, decision: "send");
