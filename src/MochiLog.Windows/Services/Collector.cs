@@ -63,7 +63,7 @@ public static partial class Collector
             var detail = toolError ?? Regex.Replace(stderr, "\\x1B\\[[0-9;]*m", "")
                 .Split('\n').LastOrDefault(line => !string.IsNullOrWhiteSpace(line))?.Trim()
                 ?? "No error detail returned.";
-            throw new IOException($"Collector exited {process.ExitCode}: {detail}");
+            throw new IOException($"Collector exited {process.ExitCode}: {StableDiagnostic(detail)}");
         }
         successful = true;
         return stdout;
@@ -342,6 +342,7 @@ public static partial class Collector
                 Path.Combine(queue, kind, item.Source ?? "", name)))) continue;
             pending.Add(item);
         }
+        Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}; downloadDue={pending.Count}");
         if (pending.Count == 0) { progress?.Invoke(0, 0); return new CollectionResult(0, 0, 0, null); }
         var staging = Path.Combine(queue, ".staging-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
@@ -350,6 +351,8 @@ public static partial class Collector
             var manifest = Path.Combine(staging, "manifest.json");
             await File.WriteAllTextAsync(manifest, JsonSerializer.Serialize(pending.Select(item =>
                 new { path = item.Path, source = item.Source })), cancellation);
+            foreach (var item in pending)
+                Trace?.Invoke($"{phone.Name}: battery candidate download requested; file={Path.GetFileName(item.Path)}; source={item.Source ?? "host"}");
             var output = await RunAsync(["direct-rsd", "pull-batch", "--udid", phone.Udid,
                 "--host", address, "--port", "49152",
                 "--manifest", manifest, "--output", staging],
@@ -405,6 +408,7 @@ public static partial class Collector
                             state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
                     }
                     saved++;
+                    Trace?.Invoke($"{phone.Name}: battery report stored; file={name}; kind={kind}; source={item.Source ?? "host"}");
                 }
             }
             progress?.Invoke(pending.Count, pending.Count);
@@ -431,7 +435,9 @@ public static partial class Collector
                     "--remote-file", path, "--depth", "1"], TimeSpan.FromSeconds(90), cancellation);
                 files.AddRange(AnalyticsEntries(path, source, listing));
             }
-            catch when (source is not null) { /* One unready Watch must not block iPhone logs. */ }
+            catch (Exception error) when (source is not null && error is not OperationCanceledException) {
+                Trace?.Invoke($"{phone.Name}: accessory listing unavailable; source={source}; error={StableDiagnostic(error.Message)}");
+            }
         }
         await AddDirectory("/Retired", null);
         await AddDirectory("/", null, root);
@@ -441,6 +447,7 @@ public static partial class Collector
         }
         files = files.DistinctBy(item => (item.Source,
             System.IO.Path.GetFileName(item.Path))).ToList();
+        Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}");
         var saved = 0; var skipped = 0; var failed = 0; var deferred = 0;
         string? lastError = null;
         var queue = TransferServer.QueuePath(phone);
@@ -462,6 +469,7 @@ public static partial class Collector
             var sourceFolder = item.Source ?? "";
             if (new[] { "Host", "Watch" }.Any(kind => File.Exists(
                 System.IO.Path.Combine(queue, kind, sourceFolder, name)))) continue;
+            Trace?.Invoke($"{phone.Name}: battery candidate download requested; file={name}; source={item.Source ?? "host"}");
             var staging = System.IO.Path.Combine(queue, ".staging-" + Guid.NewGuid().ToString("N"));
             try
             {
@@ -488,6 +496,7 @@ public static partial class Collector
                             state.RecheckAfter.Remove(deliveredKey)) StateStore.Save(state);
                     }
                     saved++;
+                    Trace?.Invoke($"{phone.Name}: battery report stored; file={name}; kind={kind}; source={item.Source ?? "host"}");
                 }
             }
             catch (Exception error) { failed++; lastError = error.Message; }
@@ -531,16 +540,22 @@ public static partial class Collector
     }
 
     internal static UnclassifiedObservation? ObserveUnclassified(string file,
-        UnclassifiedObservation? previous)
+        UnclassifiedObservation? previous, DateTimeOffset? now = null)
     {
         var bytes = File.ReadAllBytes(file);
         if (bytes.Length == 0) return null;
         var fingerprint = Convert.ToHexString(SHA256.HashData(bytes));
-        return new UnclassifiedObservation {
-            Fingerprint = fingerprint,
-            Confirmations = previous?.Fingerprint == fingerprint
-                ? Math.Min(3, previous.Confirmations + 1) : 1
-        };
+        var clock = now ?? DateTimeOffset.UtcNow;
+        if (previous?.Fingerprint == fingerprint) {
+            if (previous.LastConfirmedAt is not { } confirmedAt)
+                return new UnclassifiedObservation { Fingerprint = fingerprint,
+                    Confirmations = previous.Confirmations, LastConfirmedAt = clock };
+            if (clock - confirmedAt < TimeSpan.FromMinutes(30)) return previous;
+            return new UnclassifiedObservation { Fingerprint = fingerprint,
+                Confirmations = Math.Min(3, previous.Confirmations + 1), LastConfirmedAt = clock };
+        }
+        return new UnclassifiedObservation { Fingerprint = fingerprint,
+            Confirmations = 1, LastConfirmedAt = clock };
     }
 
     // Keep a plausible, incomplete report eligible for retry. A small report
@@ -561,14 +576,30 @@ public static partial class Collector
             }
         }
         if (plausible) {
-            state.RecheckAfter[key] = DateTimeOffset.UtcNow.AddMinutes(30);
+            var retryAt = UnclassifiedRetryAt(Path.GetFileName(path));
+            state.RecheckAfter[key] = retryAt;
+            state.UnclassifiedObservations.TryGetValue(key, out var observation);
+            Trace?.Invoke($"Battery report deferred; device={key.Split('|')[0]}; file={Path.GetFileName(path)}; source={source ?? "host"}; bytes={new FileInfo(file).Length}; confirmations={observation?.Confirmations ?? 0}; retry={retryAt.ToLocalTime():O}");
             return true;
         }
+        Trace?.Invoke($"Battery report excluded; device={key.Split('|')[0]}; file={Path.GetFileName(path)}; source={source ?? "host"}; stableConfirmations={state.UnclassifiedObservations.GetValueOrDefault(key)?.Confirmations ?? 0}");
         state.Delivered.Add(key);
         state.RecheckAfter.Remove(key);
         state.UnclassifiedObservations.Remove(key);
         return false;
     }
+
+    internal static DateTimeOffset UnclassifiedRetryAt(string name, DateTimeOffset? now = null)
+    {
+        var clock = now ?? DateTimeOffset.UtcNow;
+        var day = clock.ToOffset(TimeSpan.FromHours(9)).ToString("yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture);
+        return clock.AddMinutes(name.StartsWith("Analytics-" + day + "-",
+            StringComparison.Ordinal) ? 5 : 30);
+    }
+
+    internal static string StableDiagnostic(string message) => Regex.Replace(message,
+        @"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? \S+ \S+\[\d+\] (?:ERROR|FATAL) ", "");
 
     internal static bool IsLikelyDailyReport(string path, string? source)
     {

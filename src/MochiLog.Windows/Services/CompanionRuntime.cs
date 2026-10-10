@@ -240,25 +240,26 @@ public sealed class CompanionRuntime : IDisposable
     private void RecordCollectionFailure(PairedPhone phone, string trigger,
         Exception error, bool manual)
     {
+        var message = Collector.StableDiagnostic(error.Message);
         if (manual)
         {
-            Record($"{phone.Name}: collection failed; trigger=manual request; error={error.Message}");
+            Record($"{phone.Name}: collection failed; trigger=manual request; error={message}");
             return;
         }
         if (_automaticFailures.TryGetValue(phone.PhysicalDeviceId, out var previous) &&
-            previous.Error == error.Message)
+            previous.Error == message)
         {
             var count = previous.Count + 1;
             _automaticFailures[phone.PhysicalDeviceId] = (previous.Error, previous.First, count);
             if (count % 12 == 0)
                 Record($"{phone.Name}: automatic collection still waiting; trigger={trigger}; " +
-                    $"attempts={count}; first={previous.First.ToLocalTime():O}; error={error.Message}");
+                    $"attempts={count}; first={previous.First.ToLocalTime():O}; error={message}");
         }
         else
         {
             FinishAutomaticFailures(phone, "failure changed");
-            _automaticFailures[phone.PhysicalDeviceId] = (error.Message, DateTimeOffset.Now, 1);
-            Record($"{phone.Name}: collection failed; trigger={trigger}; error={error.Message}");
+            _automaticFailures[phone.PhysicalDeviceId] = (message, DateTimeOffset.Now, 1);
+            Record($"{phone.Name}: collection failed; trigger={trigger}; error={message}");
         }
     }
 
@@ -309,8 +310,8 @@ public sealed class CompanionRuntime : IDisposable
                     if (_lastAutomaticDecision.Remove(phone.PhysicalDeviceId))
                         Record($"{phone.Name}: automatic collection resumed; trigger={trigger}");
                 }
-                if (manual || !_automaticFailures.ContainsKey(phone.PhysicalDeviceId))
-                    Record($"{phone.Name}: collection started; trigger={(manual ? "manual request" : trigger)}");
+                var attempt = Guid.NewGuid();
+                Record($"{phone.Name}: collection started; attempt={attempt:D}; trigger={(manual ? "manual request" : trigger)}");
                 var started = System.Diagnostics.Stopwatch.StartNew();
                 CollectionStatus = UiText.Format("win_reading", phone.Name);
                 Changed?.Invoke();
@@ -328,10 +329,11 @@ public sealed class CompanionRuntime : IDisposable
                         StateStore.Save(State);
                     }
                     Record(CollectionStatus);
-                    Record($"{phone.Name}: collection finished; saved={result.Saved}, " +
+                    Record($"{phone.Name}: collection finished; attempt={attempt:D}; saved={result.Saved}, " +
                         $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, elapsedMs={started.ElapsedMilliseconds}");
                 }
                 catch (Exception error) {
+                    Record($"{phone.Name}: collection attempt ended; attempt={attempt:D}; result=failed; elapsedMs={started.ElapsedMilliseconds}");
                     CollectionStatus = UiText.Format("win_collection_result", phone.Name, 0, 0, 1) +
                         " " + error.Message;
                     Changed?.Invoke();

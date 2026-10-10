@@ -464,9 +464,39 @@ static class Program
         await File.WriteAllTextAsync(uncertain, "short unrelated diagnostic");
         Check(!Collector.ShouldRecheckUnclassified(uncertain),
             "A small unrelated diagnostic should be excluded.");
-        var firstObservation = Collector.ObserveUnclassified(uncertain, null);
-        var secondObservation = Collector.ObserveUnclassified(uncertain, firstObservation);
-        var thirdObservation = Collector.ObserveUnclassified(uncertain, secondObservation);
+        var observationClock = new DateTimeOffset(2026, 10, 10, 9, 0, 0, TimeSpan.FromHours(9));
+        var firstObservation = Collector.ObserveUnclassified(uncertain, null, observationClock);
+        var earlyObservation = Collector.ObserveUnclassified(uncertain, firstObservation,
+            observationClock.AddMinutes(5));
+        Check(earlyObservation?.Confirmations == 1,
+            "Five-minute retries accelerated permanent exclusion.");
+        var secondObservation = Collector.ObserveUnclassified(uncertain, earlyObservation,
+            observationClock.AddMinutes(30));
+        var thirdObservation = Collector.ObserveUnclassified(uncertain, secondObservation,
+            observationClock.AddMinutes(60));
+        var oldObservation = JsonSerializer.Deserialize<UnclassifiedObservation>(
+            "{\"Fingerprint\":\"old\",\"Confirmations\":2}")!;
+        oldObservation.Fingerprint = firstObservation!.Fingerprint;
+        var migratedObservation = Collector.ObserveUnclassified(uncertain, oldObservation, observationClock);
+        Check(migratedObservation?.Confirmations == 2 && migratedObservation.LastConfirmedAt is not null,
+            "Old state immediately became a third exclusion confirmation.");
+        var restoredObservation = JsonSerializer.Deserialize<UnclassifiedObservation>(
+            JsonSerializer.Serialize(secondObservation));
+        Check(restoredObservation?.LastConfirmedAt == secondObservation?.LastConfirmedAt,
+            "Restart lost the spaced confirmation time.");
+        Check(Collector.UnclassifiedRetryAt("Analytics-2026-10-10-090006.ips.ca.synced", observationClock)
+            - observationClock == TimeSpan.FromMinutes(5) &&
+            Collector.UnclassifiedRetryAt("Analytics-2026-10-09-090006.ips.ca.synced", observationClock)
+            - observationClock == TimeSpan.FromMinutes(30), "Retry schedules were mixed.");
+        var beforeMidnight = observationClock.AddHours(-9).AddMinutes(-1);
+        Check(Collector.UnclassifiedRetryAt("Analytics-2026-10-09-090006.ips.ca.synced", beforeMidnight)
+            - beforeMidnight == TimeSpan.FromMinutes(5), "Retry did not use the Japanese log day.");
+        var diagnosticA = "Collector exited 0: 2026-10-10 09:03:18 host pymobiledevice3.__main__[9212] ERROR Device is not connected";
+        var diagnosticB = "Collector exited 0: 2026-10-10 09:08:18 host pymobiledevice3.__main__[22064] ERROR Device is not connected";
+        Check(Collector.StableDiagnostic(diagnosticA) == Collector.StableDiagnostic(diagnosticB) &&
+            Collector.StableDiagnostic(diagnosticA).Contains("Device is not connected") &&
+            Collector.StableDiagnostic("TimeoutError") != Collector.StableDiagnostic("InvalidHostID"),
+            "Diagnostic prefixes prevent grouping or the actual reason was lost.");
         Check(firstObservation?.Confirmations == 1 && secondObservation?.Confirmations == 2 &&
             thirdObservation?.Confirmations == 3,
             "Stable non-battery downloads should stop after three checks.");

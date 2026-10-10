@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: Verify lossless Python transport
-        run: python -m unittest discover -s tests -p test_battery_snapshot.py
+        run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Verify encrypted transfer protocol
         run: dotnet run --project tests/ProtocolTests/ProtocolTests.csproj -c Release
       - name: Install installer compiler

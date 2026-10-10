@@ -282,7 +282,7 @@ public sealed class TransferServer : IDisposable
                             }
                         });
                     } finally {
-                        StatusChanged?.Invoke($"Transfer trace: write request={requestId}, recipient={recipient}, bytes={sent}/{packet.Length}, prepareMs={prepareMs}, writeMs={started.ElapsedMilliseconds}; TCP write only, awaiting app ACK");
+                        StatusChanged?.Invoke($"Transfer trace: write request={requestId}, recipient={recipient}, bytes={sent}/{packet.Length}, prepareMs={prepareMs}, writeMs={started.ElapsedMilliseconds}; TCP write only; application processing not confirmed");
                     }
                 }
             }

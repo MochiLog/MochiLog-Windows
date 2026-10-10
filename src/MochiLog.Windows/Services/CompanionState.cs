@@ -41,6 +41,7 @@ public sealed class UnclassifiedObservation
 {
     public string Fingerprint { get; set; } = "";
     public int Confirmations { get; set; }
+    public DateTimeOffset? LastConfirmedAt { get; set; }
 }
 
 public static class StateStore
