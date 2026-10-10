@@ -23,3 +23,8 @@ Normal application launch logs the actual OS state and whether protected data is
 ## Regression checks
 
 The mobile pairing test script, Mac transfer test script and Windows protocol tests check feature separation and header version, legacy byte-prefix preservation, append-only chunk offsets, single compatibility headers and safe deletion. Shared Swift archive implementations in the mobile and Mac repos use the same source. Windows implements the same file/header contract in C#.
+
+
+## 2026-10-10 beta verification
+
+Version 0.1.21: [final CI](https://github.com/MochiLog/MochiLog-Windows/actions/runs/38058775856) passed the archive/viewer compatibility tests and native application build. The physical PC was updated from the published release and generated format-version-2 feature files. Artifact SHA-256: `dd856c3a4ee04a65aef1e80f07db27034ed96fe972b25f7d06f44044dacdbc44`. Received mobile archives remain append-only; filtering is read-only and never resets transfer offsets. The viewer preserves legacy and unsupported future records in All. Final physical viewer interaction was not automated; the read-only viewer logic was covered by tests.
