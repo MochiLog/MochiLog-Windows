@@ -179,7 +179,16 @@
     "live_details_general": "General",
     "live_true": "True",
     "live_false": "False",
-    "live_network_note": "Receive over the same LAN, or Tailscale with mobile data enabled in PC Link. Availability of fresh acquisition depends on the device connection."
+    "live_network_note": "Receive over the same LAN, or Tailscale with mobile data enabled in PC Link. Availability of fresh acquisition depends on the device connection.",
+    "mt_log_category": "Feature",
+    "mt_log_all": "All",
+    "mt_log_background": "Background execution",
+    "mt_log_local_collection": "On-device collection",
+    "mt_log_pc_transfer": "PC collection & transfer",
+    "mt_log_live_battery": "Current battery",
+    "mt_log_cloud_sync": "Cloud sync",
+    "mt_log_pairing": "Pairing",
+    "mt_log_general": "General & other"
   },
   "ja": {
     "live_details_empty": "追加の項目はありません。",
@@ -361,7 +370,16 @@
     "live_details_general": "基本項目",
     "live_true": "はい",
     "live_false": "いいえ",
-    "live_network_note": "同じLAN、またはPC連携でモバイル通信を許可したTailscale経由で受信できます。新しい値の取得可否は端末への接続状態によります。"
+    "live_network_note": "同じLAN、またはPC連携でモバイル通信を許可したTailscale経由で受信できます。新しい値の取得可否は端末への接続状態によります。",
+    "mt_log_category": "機能",
+    "mt_log_all": "すべて",
+    "mt_log_background": "バックグラウンド実行",
+    "mt_log_local_collection": "端末内取得",
+    "mt_log_pc_transfer": "PC収集・転送",
+    "mt_log_live_battery": "現在のバッテリー",
+    "mt_log_cloud_sync": "クラウド同期",
+    "mt_log_pairing": "ペアリング",
+    "mt_log_general": "全体・その他"
   },
   "de": {
     "live_details_empty": "Keine weiteren Felder zurückgegeben.",
@@ -543,7 +561,16 @@
     "live_details_general": "Allgemein",
     "live_true": "Ja",
     "live_false": "Nein",
-    "live_network_note": "Empfang im selben LAN oder über Tailscale bei erlaubten mobilen Daten in PC-Verbindung. Neue Erfassung hängt von der Geräteverbindung ab."
+    "live_network_note": "Empfang im selben LAN oder über Tailscale bei erlaubten mobilen Daten in PC-Verbindung. Neue Erfassung hängt von der Geräteverbindung ab.",
+    "mt_log_category": "Funktion",
+    "mt_log_all": "Alle",
+    "mt_log_background": "Hintergrundausführung",
+    "mt_log_local_collection": "Erfassung auf dem Gerät",
+    "mt_log_pc_transfer": "PC-Erfassung und Übertragung",
+    "mt_log_live_battery": "Aktueller Akku",
+    "mt_log_cloud_sync": "Cloud-Synchronisierung",
+    "mt_log_pairing": "Kopplung",
+    "mt_log_general": "Allgemein und Sonstiges"
   },
   "es": {
     "live_details_empty": "No se recibieron campos adicionales.",
@@ -725,7 +752,16 @@
     "live_details_general": "General",
     "live_true": "Sí",
     "live_false": "No",
-    "live_network_note": "Recibe por la misma LAN o Tailscale con datos móviles permitidos en Enlace con PC. La obtención de nuevos valores depende de la conexión al dispositivo."
+    "live_network_note": "Recibe por la misma LAN o Tailscale con datos móviles permitidos en Enlace con PC. La obtención de nuevos valores depende de la conexión al dispositivo.",
+    "mt_log_category": "Función",
+    "mt_log_all": "Todo",
+    "mt_log_background": "Ejecución en segundo plano",
+    "mt_log_local_collection": "Recopilación en el dispositivo",
+    "mt_log_pc_transfer": "Recopilación y transferencia de PC",
+    "mt_log_live_battery": "Batería actual",
+    "mt_log_cloud_sync": "Sincronización en la nube",
+    "mt_log_pairing": "Emparejamiento",
+    "mt_log_general": "General y otros"
   },
   "fr": {
     "live_details_empty": "Aucun champ supplémentaire reçu.",
@@ -907,7 +943,16 @@
     "live_details_general": "Général",
     "live_true": "Oui",
     "live_false": "Non",
-    "live_network_note": "Réception sur le même LAN ou via Tailscale avec les données mobiles autorisées dans Liaison PC. L’acquisition de nouvelles valeurs dépend de la connexion à l’appareil."
+    "live_network_note": "Réception sur le même LAN ou via Tailscale avec les données mobiles autorisées dans Liaison PC. L’acquisition de nouvelles valeurs dépend de la connexion à l’appareil.",
+    "mt_log_category": "Fonction",
+    "mt_log_all": "Tout",
+    "mt_log_background": "Exécution en arrière-plan",
+    "mt_log_local_collection": "Collecte sur l’appareil",
+    "mt_log_pc_transfer": "Collecte et transfert PC",
+    "mt_log_live_battery": "Batterie actuelle",
+    "mt_log_cloud_sync": "Synchronisation cloud",
+    "mt_log_pairing": "Jumelage",
+    "mt_log_general": "Général et autres"
   },
   "ko": {
     "live_details_empty": "추가 항목이 없습니다.",
@@ -1089,7 +1134,16 @@
     "live_details_general": "기본 항목",
     "live_true": "예",
     "live_false": "아니요",
-    "live_network_note": "같은 LAN 또는 PC 연결에서 모바일 데이터를 허용한 Tailscale로 수신할 수 있습니다. 새 값 수집은 기기 연결 상태에 따라 달라집니다."
+    "live_network_note": "같은 LAN 또는 PC 연결에서 모바일 데이터를 허용한 Tailscale로 수신할 수 있습니다. 새 값 수집은 기기 연결 상태에 따라 달라집니다.",
+    "mt_log_category": "기능",
+    "mt_log_all": "전체",
+    "mt_log_background": "백그라운드 실행",
+    "mt_log_local_collection": "기기 내 수집",
+    "mt_log_pc_transfer": "PC 수집 및 전송",
+    "mt_log_live_battery": "현재 배터리",
+    "mt_log_cloud_sync": "클라우드 동기화",
+    "mt_log_pairing": "페어링",
+    "mt_log_general": "일반 및 기타"
   },
   "zh-Hans": {
     "live_details_empty": "没有返回其他项目。",
@@ -1271,7 +1325,16 @@
     "live_details_general": "基本字段",
     "live_true": "是",
     "live_false": "否",
-    "live_network_note": "可通过同一局域网接收，或在电脑连接中允许移动数据后通过Tailscale接收。获取新值取决于设备连接状态。"
+    "live_network_note": "可通过同一局域网接收，或在电脑连接中允许移动数据后通过Tailscale接收。获取新值取决于设备连接状态。",
+    "mt_log_category": "功能",
+    "mt_log_all": "全部",
+    "mt_log_background": "后台运行",
+    "mt_log_local_collection": "设备内采集",
+    "mt_log_pc_transfer": "PC采集与传输",
+    "mt_log_live_battery": "当前电池",
+    "mt_log_cloud_sync": "云同步",
+    "mt_log_pairing": "配对",
+    "mt_log_general": "常规及其他"
   },
   "zh-Hant": {
     "live_details_empty": "沒有傳回其他項目。",
@@ -1453,6 +1516,15 @@
     "live_details_general": "基本欄位",
     "live_true": "是",
     "live_false": "否",
-    "live_network_note": "可透過相同區域網路接收，或在電腦連線中允許行動數據後透過Tailscale接收。取得新值取決於裝置連線狀態。"
+    "live_network_note": "可透過相同區域網路接收，或在電腦連線中允許行動數據後透過Tailscale接收。取得新值取決於裝置連線狀態。",
+    "mt_log_category": "功能",
+    "mt_log_all": "全部",
+    "mt_log_background": "背景執行",
+    "mt_log_local_collection": "裝置內擷取",
+    "mt_log_pc_transfer": "PC擷取與傳輸",
+    "mt_log_live_battery": "目前電池",
+    "mt_log_cloud_sync": "雲端同步",
+    "mt_log_pairing": "配對",
+    "mt_log_general": "一般及其他"
   }
 }

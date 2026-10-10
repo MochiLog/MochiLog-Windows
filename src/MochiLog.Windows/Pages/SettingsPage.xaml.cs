@@ -50,6 +50,8 @@ public sealed partial class SettingsPage : Page
         ExportButton.Content = UiText.Get("win_export");
         MailButton.Content = UiText.Get("win_mail");
         DebugTitle.Text = UiText.Get("win_debug");
+        DebugCategoryPicker.Header = UiText.Get("mt_log_category");
+        PhoneCategoryPicker.Header = UiText.Get("mt_log_category");
         DebugDayPicker.Header = UiText.Get("mt_log_date");
         RetentionPicker.Header = UiText.Get("mt_log_retention");
         RetentionPicker.ItemsSource = new[] { 7, 30, 90, 180, 365 };
@@ -98,6 +100,8 @@ public sealed partial class SettingsPage : Page
             }
             var debugContent = DebugDayPicker.SelectedItem is string selectedDay
                 ? _runtime.DebugLogForDay(selectedDay) : _runtime.DebugLog;
+            debugContent = DiagnosticLogViewer.Text(debugContent,
+                UpdateCategoryPicker(DebugCategoryPicker, debugContent));
             if (_debugContent != debugContent) {
                 _debugContent = debugContent;
                 DebugText.ItemsSource = DiagnosticLines(debugContent);
@@ -113,6 +117,8 @@ public sealed partial class SettingsPage : Page
             var phoneContent = PhoneDayPicker.SelectedItem is string selectedPhoneDay
                 ? _runtime.PhoneDebugForDay(SelectedPhone(), selectedPhoneDay)
                 : _runtime.PhoneDiagnosticsText(SelectedPhone());
+            phoneContent = DiagnosticLogViewer.Text(phoneContent,
+                UpdateCategoryPicker(PhoneCategoryPicker, phoneContent));
             if (_phoneContent != phoneContent) {
                 _phoneContent = phoneContent;
                 PhoneText.ItemsSource = DiagnosticLines(phoneContent);
@@ -121,6 +127,26 @@ public sealed partial class SettingsPage : Page
                 !string.IsNullOrWhiteSpace(EmailBox.Text) &&
                 !string.IsNullOrWhiteSpace(MessageBox.Text);
         } finally { _rendering = false; }
+    }
+
+    private static string? UpdateCategoryPicker(ComboBox picker, string text)
+    {
+        var selected = (picker.SelectedItem as ComboBoxItem)?.Tag as string;
+        var ids = new[] { "all" }.Concat(DiagnosticLogViewer.Categories(text)).ToArray();
+        if (!picker.Items.OfType<ComboBoxItem>().Select(item => item.Tag as string).SequenceEqual(ids)) {
+            picker.Items.Clear();
+            foreach (var id in ids) picker.Items.Add(new ComboBoxItem {
+                Tag = id, Content = UiText.Get("mt_log_" + id.Replace('-', '_'))
+            });
+            picker.SelectedIndex = Math.Max(0, Array.IndexOf(ids, selected));
+        }
+        var category = (picker.SelectedItem as ComboBoxItem)?.Tag as string;
+        return category == "all" ? null : category;
+    }
+
+    private void DebugCategoryChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (DebugText is not null && PhoneText is not null) Render();
     }
 
     // ListView virtualizes the visible rows; copying retains the complete original text.

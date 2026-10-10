@@ -50,6 +50,8 @@
                                   SelectionChanged="RetentionChanged" />
                         <Button x:Name="DeleteDebugButton" Click="DeleteDebugClicked" />
                     </StackPanel>
+                    <ComboBox x:Name="DebugCategoryPicker" MinWidth="230" HorizontalAlignment="Left"
+                              SelectionChanged="DebugCategoryChanged" />
                     <ListView x:Name="DebugText" Height="190" SelectionMode="None"
                               ItemTemplate="{StaticResource DiagnosticLineTemplate}"
                               ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />
@@ -64,6 +66,8 @@
                     <TextBlock x:Name="PhoneTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <ComboBox x:Name="PhoneDayPicker" MinWidth="150" HorizontalAlignment="Left"
                               SelectionChanged="PhoneDayChanged" />
+                    <ComboBox x:Name="PhoneCategoryPicker" MinWidth="230" HorizontalAlignment="Left"
+                              SelectionChanged="DebugCategoryChanged" />
                     <ListView x:Name="PhoneText" Height="140" SelectionMode="None"
                               ItemTemplate="{StaticResource DiagnosticLineTemplate}"
                               ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />

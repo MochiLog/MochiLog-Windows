@@ -286,6 +286,15 @@ static class Program
             Check(File.ReadAllText(file).Split("# ").Length == 2, "Compatibility header repeated per event.");
             DiagnosticLogArchive.Append("2026-10-09T11:00:00+09:00 | old migrated", root, legacy: true);
             Check(File.Exists(Path.Combine(root, "2026-10-09", "general-v1-legacy.log")), "Legacy format was mislabeled v2.");
+            var combined = File.ReadAllText(file);
+            Check(DiagnosticLogViewer.Categories(combined).Contains("background"), "Received archive categories missing.");
+            var background = DiagnosticLogViewer.Text(combined, "background");
+            Check(background.Contains("OS wake") && !background.Contains("Connection: ready") &&
+                background.Contains("\"formatVersion\":2"), "Feature viewer mixed categories or dropped format metadata.");
+            Check(DiagnosticLogViewer.Text(combined, null) == combined, "All view changed original content.");
+            var future = "# {\"type\":\"mochilog-diagnostic-log\",\"formatVersion\":99}\nFuture payload: arbitrary data";
+            Check(DiagnosticLogViewer.Text(future, "general").Contains("arbitrary data"), "Future log format was hidden.");
+            Check(DiagnosticLogViewer.Text(legacy, "general").Contains("\"formatVersion\":1"), "Legacy log was mislabeled.");
             DiagnosticLogArchive.RemoveDay("../outside", root);
             Check(File.Exists(file), "Invalid day removed logs.");
             DiagnosticLogArchive.RemoveDay(day, root);
