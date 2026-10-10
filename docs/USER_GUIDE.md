@@ -32,7 +32,7 @@ Tailscale は任意です。両端末で接続し、スマホ版でモバイル�
 - **ログが生成されない:** 端末の「設定 → プライバシーとセキュリティ → 解析と改善」で解析の共有を確認します。OS 更新後も再確認してください。オンにした直後は次のログ生成を待ちます。
 - **PC では収集済みだが記録が増えない:** 該当端末で MochiLog を開き、「パソコン連携」の接続状態と処理結果を確認します。すでに読み込んだログは重複として省略されます。
 - **接続できない:** 端末のロック、PC と端末の Wi-Fi、Windows アプリの起動状態を確認し、再検索します。ネットワークによっては IP の手動指定も利用できます。Windows が標準ポートを予約している場合、MochiLog Windows は別のポートを選んで端末に通知します。
-- **改善しない:** Windows と端末の「パソコン連携」で日付別のデバッグログを確認し、サポート画面から発生日を指定して関連ログを添付してください。生の解析ログとペアリング鍵は自動添付されません。
+- **改善しない:** Windows のデバッグ画面と、端末の「設定 → デバッグ → 動作ログ」（4.0.0ベータ1051以降）で日付別のログを確認し、サポート画面から発生日を指定して関連ログを添付してください。生の解析ログとペアリング鍵は自動添付されません。
 
 これはアルファ版です。問題の解決には時間がかかり、個別に返信できない場合があります。[プライバシーポリシー](https://mochilog.ryuya-dev.net/privacy)と[利用規約](https://mochilog.ryuya-dev.net/terms)も参照してください。
 
@@ -60,7 +60,7 @@ The **Battery Logs** page lists pending and delivered raw files and supports exp
 
 Tailscale is optional. With both devices connected and mobile transfer enabled, you can receive files **already collected** by the PC while away. Cellular plus Tailscale cannot collect new system analytics from the device.
 
-If Apple Devices does not show the device, try a known data cable, direct PC port, unlocked screen, and the Trust prompt; restart or update Apple's app. Seeing the device only in File Explorer does not establish trust. If logs do not appear, check **Settings → Privacy & Security → Analytics & Improvements** on the iPhone or iPad, especially after an OS update. If files are queued, open MochiLog on that device and inspect **Mac Transfer**. Already imported files are not recorded twice. For persistent problems, review the dated debug logs on both sides and use support to attach logs for the incident date. Raw analytics and pairing keys are not attached automatically.
+If Apple Devices does not show the device, try a known data cable, direct PC port, unlocked screen, and the Trust prompt; restart or update Apple's app. Seeing the device only in File Explorer does not establish trust. If logs do not appear, check **Settings → Privacy & Security → Analytics & Improvements** on the iPhone or iPad, especially after an OS update. If files are queued, open MochiLog on that device and inspect **Mac Transfer**. Already imported files are not recorded twice. For persistent problems, review the computer debug screen and **Settings → Debug → Activity logs** on mobile (4.0.0 beta 1051 or later) and use support to attach logs for the incident date. Raw analytics and pairing keys are not attached automatically.
 
 This is an alpha. Fixes may take time and individual replies may not always be possible. See the [privacy policy](https://mochilog.ryuya-dev.net/privacy) and [terms](https://mochilog.ryuya-dev.net/terms).
 
