@@ -100,6 +100,10 @@ static class Program
         await Pull(0, scope, true);
         Check(!IsOffer(await Pull(0, scope)), "Source without consent was shared");
         await Pull(1, scope, true);
+        var identityPolicy = JsonDocument.Parse((await Pull(0, scope, true)).Content).RootElement;
+        var models = JsonSerializer.Deserialize<Dictionary<string, string>>(identityPolicy.GetProperty("sourceModels").GetString()!)!;
+        Check(models[peers[1].PhysicalDeviceId.ToString("D")] == peers[1].Model, "Delivered log source identity unavailable");
+        Check(!models.ContainsKey(peers[2].PhysicalDeviceId.ToString("D")), "Unconsented model leaked");
         Check(!IsOffer(await Pull(0, scope, sourceIdentity: false)), "Old recipient received foreign logs without origin model support");
         var offer = JsonDocument.Parse((await Pull(0, scope)).Content).RootElement;
         Check(offer.GetProperty("sourceModel").GetString() == peers[1].Model, "Offer used recipient model");

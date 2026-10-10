@@ -506,7 +506,15 @@ public sealed class TransferServer : IDisposable
             {
                 if (!secure || Get(request, "cloudSharingOnly") != "1" || Get(request, "cloudSharingVersion") != "1" || ack.Length != 0 || Get(request, "offerToken") is not null) return null;
                 var pending = _cloudSharing.Next(physicalId, _state.Phones, now) is not null;
-                var policy = JsonSerializer.SerializeToUtf8Bytes(new { type = "cloud-sharing-policy", cloudSharingVersion = "1", pending = pending ? "true" : "false" });
+                var control = new Dictionary<string, string> { ["type"] = "cloud-sharing-policy", ["cloudSharingVersion"] = "1", ["pending"] = pending ? "true" : "false" };
+                if (Get(request, "logSourceIdentityVersion") == "1" && _cloudSharing.Scope(physicalId, now) is { } identityScope)
+                {
+                    var models = _state.Phones.Where(p => _cloudSharing.Scope(p.PhysicalDeviceId, now) == identityScope)
+                        .Take(64).ToDictionary(p => p.PhysicalDeviceId.ToString("D"), p => p.Model);
+                    control["sourceModels"] = JsonSerializer.Serialize(models);
+                    StatusChanged?.Invoke($"Import identity policy: recipient={physicalId:D}, authenticatedModels={models.Count}");
+                }
+                var policy = JsonSerializer.SerializeToUtf8Bytes(control);
                 return EncryptLog(phone.Secret, hostId, physicalId, nonce, "", policy);
             }
             if (Get(request, "liveBatteryVersion") is not null)
