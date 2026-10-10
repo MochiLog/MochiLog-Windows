@@ -7,3 +7,7 @@ The protocol suite passed on Windows 11 with real DPAPI StateStore persistence, 
 Only native C# transfer metadata changed. The unchanged collector and dependency license bundle are reused from the verified 0.1.22 Release installation for the incremental local installer. The standard local/CI build script still compiles the maintained Python library with Nuitka and includes its runtime.
 
 The secure consent policy includes source models even when no log body remains pending. Tests verify the already-delivered source is present and an unconsented peer is absent; the scope lease rules are unchanged.
+
+## Release verification
+
+Windows 0.1.23 Release from source 280ce17 was installed on the Windows 11 real PC and launched in the interactive user session. The encrypted pairing state hash was unchanged across installation. GitHub prerelease includes the installer and SHA-256 checksum. No user Python installation is required.
