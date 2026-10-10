@@ -410,7 +410,7 @@ public sealed class CompanionRuntime : IDisposable
     {
         DebugArchiveSync.RefreshAllSnapshots();
         lock (_events) {
-            foreach (var day in StoredDays()) File.Delete(Path.Combine(ArchiveRoot, day + ".log"));
+            foreach (var day in StoredDays()) DiagnosticLogArchive.RemoveDay(day, ArchiveRoot);
             _events.Clear();
             if (File.Exists(EventsFile)) File.Delete(EventsFile);
             File.WriteAllText(MigrationFile, "1");
@@ -426,22 +426,15 @@ public sealed class CompanionRuntime : IDisposable
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
             .OrderByDescending(day => day).ToArray() : [];
 
-    private static void AppendArchive(string eventText)
-    {
-        var day = eventText.Length >= 10 ? eventText[..10] : "";
-        if (!DateOnly.TryParseExact(day, "yyyy-MM-dd",
-            CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return;
-        Directory.CreateDirectory(ArchiveRoot);
-        File.AppendAllText(Path.Combine(ArchiveRoot, day + ".log"),
-            eventText + Environment.NewLine);
-    }
+    private static void AppendArchive(string eventText, bool legacy = false) =>
+        DiagnosticLogArchive.Append(eventText, ArchiveRoot, legacy: legacy);
 
     private void MigrateLegacyEvents()
     {
         if (File.Exists(MigrationFile)) return;
         try {
             Directory.CreateDirectory(StateStore.Root);
-            foreach (var item in _events) AppendArchive(item);
+            foreach (var item in _events) AppendArchive(item, legacy: true);
             File.WriteAllText(MigrationFile, "1");
             PruneArchive();
         }
@@ -454,7 +447,7 @@ public sealed class CompanionRuntime : IDisposable
         var cutoff = DateTime.Today.AddDays(1 - DebugRetentionDays)
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         foreach (var day in StoredDays().Where(day => string.CompareOrdinal(day, cutoff) < 0))
-            File.Delete(Path.Combine(ArchiveRoot, day + ".log"));
+            DiagnosticLogArchive.RemoveDay(day, ArchiveRoot);
     }
 
     public string PhoneDiagnosticsText(PairedPhone? phone)
@@ -493,6 +486,7 @@ public sealed class CompanionRuntime : IDisposable
             ["generatedAt"] = DateTimeOffset.Now,
             ["deviceName"] = phone.Name,
             ["osVersion"] = Environment.OSVersion.VersionString,
+            ["diagnosticLogFormatVersion"] = DiagnosticLogArchive.FormatVersion,
             ["archiveManifest"] = DebugArchiveSync.LocalManifest(phone.PhysicalDeviceId),
             ["recentEvents"] = events
         };

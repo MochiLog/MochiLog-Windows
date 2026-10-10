@@ -260,6 +260,39 @@ static class Program
         BatteryLogStorage.UpdateSettings(false, 500, 1);
     }
 
+    private static void CheckDiagnosticLogArchive()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "mochilog-log-" + Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        try {
+            var day = "2026-10-10";
+            var file = Path.Combine(root, day + ".log");
+            var legacy = "2026-10-10T10:00:00+09:00 | old event\n";
+            File.WriteAllText(file, legacy);
+            DiagnosticLogArchive.Append("2026-10-10T11:00:00+09:00 | Local scheduler: OS wake", root, "4.0.0", "1050");
+            var prefix = File.ReadAllBytes(file);
+            Check(System.Text.Encoding.UTF8.GetString(prefix).StartsWith(legacy), "Legacy log prefix changed.");
+            DiagnosticLogArchive.Append("2026-10-10T11:00:01+09:00 | Connection: ready", root, "4.0.0", "1050");
+            var after = File.ReadAllBytes(file);
+            Check(after.AsSpan(0, prefix.Length).SequenceEqual(prefix), "Diagnostic chunk offsets became invalid.");
+            foreach (var category in new[] { "background", "pc-transfer" }) {
+                var lines = File.ReadAllLines(Path.Combine(root, day, category + "-v2-4.0.0-1050.log"));
+                using var header = JsonDocument.Parse(lines[0][2..]);
+                Check(header.RootElement.GetProperty("formatVersion").GetInt32() == 2 &&
+                    header.RootElement.GetProperty("category").GetString() == category &&
+                    header.RootElement.GetProperty("build").GetString() == "1050", "Feature log header is incorrect.");
+                Check(lines[1].StartsWith("2026-10-10T"), "Metadata repeated on every log line.");
+            }
+            Check(File.ReadAllText(file).Split("# ").Length == 2, "Compatibility header repeated per event.");
+            DiagnosticLogArchive.Append("2026-10-09T11:00:00+09:00 | old migrated", root, legacy: true);
+            Check(File.Exists(Path.Combine(root, "2026-10-09", "general-v1-legacy.log")), "Legacy format was mislabeled v2.");
+            DiagnosticLogArchive.RemoveDay("../outside", root);
+            Check(File.Exists(file), "Invalid day removed logs.");
+            DiagnosticLogArchive.RemoveDay(day, root);
+            Check(!File.Exists(file) && !Directory.Exists(Path.Combine(root, day)), "Feature logs survived user deletion.");
+        } finally { Directory.Delete(root, true); }
+    }
+
     private static void CheckDailyCollectionCoverage()
     {
         StoredBatteryLog Row(string kind, string? source, string day) =>
@@ -376,6 +409,7 @@ static class Program
         CheckArchiveExchange();
         CheckBatteryLogStorage();
         CheckDailyCollectionCoverage();
+        CheckDiagnosticLogArchive();
         using (var blocker = new TcpListener(IPAddress.Any, 0))
         {
             blocker.Start();

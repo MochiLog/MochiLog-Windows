@@ -17,6 +17,7 @@
     <Compile Include="..\..\src\MochiLog.Windows\Services\LocalDiagnosticsPairing.cs" Link="LocalDiagnosticsPairing.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\TransferServer.cs" Link="TransferServer.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\BatteryLogStorage.cs" Link="BatteryLogStorage.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\DiagnosticLogArchive.cs" Link="DiagnosticLogArchive.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\DebugArchiveSync.cs" Link="DebugArchiveSync.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\LiveBattery.cs" Link="LiveBattery.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\Collector.cs" Link="Collector.cs" />

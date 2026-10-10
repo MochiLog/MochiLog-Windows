@@ -1,6 +1,6 @@
 #define AppName "MochiLog Windows"
 #ifndef AppVersion
-  #define AppVersion "0.1.20"
+  #define AppVersion "0.1.21"
 #endif
 #define AppPublisher "MochiLog"
 #define AppExe "MochiLog.Windows.exe"
