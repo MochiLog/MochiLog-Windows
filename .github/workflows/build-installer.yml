@@ -17,9 +17,17 @@ concurrency:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
+    env:
+      NUITKA_CACHE_DIR: ${{ github.workspace }}/Build/CompilerCache
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: Build/CompilerCache
+          key: collector-${{ runner.os }}-${{ runner.arch }}-py313-${{ hashFiles('requirements-build.txt', '*.py', 'scripts/collector.nuitka-package.config.yml') }}
+          restore-keys: |
+            collector-${{ runner.os }}-${{ runner.arch }}-py313-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
