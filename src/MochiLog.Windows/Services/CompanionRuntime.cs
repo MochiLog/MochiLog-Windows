@@ -455,9 +455,12 @@ public sealed class CompanionRuntime : IDisposable
         if (phone is not null && DebugArchiveSync.PhoneDays(phone.PhysicalDeviceId)
             .FirstOrDefault() is { } latest)
             return DebugArchiveSync.PhoneText(phone.PhysicalDeviceId, latest);
-        if (phone is null || !State.PhoneDiagnostics.TryGetValue(
-            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var report))
-            return UiText.Get("win_no_phone_report");
+        byte[]? report;
+        lock (State) {
+            if (phone is null || !State.PhoneDiagnostics.TryGetValue(
+                phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out report))
+                return UiText.Get("win_no_phone_report");
+        }
         try {
             using var parsed = JsonDocument.Parse(report);
             return parsed.RootElement.TryGetProperty("recentEvents", out var events) &&

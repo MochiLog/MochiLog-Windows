@@ -52,6 +52,7 @@
                     </StackPanel>
                     <ComboBox x:Name="DebugCategoryPicker" MinWidth="230" HorizontalAlignment="Left"
                               SelectionChanged="DebugCategoryChanged" />
+                    <ProgressRing x:Name="DebugLoading" IsActive="False" Width="24" Height="24" HorizontalAlignment="Left" />
                     <ListView x:Name="DebugText" Height="190" SelectionMode="None"
                               ItemTemplate="{StaticResource DiagnosticLineTemplate}"
                               ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />
@@ -68,6 +69,7 @@
                               SelectionChanged="PhoneDayChanged" />
                     <ComboBox x:Name="PhoneCategoryPicker" MinWidth="230" HorizontalAlignment="Left"
                               SelectionChanged="DebugCategoryChanged" />
+                    <ProgressRing x:Name="PhoneLoading" IsActive="False" Width="24" Height="24" HorizontalAlignment="Left" />
                     <ListView x:Name="PhoneText" Height="140" SelectionMode="None"
                               ItemTemplate="{StaticResource DiagnosticLineTemplate}"
                               ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />

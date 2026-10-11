@@ -17,6 +17,9 @@ public sealed partial class SettingsPage : Page
     private bool _rendering;
     private string _debugContent = "";
     private string _phoneContent = "";
+    private int _logGeneration;
+    private bool _loaded;
+    private string? _logRequestKey;
 
     public SettingsPage()
     {
@@ -64,8 +67,13 @@ public sealed partial class SettingsPage : Page
         CopyPhoneButton.Content = UiText.Get("win_copy");
         HelpTitle.Text = UiText.Get("win_help");
         HelpContent.Text = UiText.Get("win_help_content");
-        Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); };
-        Unloaded += (_, _) => _runtime.Changed -= RuntimeChanged;
+        Loaded += (_, _) => { _loaded = true; _runtime.Changed += RuntimeChanged; Render(); };
+        Unloaded += (_, _) => {
+            _loaded = false;
+            _logGeneration++;
+            _logRequestKey = null;
+            _runtime.Changed -= RuntimeChanged;
+        };
     }
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(Render);
@@ -90,58 +98,88 @@ public sealed partial class SettingsPage : Page
                 SupportDevicePicker.SelectedIndex = selected >= 0 && selected < labels.Length ? selected :
                     labels.Length > 0 ? 0 : -1;
             }
-            var day = DebugDayPicker.SelectedItem as string;
-            var days = _runtime.DebugLogDays.ToArray();
-            if (DebugDayPicker.ItemsSource is not string[] currentDays ||
-                !currentDays.SequenceEqual(days)) {
-                DebugDayPicker.ItemsSource = days;
-                DebugDayPicker.SelectedItem = day is not null && days.Contains(day)
-                    ? day : days.FirstOrDefault();
-            }
-            var debugContent = DebugDayPicker.SelectedItem is string selectedDay
-                ? _runtime.DebugLogForDay(selectedDay) : _runtime.DebugLog;
-            debugContent = DiagnosticLogViewer.Text(debugContent,
-                UpdateCategoryPicker(DebugCategoryPicker, debugContent));
-            if (_debugContent != debugContent) {
-                _debugContent = debugContent;
-                DebugText.ItemsSource = DiagnosticLines(debugContent);
-            }
-            var phoneDay = PhoneDayPicker.SelectedItem as string;
-            var phoneDays = _runtime.PhoneDebugDays(SelectedPhone()).ToArray();
-            if (PhoneDayPicker.ItemsSource is not string[] currentPhoneDays ||
-                !currentPhoneDays.SequenceEqual(phoneDays)) {
-                PhoneDayPicker.ItemsSource = phoneDays;
-                PhoneDayPicker.SelectedItem = phoneDay is not null && phoneDays.Contains(phoneDay)
-                    ? phoneDay : phoneDays.FirstOrDefault();
-            }
-            var phoneContent = PhoneDayPicker.SelectedItem is string selectedPhoneDay
-                ? _runtime.PhoneDebugForDay(SelectedPhone(), selectedPhoneDay)
-                : _runtime.PhoneDiagnosticsText(SelectedPhone());
-            phoneContent = DiagnosticLogViewer.Text(phoneContent,
-                UpdateCategoryPicker(PhoneCategoryPicker, phoneContent));
-            if (_phoneContent != phoneContent) {
-                _phoneContent = phoneContent;
-                PhoneText.ItemsSource = DiagnosticLines(phoneContent);
-            }
             MailButton.IsEnabled = !string.IsNullOrWhiteSpace(NicknameBox.Text) &&
                 !string.IsNullOrWhiteSpace(EmailBox.Text) &&
                 !string.IsNullOrWhiteSpace(MessageBox.Text);
         } finally { _rendering = false; }
+        if (_loaded) _ = ReloadLogsAsync();
     }
 
-    private static string? UpdateCategoryPicker(ComboBox picker, string text)
+    // Runtime status changes must not repeatedly read and parse multi-MB logs on
+    // the UI thread. A viewer snapshot changes only on selection or refresh.
+    private async Task ReloadLogsAsync()
     {
-        var selected = (picker.SelectedItem as ComboBoxItem)?.Tag as string;
-        var ids = new[] { "all" }.Concat(DiagnosticLogViewer.Categories(text)).ToArray();
+        var day = DebugDayPicker.SelectedItem as string;
+        var phoneDay = PhoneDayPicker.SelectedItem as string;
+        var phone = SelectedPhone();
+        var category = SelectedCategory(DebugCategoryPicker);
+        var phoneCategory = SelectedCategory(PhoneCategoryPicker);
+        var key = $"{DateTime.Today:yyyy-MM-dd}|{day}|{phoneDay}|{phone?.PhysicalDeviceId}|{category}|{phoneCategory}";
+        if (_logRequestKey == key) return;
+        _logRequestKey = key;
+        var generation = ++_logGeneration;
+        CopyButton.IsEnabled = CopyPhoneButton.IsEnabled = false;
+        DebugLoading.IsActive = PhoneLoading.IsActive = true;
+        try {
+            var snapshot = await Task.Run(() => {
+                var days = _runtime.DebugLogDays.ToArray();
+                var phoneDays = _runtime.PhoneDebugDays(phone).ToArray();
+                var selectedDay = day is not null && days.Contains(day) ? day : days.FirstOrDefault();
+                var selectedPhoneDay = phoneDay is not null && phoneDays.Contains(phoneDay)
+                    ? phoneDay : phoneDays.FirstOrDefault();
+                var raw = selectedDay is not null ? _runtime.DebugLogForDay(selectedDay) : _runtime.DebugLog;
+                var phoneRaw = selectedPhoneDay is not null
+                    ? _runtime.PhoneDebugForDay(phone, selectedPhoneDay) : _runtime.PhoneDiagnosticsText(phone);
+                var categories = DiagnosticLogViewer.Categories(raw);
+                var phoneCategories = DiagnosticLogViewer.Categories(phoneRaw);
+                var selectedCategory = categories.Contains(category) ? category : null;
+                var selectedPhoneCategory = phoneCategories.Contains(phoneCategory) ? phoneCategory : null;
+                var text = DiagnosticLogViewer.Text(raw, selectedCategory);
+                var phoneText = DiagnosticLogViewer.Text(phoneRaw, selectedPhoneCategory);
+                return (days, phoneDays, selectedDay, selectedPhoneDay, categories, phoneCategories,
+                    selectedCategory, selectedPhoneCategory, text, phoneText,
+                    lines: DiagnosticLines(text), phoneLines: DiagnosticLines(phoneText));
+            });
+            if (!_loaded || generation != _logGeneration) return;
+            _rendering = true;
+            try {
+                DebugDayPicker.ItemsSource = snapshot.days;
+                DebugDayPicker.SelectedItem = snapshot.selectedDay;
+                PhoneDayPicker.ItemsSource = snapshot.phoneDays;
+                PhoneDayPicker.SelectedItem = snapshot.selectedPhoneDay;
+                UpdateCategoryPicker(DebugCategoryPicker, snapshot.categories, snapshot.selectedCategory);
+                UpdateCategoryPicker(PhoneCategoryPicker, snapshot.phoneCategories, snapshot.selectedPhoneCategory);
+                _debugContent = snapshot.text;
+                _phoneContent = snapshot.phoneText;
+                DebugText.ItemsSource = snapshot.lines;
+                PhoneText.ItemsSource = snapshot.phoneLines;
+                _logRequestKey = $"{DateTime.Today:yyyy-MM-dd}|{snapshot.selectedDay}|{snapshot.selectedPhoneDay}|{phone?.PhysicalDeviceId}|{snapshot.selectedCategory}|{snapshot.selectedPhoneCategory}";
+            } finally { _rendering = false; }
+        } catch (Exception error) {
+            if (_loaded && generation == _logGeneration) await ShowErrorAsync(error.Message);
+        } finally {
+            if (_loaded && generation == _logGeneration) {
+                DebugLoading.IsActive = PhoneLoading.IsActive = false;
+                CopyButton.IsEnabled = _debugContent.Length > 0;
+                CopyPhoneButton.IsEnabled = _phoneContent.Length > 0;
+            }
+        }
+    }
+
+    private static string? SelectedCategory(ComboBox picker) =>
+        (picker.SelectedItem as ComboBoxItem)?.Tag as string is { } category && category != "all"
+            ? category : null;
+
+    private static void UpdateCategoryPicker(ComboBox picker, string[] categories, string? selected)
+    {
+        var ids = new[] { "all" }.Concat(categories).ToArray();
         if (!picker.Items.OfType<ComboBoxItem>().Select(item => item.Tag as string).SequenceEqual(ids)) {
             picker.Items.Clear();
             foreach (var id in ids) picker.Items.Add(new ComboBoxItem {
                 Tag = id, Content = UiText.Get("mt_log_" + id.Replace('-', '_'))
             });
-            picker.SelectedIndex = Math.Max(0, Array.IndexOf(ids, selected));
         }
-        var category = (picker.SelectedItem as ComboBoxItem)?.Tag as string;
-        return category == "all" ? null : category;
+        picker.SelectedIndex = Math.Max(0, Array.IndexOf(ids, selected ?? "all"));
     }
 
     private void DebugCategoryChanged(object sender, SelectionChangedEventArgs args)
@@ -158,7 +196,7 @@ public sealed partial class SettingsPage : Page
 
     private void SupportDeviceChanged(object sender, SelectionChangedEventArgs args) => Render();
     private void SupportTextChanged(object sender, TextChangedEventArgs args) => Render();
-    private void RefreshDebugClicked(object sender, RoutedEventArgs args) => Render();
+    private void RefreshDebugClicked(object sender, RoutedEventArgs args) { _logRequestKey = null; Render(); }
 
     private void DebugDayChanged(object sender, SelectionChangedEventArgs args)
     {
@@ -170,10 +208,11 @@ public sealed partial class SettingsPage : Page
         if (PhoneText is not null) Render();
     }
 
-    private void RetentionChanged(object sender, SelectionChangedEventArgs args)
+    private async void RetentionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (RetentionPicker.SelectedItem is int days && _runtime is not null) {
-            _runtime.DebugRetentionDays = days;
+            await Task.Run(() => _runtime.DebugRetentionDays = days);
+            _logRequestKey = null;
             Render();
         }
     }
@@ -187,7 +226,8 @@ public sealed partial class SettingsPage : Page
             CloseButtonText = UiText.Get("win_close")
         });
         if (result != ContentDialogResult.Primary) return;
-        _runtime.DeleteDebugLogs();
+        await Task.Run(() => _runtime.DeleteDebugLogs());
+        _logRequestKey = null;
         Render();
     }
 
