@@ -832,6 +832,34 @@ static class Program
              "revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
              "acquiredAt":"2026-10-07T12:00:00Z"}
             """);
+        foreach (var unavailable in new[] { "{\"error\":\"battery_unavailable\"}", "{}", "[]",
+            "{\"version\":1,\"values\":[]}", "{\"version\":1}" }) {
+            var handled = false;
+            try { _ = LiveBatterySnapshot.Parse(unavailable); }
+            catch (InvalidDataException error) when (error.Message == "battery_unavailable") { handled = true; }
+            Check(handled, "Unavailable/missing snapshot fields leaked a key lookup error");
+        }
+        var retryClock = new DateTimeOffset(2026, 10, 11, 9, 0, 0, TimeSpan.FromHours(9));
+        var todayRetryName = "Analytics-2026-10-11-090007.000.ips.ca.synced";
+        var pastRetryName = "Analytics-2026-10-10-090006.ips.ca.synced";
+        var retryState = new CompanionState();
+        var retryPhone = new PairedPhone { Name = "Retry fixture", PhysicalDeviceId = Guid.NewGuid() };
+        var todayRetry = Collector.RecordDownloadFailure(retryState, retryPhone,
+            "/Retired/" + todayRetryName, null, "FILE_OPEN failed with status: 10", retryClock);
+        var pastRetry = Collector.RecordDownloadFailure(retryState, retryPhone,
+            "/Retired/" + pastRetryName, null, "FILE_OPEN failed with status: 10", retryClock);
+        Check(todayRetry - retryClock == TimeSpan.FromMinutes(5) && pastRetry - retryClock == TimeSpan.FromMinutes(30),
+            "Failed reads mixed today's and historical retry intervals");
+        var reloadedRetry = StateStore.Load();
+        Check(reloadedRetry.RecheckAfter.Count == 2 && reloadedRetry.Delivered.Count == 0 &&
+            reloadedRetry.UnclassifiedObservations.Count == 0,
+            "Failed-file backoff was lost across restart or permanently excluded a log");
+        StateStore.Save(state);
+        var priority = Collector.PrioritizedCandidates(new[] { ("/Retired/" + pastRetryName, (string?)null),
+            ("/Retired/" + todayRetryName, (string?)null) });
+        Check(priority[0].Path.EndsWith(todayRetryName, StringComparison.Ordinal),
+            "Historical file failures precede current-day reports");
+        Console.WriteLine("PASS: unavailable battery reply and persistent daily-priority failed-file backoff");
         const string details = "[{\"path\":[\"BatteryData\",\"Huge\"],\"kind\":\"number\",\"value\":\"18446744073709551615\"}]";
         var detailsHash = Hex(SHA256.HashData(Encoding.UTF8.GetBytes(details)));
         liveFixture = liveFixture with { DetailsJSON = details, DetailsRevision = detailsHash };

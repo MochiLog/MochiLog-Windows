@@ -322,6 +322,7 @@ public static partial class Collector
                 ? null : item.GetProperty("source").GetString()))
             .Where(item => CandidateLogPath(item.Path, item.Source))
             .DistinctBy(item => (item.Source, Path.GetFileName(item.Path))).ToArray();
+        RecordCandidateListing(phone, files.Select(f => (f.Path, f.Source)));
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
         var pending = new List<DirectFile>();
@@ -339,6 +340,8 @@ public static partial class Collector
                 Path.Combine(queue, kind, item.Source ?? "", name)))) continue;
             pending.Add(item);
         }
+        pending = PrioritizedCandidates(pending.Select(f => (f.Path, f.Source)))
+            .Select(f => new DirectFile(f.Path, f.Source)).ToList();
         Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}; downloadDue={pending.Count}");
         if (pending.Count == 0) { progress?.Invoke(0, 0); return new CollectionResult(0, 0, 0, null); }
         var staging = Path.Combine(queue, ".staging-" + Guid.NewGuid().ToString("N"));
@@ -376,11 +379,7 @@ public static partial class Collector
                         "Unknown error";
                     reason = Regex.Replace(reason, @"\s+", " ").Trim();
                     if (reason.Length > 120) reason = reason[..120];
-                    var retryAt = DateTimeOffset.UtcNow.AddMinutes(30);
-                    lock (state) {
-                        state.RecheckAfter[deliveredKey] = retryAt;
-                        StateStore.Save(state);
-                    }
+                    var retryAt = RecordDownloadFailure(state, phone, item.Path, item.Source, reason);
                     failed++;
                     lastError = $"{name}: {reason}; retry={retryAt.ToLocalTime():O}";
                     continue;
@@ -444,6 +443,8 @@ public static partial class Collector
         }
         files = files.DistinctBy(item => (item.Source,
             System.IO.Path.GetFileName(item.Path))).ToList();
+        files = PrioritizedCandidates(files);
+        RecordCandidateListing(phone, files);
         Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}");
         var saved = 0; var skipped = 0; var failed = 0; var deferred = 0;
         string? lastError = null;
@@ -496,7 +497,11 @@ public static partial class Collector
                     Trace?.Invoke($"{phone.Name}: battery report stored; file={name}; kind={kind}; source={item.Source ?? "host"}");
                 }
             }
-            catch (Exception error) { failed++; lastError = error.Message; }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception error) {
+                RecordDownloadFailure(state, phone, item.Path, item.Source, error.Message);
+                failed++; lastError = error.Message;
+            }
             finally { if (Directory.Exists(staging)) Directory.Delete(staging, true); }
         }
         progress?.Invoke(files.Count, files.Count);
@@ -593,6 +598,41 @@ public static partial class Collector
             System.Globalization.CultureInfo.InvariantCulture);
         return clock.AddMinutes(name.StartsWith("Analytics-" + day + "-",
             StringComparison.Ordinal) ? 5 : 30);
+    }
+
+    internal static List<(string Path, string? Source)> PrioritizedCandidates(
+        IEnumerable<(string Path, string? Source)> files) => files
+        .OrderByDescending(f => Path.GetFileName(f.Path), StringComparer.Ordinal)
+        .ThenBy(f => f.Source ?? "", StringComparer.Ordinal).ToList();
+
+    internal static DateTimeOffset RecordDownloadFailure(CompanionState state, PairedPhone phone,
+        string path, string? source, string error, DateTimeOffset? now = null)
+    {
+        var name = Path.GetFileName(path);
+        var token = (source is null ? "Host::" : $"Watch::{source}::") + name;
+        var key = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
+        var retryAt = UnclassifiedRetryAt(name, now);
+        lock (state) {
+            state.RecheckAfter[key] = retryAt;
+            StateStore.Save(state);
+        }
+        // No failure, including permission denial, can enter the delivered ledger.
+        var reason = Regex.Replace(StableDiagnostic(error), @"\s+", " ").Trim();
+        if (reason.Length > 300) reason = reason[..300];
+        Trace?.Invoke($"{phone.Name}: battery candidate download failed; file={name}; source={source ?? "host"}; retry={retryAt.ToLocalTime():O}; error={reason}");
+        return retryAt;
+    }
+
+    private static void RecordCandidateListing(PairedPhone phone,
+        IEnumerable<(string Path, string? Source)> files)
+    {
+        var prefix = "Analytics-" + DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(9))
+            .ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) + "-";
+        var current = files.Where(f => Path.GetFileName(f.Path).StartsWith(prefix,
+            StringComparison.Ordinal)).ToArray();
+        Trace?.Invoke($"{phone.Name}: current-day candidates observed; count={current.Length}");
+        foreach (var item in current)
+            Trace?.Invoke($"{phone.Name}: current-day candidate observed; file={Path.GetFileName(item.Path)}; source={item.Source ?? "host"}; location={(item.Path.Contains("/Retired/", StringComparison.Ordinal) ? "retired" : "current")}");
     }
 
     internal static string StableDiagnostic(string message) => Regex.Replace(message,

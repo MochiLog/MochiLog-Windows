@@ -96,8 +96,15 @@ public sealed record LiveBatterySnapshot(Dictionary<string, int> Values, string 
         if (Encoding.UTF8.GetByteCount(text) > 1048576) throw new InvalidDataException("battery_unavailable");
         using var document = JsonDocument.Parse(text);
         var root = document.RootElement;
-        if (root.GetProperty("version").GetInt32() != 1) throw new InvalidDataException();
-        var raw = root.GetProperty("values");
+        // The bridge deliberately emits this bounded error object without a
+        // registry body on transient service failures. It is not a legacy snapshot.
+        if (root.ValueKind != JsonValueKind.Object || root.TryGetProperty("error", out _) ||
+            !root.TryGetProperty("version", out var version) || version.ValueKind != JsonValueKind.Number ||
+            !version.TryGetInt32(out var numberVersion) || numberVersion != 1 ||
+            !root.TryGetProperty("values", out var raw) || raw.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("revision", out var digest) || digest.ValueKind != JsonValueKind.String ||
+            !root.TryGetProperty("acquiredAt", out var timestamp) || timestamp.ValueKind != JsonValueKind.String ||
+            !timestamp.TryGetDateTimeOffset(out var acquired)) throw new InvalidDataException("battery_unavailable");
         var values = new Dictionary<string, int>();
         foreach (var key in new[] { "CycleCount", "DesignCapacity", "FullChargeCapacity",
             "NominalChargeCapacity", "AppleRawMaxCapacity", "CurrentCapacity" })
@@ -107,15 +114,19 @@ public sealed record LiveBatterySnapshot(Dictionary<string, int> Values, string 
             var maximum = key == "CycleCount" ? 100000 : key == "CurrentCapacity" ? 100 : 200000;
             if (number >= minimum && number <= maximum) values[key] = number;
         }
-        var details = root.TryGetProperty("detailsJSON", out var detail) ? detail.GetString() : null;
-        var detailsRevision = root.TryGetProperty("detailsRevision", out var detailDigest) ? detailDigest.GetString() : null;
+        static string? OptionalString(JsonElement root, string key) {
+            if (!root.TryGetProperty(key, out var field) || field.ValueKind == JsonValueKind.Null) return null;
+            if (field.ValueKind != JsonValueKind.String) throw new InvalidDataException("battery_unavailable");
+            return field.GetString();
+        }
+        var details = OptionalString(root, "detailsJSON");
+        var detailsRevision = OptionalString(root, "detailsRevision");
         if (details is not null && detailsRevision is not null) _ = RawBatteryField.Decode(details, detailsRevision);
         else if (details is not null || detailsRevision is not null) throw new InvalidDataException();
         if (!values.Keys.Any(key => key != "CurrentCapacity") && details is null) throw new InvalidDataException();
-        var revision = root.GetProperty("revision").GetString()!;
+        var revision = digest.GetString()!;
         if (revision.Length != 64 || revision.Any(c => !"0123456789abcdef".Contains(c)))
             throw new InvalidDataException();
-        var acquired = root.GetProperty("acquiredAt").GetDateTimeOffset();
         bool? charging = raw.TryGetProperty("IsCharging", out var flag) &&
             flag.ValueKind is JsonValueKind.True or JsonValueKind.False ? flag.GetBoolean() : null;
         return new(values, revision, acquired, charging, details, detailsRevision);
