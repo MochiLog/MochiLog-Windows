@@ -60,7 +60,10 @@ public static partial class Collector
             var detail = toolError ?? Regex.Replace(stderr, "\\x1B\\[[0-9;]*m", "")
                 .Split('\n').LastOrDefault(line => !string.IsNullOrWhiteSpace(line))?.Trim()
                 ?? "No error detail returned.";
-            throw new IOException($"Collector exited {process.ExitCode}: {StableDiagnostic(detail)}");
+            var reason = StableDiagnostic(detail);
+            throw new IOException(process.ExitCode == 0
+                ? UiText.Format("win_collector_reported_error", reason)
+                : $"Collector exited {process.ExitCode}: {reason}");
         }
         successful = true;
         return stdout;
@@ -263,14 +266,20 @@ public static partial class Collector
         {
             var listing = await RunAsync(["crash", "ls", ..network,
                 "--remote-file", "/", "--depth", "1"], TimeSpan.FromSeconds(45), cancellation);
-            if (!string.IsNullOrWhiteSpace(listing)) return (listing, network);
+            if (!string.IsNullOrWhiteSpace(listing)) {
+                Trace?.Invoke($"Diagnostic route selected; device={udid}, transport=Wi-Fi lockdown");
+                return (listing, network);
+            }
         }
         catch (Exception error) { wirelessError = error; }
         if (!OperatingSystem.IsWindows())
         {
             var root = await RunAsync(["crash", "ls", ..native,
                 "--remote-file", "/", "--depth", "1"], TimeSpan.FromSeconds(45), cancellation);
-            if (root.Contains("/Retired", StringComparison.Ordinal)) return (root, native);
+            if (root.Contains("/Retired", StringComparison.Ordinal)) {
+                Trace?.Invoke($"Diagnostic route selected; device={udid}, transport=native OS tunnel");
+                return (root, native);
+            }
         }
         // An attached device can still be collected when wireless discovery is
         // temporarily unavailable. This is an explicit fallback, never reported
@@ -282,7 +291,10 @@ public static partial class Collector
             var usb = new[] { "--udid", udid };
             var root = await RunAsync(["crash", "ls", ..usb, "--remote-file", "/", "--depth", "1"],
                 TimeSpan.FromSeconds(45), cancellation);
-            if (root.Contains("/Retired", StringComparison.Ordinal)) return (root, usb);
+            if (root.Contains("/Retired", StringComparison.Ordinal)) {
+                Trace?.Invoke($"Diagnostic route selected; device={udid}, transport=USB lockdown");
+                return (root, usb);
+            }
         }
         throw new IOException("The device's diagnostics service is unavailable over Wi-Fi or USB. " +
             wirelessError?.Message, wirelessError);
@@ -313,6 +325,7 @@ public static partial class Collector
         CompanionState state, Action<int, int>? progress, CancellationToken cancellation)
     {
         var address = phone.ManualAddress ?? phone.LastKnownAddress!;
+        Trace?.Invoke($"Diagnostic route requested; device={phone.Udid}, transport=RemotePairing, address={address}, addressSource={(phone.ManualAddress is null ? "authenticated transfer peer (diagnostics not yet verified)" : "manual")}");
         var connection = new[] { "direct-rsd", "scan", "--udid", phone.Udid,
             "--host", address, "--port", "49152" };
         var listing = await RunAsync(connection, TimeSpan.FromMinutes(2), cancellation);

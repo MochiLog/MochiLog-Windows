@@ -178,17 +178,33 @@ static class Program
             Convert.FromBase64String(encodedChunk).Length == 8_192 &&
             computerData.AsSpan(0, 8_192).SequenceEqual(Convert.FromBase64String(encodedChunk)),
             "Computer archive chunk did not match the requested day or size.");
-        DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30);
-        DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30);
+        var progress = new List<string>();
+        DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30, progress.Add);
+        DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30, progress.Add);
         Check(DebugArchiveSync.PhoneText(deviceId, fullDay) ==
             Encoding.UTF8.GetString(phoneData),
             "Retried phone archive chunk was duplicated.");
+        Check(progress.Any(message => message.Contains("phone chunk stored")) &&
+            progress.Any(message => message.Contains("phone chunk skipped")),
+            "Stored and rejected diagnostic chunks have no progress audit.");
+        var bounded = JsonSerializer.SerializeToUtf8Bytes(new {
+            archiveRequest = new { day, offset = 0, end = 127 }
+        });
+        Check(Convert.FromBase64String((string)DebugArchiveSync.ComputerChunk(bounded)!["data"]).Length == 127,
+            "A growing archive exceeded the advertised snapshot end.");
+        var invalidEnd = JsonSerializer.SerializeToUtf8Bytes(new {
+            archiveRequest = new { day, offset = 127, end = 127 }
+        });
+        Check(DebugArchiveSync.ComputerChunk(invalidEnd) is null,
+            "An invalid archive end was accepted.");
         var extended = JsonSerializer.SerializeToUtf8Bytes(new {
             archiveManifest = new Dictionary<string, int> { [day] = phoneData.Length + 1 }
         });
         var request = DebugArchiveSync.RequestPhoneChunk(extended, deviceId);
         Check(request is not null && Convert.ToInt64(request["offset"]) == phoneData.Length,
             "Phone archive did not resume from the stored byte offset.");
+        Check(Convert.ToInt64(request!["end"]) == phoneData.Length + 1,
+            "Archive request omitted its snapshot end.");
         for (var offset = 1; offset <= 4; offset++) {
             var date = DateTime.Today.AddDays(-offset);
             var oldCompact = date.ToString("yyyyMMdd",

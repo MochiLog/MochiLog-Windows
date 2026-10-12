@@ -115,7 +115,7 @@ public static class DebugArchiveSync
             var file = Path.Combine(RemoteRoot(deviceId), day + ".log");
             var current = File.Exists(file) ? new FileInfo(file).Length : 0;
             if (current < size) return new Dictionary<string, object> {
-                ["day"] = entry.Name, ["offset"] = current
+                ["day"] = entry.Name, ["offset"] = current, ["end"] = size
             };
         }
         return null;
@@ -140,8 +140,15 @@ public static class DebugArchiveSync
         if (!File.Exists(file)) return null;
         using var stream = File.OpenRead(file);
         if (offset >= stream.Length) return null;
+        var end = stream.Length;
+        if (request.TryGetProperty("end", out var endElement)) {
+            if (endElement.ValueKind != JsonValueKind.Number ||
+                !endElement.TryGetInt64(out var requestedEnd) ||
+                requestedEnd <= offset || requestedEnd > MaximumDayBytes) return null;
+            end = Math.Min(end, requestedEnd);
+        }
         stream.Seek(offset, SeekOrigin.Begin);
-        var data = new byte[Math.Min(maximum, (int)(stream.Length - offset))];
+        var data = new byte[Math.Min(maximum, (int)(end - offset))];
         var count = stream.Read(data);
         if (count == 0) return null;
         return new Dictionary<string, object> {
@@ -150,7 +157,8 @@ public static class DebugArchiveSync
         };
     }
 
-    public static void ReceivePhoneChunk(byte[] report, Guid deviceId, int retentionDays)
+    public static void ReceivePhoneChunk(byte[] report, Guid deviceId, int retentionDays,
+        Action<string>? trace = null)
     {
         using var parsed = JsonDocument.Parse(report);
         if (parsed.RootElement.TryGetProperty("archiveRefresh", out var refresh) &&
@@ -177,10 +185,21 @@ public static class DebugArchiveSync
         var file = Path.Combine(directory, day + ".log");
         using (var stream = new FileStream(file, FileMode.OpenOrCreate, FileAccess.ReadWrite,
             FileShare.Read)) {
-            if (stream.Length != offset) return;
+            if (stream.Length != offset) {
+                trace?.Invoke($"Debug archive sync: phone chunk skipped; device={deviceId:D}, day={day}, offset={offset}, stored={stream.Length}; expected offset required");
+                return;
+            }
             stream.Seek(0, SeekOrigin.End);
             stream.Write(data);
         }
+        var total = offset + data.Length;
+        long? expected = parsed.RootElement.TryGetProperty("archiveManifest", out var manifest) &&
+            manifest.ValueKind == JsonValueKind.Object && manifest.TryGetProperty(compact, out var advertised) &&
+            advertised.ValueKind == JsonValueKind.Number && advertised.TryGetInt64(out var size) &&
+            size is >= 0 and <= MaximumDayBytes ? size : null;
+        var caughtUp = expected is { } end && offset < end && total >= end;
+        if (offset == 0 || offset / 65_536 != total / 65_536 || caughtUp)
+            trace?.Invoke($"Debug archive sync: phone chunk stored; device={deviceId:D}, day={day}, offset={offset}, bytes={data.Length}, total={total}, snapshotEnd={expected?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}, snapshotCaughtUp={caughtUp}");
         var cutoff = DateOnly.FromDateTime(DateTime.Today).AddDays(1 - retentionDays)
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         foreach (var old in Days(directory).Where(item =>
