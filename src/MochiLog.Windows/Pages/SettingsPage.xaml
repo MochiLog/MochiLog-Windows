@@ -15,6 +15,8 @@
                     <ToggleSwitch x:Name="StartupToggle" />
                     <ToggleSwitch x:Name="TrayToggle" />
                     <TextBlock x:Name="TrayStatus" TextWrapping="Wrap" Opacity="0.72" />
+                    <ToggleSwitch x:Name="ReleaseUiToggle" AutomationProperties.AutomationId="ReleaseUiToggle" />
+                    <TextBlock x:Name="ReleaseUiNote" TextWrapping="Wrap" Opacity="0.72" />
                 </StackPanel>
             </Border>
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">

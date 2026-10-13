@@ -609,6 +609,8 @@ public sealed class CompanionRuntime : IDisposable
             phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var report)
             ? report : null;
 
+    public void RecordUiLifecycle(string message) => Record("UI memory: " + message);
+
     private void Record(string message)
     {
         lock (_events)

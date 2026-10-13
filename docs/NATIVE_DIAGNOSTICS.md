@@ -9,7 +9,7 @@ Windows 0.1.28 produces its diagnostic report in C#. It does not start PowerShel
 - Each snapshot is limited to 32 devices, 50 messages and 256 KiB. Text fields, hint lists and candidate lists are bounded before JSON serialization. Invalid unbounded DTOs are rejected before allocating the JSON result.
 - Files are replaced atomically. Daily snapshots follow the same retention setting as activity logs, initially 30 days. The delete-logs action clears the saved snapshots too; later activity creates new reports.
 - The support export includes a fresh native snapshot, produced off the UI thread. Existing daily PC/mobile log exports continue to work.
-- Pairing secrets, OS UDIDs and live battery values are excluded. Device physical IDs, names and network addresses remain private diagnostics and must not be posted in public issues without redaction.
+- Pairing secrets and live battery values are excluded, and there is no OS UDID field. Activity messages may still contain private device identifiers. Device IDs, names and network addresses remain private diagnostics and must not be posted in public issues without redaction.
 
 For automated investigation, retrieve the existing NativeDiagnostics/current.json through SFTP/SCP and parse it locally. Do not use Get-Content plus a second PowerShell JSON conversion. The app creates the report, so inspection does not need to start a Windows reader process.
 
@@ -36,3 +36,11 @@ The native report and repository instructions replace this ad hoc collection pat
 The Windows tests generated a 26,760-byte report from 596,990 bytes of synthetic events, retained the latest 50 events, capped 1,000 devices at 32 and rejected unbounded DTOs before serialization. After warmup, 1,000 exports changed managed retained memory by -408 bytes. Atomic current/daily snapshots, retention and deletion passed.
 
 The actual Windows machine passed the complete protocol suite and Release publish. Helper tests verified execution deadline, caller cancellation, output overflow and Job Object cleanup of a child after its parent exited. Encrypted transfer, duplicate preflight, daily host/Watch routing and archive exchange checks passed too. The elevated USB driver-repair action was not invoked during this incident; no driver restart was needed for the diagnostic fix.
+
+## Foreground UI lifetime (0.1.29)
+
+The persistent MainWindow owns the HWND, tray icon and app-level update checks. Its MainShell owns all named XAML controls, pages and navigation. With the new setting enabled (default), tray/background startup unmounts the shell, clears navigation, detaches control/page event handlers and old dialogs, and schedules a background GC after Unloaded/dialog callbacks settle. Reopening creates a new shell on the last page. Forms are not persisted.
+
+The runtime, server, pairings, queue and live battery cache are not disposed. The off setting retains the shell. Activity logs record the trigger, whether the old shell was collected, and before/after memory measurements. Shared framework and background-service memory remain part of the running app; there is no artificial working-set trim.
+
+The explicit local check can be launched with --verify-ui-memory. It writes a small typed ui-memory-test.json, restores the previous preference and leaves the app open. On the physical Windows machine, all three release/reopen cycles passed, the released shells were collected, the last page was restored, the disabled setting retained the screen, and the background server instance was preserved. Managed memory changed from 10.05 to 6.35 MiB on the first cycle and stayed near 7 MiB on subsequent cycles. This check is separate from the protocol suite and does not alter battery records or pairings.

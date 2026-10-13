@@ -57,9 +57,11 @@ public partial class App : Application
         _window.Activate();
         try { MainWindow?.UpdateTrayPreference(); }
         catch (Exception error) { MainWindow?.ReportTrayError(error); }
+        if (Environment.GetCommandLineArgs().Contains("--verify-ui-memory"))
+            _ = MainWindow?.VerifyUiMemoryAsync();
         if (MainWindow?.IsTrayReady == true &&
             Environment.GetCommandLineArgs().Contains("--background"))
-            _window.AppWindow.Hide();
+            MainWindow.HideToTray();
 
         _ = Task.Run(() => {
             while (_ownsInstance) {

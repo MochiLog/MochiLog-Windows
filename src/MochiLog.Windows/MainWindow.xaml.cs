@@ -21,28 +21,76 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromHours(1) };
     public bool IsTrayReady => _tray is not null;
     public string? TrayError { get; private set; }
+    private MainShell? _shell;
+    private string _page = "home";
+    private long _visibilityGeneration;
+    private WeakReference? _lastReleasedShell;
+    private sealed record UiCheckCycle(int Cycle, bool Released, bool Restored,
+        NativeDiagnostics.Resources Before, NativeDiagnostics.Resources After);
+    private Microsoft.UI.Xaml.XamlRoot? DialogRoot => _shell?.XamlRoot;
+    public bool IsUiReleased => _shell is null;
+    internal void RememberPage(string page) => _page = page;
+    private void EnsureShell()
+    {
+        if (_shell is not null) return;
+        _shell = new MainShell(this, _page);
+        Content = _shell;
+        SetTitleBar(_shell.TitleBar);
+        CompanionRuntime.Shared.RecordUiLifecycle("created; page=" + _page);
+    }
+    public void HideToTray()
+    {
+        _visibilityGeneration++;
+        CompanionRuntime.Shared.WatchBattery(false);
+        DialogCoordinator.HideActive();
+        AppWindow.Hide();
+        if (!UiMemoryPreferences.Enabled || _shell is null) {
+            CompanionRuntime.Shared.RecordUiLifecycle("hidden; visual tree retained; enabled=" + UiMemoryPreferences.Enabled);
+            return;
+        }
+        var before = NativeDiagnostics.Measure();
+        var released = ReleaseShell();
+        _lastReleasedShell = released;
+        var generation = _visibilityGeneration;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => {
+            if (generation != _visibilityGeneration || AppWindow.IsVisible) return;
+            _ = Task.Run(async () => {
+                // Let dialog animations and XAML Unloaded callbacks finish.
+                await Task.Delay(500);
+                if (generation != Interlocked.Read(ref _visibilityGeneration)) return;
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+                GC.WaitForPendingFinalizers();
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+                var after = NativeDiagnostics.Measure();
+                CompanionRuntime.Shared.RecordUiLifecycle($"released; oldShellAlive={released.IsAlive}; privateBytesBefore={before.PrivateBytes}; privateBytesAfter={after.PrivateBytes}; managedBytesBefore={before.ManagedBytes}; managedBytesAfter={after.ManagedBytes}");
+            });
+        });
+    }
+    private WeakReference ReleaseShell()
+    {
+        var shell = _shell!;
+        _page = shell.PageKey;
+        SetTitleBar(null);
+        shell.Release();
+        Content = null;
+        _shell = null;
+        return new WeakReference(shell);
+    }
 
     public MainWindow()
     {
         InitializeComponent();
 
-        ((NavigationViewItem)NavView.MenuItems[0]).Content = UiText.Get("win_home");
-        ((NavigationViewItem)NavView.MenuItems[1]).Content = UiText.Get("live_title");
-        ((NavigationViewItem)NavView.MenuItems[2]).Content = UiText.Get("mt_battery_logs");
-        ((NavigationViewItem)NavView.MenuItems[3]).Content = UiText.Get("win_about");
-
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        EnsureShell();
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
         AppWindow.SetIcon("Assets/AppIcon.ico");
         AppWindow.Closing += (_, args) => {
             if (_quitting || _tray is null || !TrayPreferences.Enabled) return;
             args.Cancel = true;
-            CompanionRuntime.Shared.WatchBattery(false);
-            AppWindow.Hide();
+            HideToTray();
         };
         Closed += (_, _) => { _updateTimer.Stop(); DisposeTray(); };
-        NavView.Loaded += async (_, _) => await ConfigureAutomaticUpdatesAsync();
         _updateTimer.Tick += async (_, _) => await CheckForUpdatesAsync(false);
         _updateTimer.Start();
         // The shell icon is registered after Activate(), when the HWND is ready.
@@ -65,24 +113,70 @@ public sealed partial class MainWindow : Window
 
     public void Restore()
     {
+        _visibilityGeneration++;
+        EnsureShell();
         AppWindow.Show();
-        CompanionRuntime.Shared.WatchBattery(NavFrame.Content is LiveBatteryPage);
+        CompanionRuntime.Shared.WatchBattery(_shell?.ShowsLiveBattery == true);
         Activate();
         if (_pendingUpdate is not null) _ = PromptForUpdateAsync();
         _ = ConfigureAutomaticUpdatesAsync();
     }
 
+    // Local, explicit UI regression check. It never changes records or pairing.
+    internal async Task VerifyUiMemoryAsync()
+    {
+        var previous = UiMemoryPreferences.Enabled;
+        var page = _page;
+        var runtime = CompanionRuntime.Shared;
+        var server = runtime.Server;
+        var samples = new List<UiCheckCycle>();
+        bool passed = false; string? error = null;
+        try {
+            await Task.Delay(1000);
+            for (var cycle = 0; cycle < 3; cycle++) {
+                UiMemoryPreferences.Enabled = true;
+                _shell!.SelectPage("settings");
+                await Task.Delay(750);
+                var before = NativeDiagnostics.Measure();
+                HideToTray();
+                await Task.Delay(2000);
+                var released = _shell is null && Content is null && _lastReleasedShell?.IsAlive == false;
+                var after = NativeDiagnostics.Measure();
+                Restore();
+                await Task.Delay(500);
+                var restored = _shell?.PageKey == "settings" && Content is MainShell;
+                samples.Add(new(cycle, released, restored, before, after));
+                if (!released || !restored || !ReferenceEquals(server, runtime.Server))
+                    throw new InvalidOperationException("UI lifetime check failed.");
+            }
+            UiMemoryPreferences.Enabled = false;
+            var retained = _shell;
+            HideToTray(); await Task.Delay(500);
+            if (!ReferenceEquals(retained, _shell)) throw new InvalidOperationException("Disabled setting did not retain the screen.");
+            Restore(); passed = true;
+        } catch (Exception failure) { error = failure.Message; }
+        finally {
+            UiMemoryPreferences.Enabled = previous;
+            Restore(); _shell!.SelectPage(page);
+            var file = Path.Combine(StateStore.Root, "ui-memory-test.json");
+            await File.WriteAllBytesAsync(file, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+                new { schema = 1, type = "mochilog-ui-memory-test", generatedAt = DateTimeOffset.Now,
+                    passed, error, samples, backgroundServerPreserved = ReferenceEquals(server, runtime.Server) }));
+            runtime.RecordUiLifecycle("local regression check; passed=" + passed);
+        }
+    }
+
     public async Task ConfigureAutomaticUpdatesAsync()
     {
-        if (!AppWindow.IsVisible || NavView.XamlRoot is null || _consentPromptOpen) return;
+        if (!AppWindow.IsVisible || DialogRoot is null || _consentPromptOpen) return;
         if (!UpdatePreferences.Answered) {
             _consentPromptOpen = true;
             try {
                 var choice = await DialogCoordinator.ShowAsync(new ContentDialog {
-                    XamlRoot = NavView.XamlRoot, Title = UiText.Get("update_optin_title"),
+                    XamlRoot = DialogRoot, Title = UiText.Get("update_optin_title"),
                     Content = UiText.Get("update_optin_note"), PrimaryButtonText = UiText.Get("update_optin_yes"),
                     CloseButtonText = UiText.Get("update_optin_no") });
-                UpdatePreferences.Enabled = choice == ContentDialogResult.Primary;
+                if (choice is { } answer) UpdatePreferences.Enabled = answer == ContentDialogResult.Primary;
             } finally { _consentPromptOpen = false; }
         }
         await CheckForUpdatesAsync(false);
@@ -116,7 +210,7 @@ public sealed partial class MainWindow : Window
         try
         {
             var answer = await DialogCoordinator.ShowAsync(new ContentDialog {
-                XamlRoot = NavView.XamlRoot,
+                XamlRoot = DialogRoot,
                 Title = UiText.Format("win_update_available", update.Version),
                 Content = UiText.Get("win_update_confirm"),
                 PrimaryButtonText = UiText.Get("win_update_install"),
@@ -138,7 +232,7 @@ public sealed partial class MainWindow : Window
     }
 
     private async Task ShowUpdateMessageAsync(string message) =>
-        await DialogCoordinator.ShowAsync(new ContentDialog { XamlRoot = NavView.XamlRoot,
+        await DialogCoordinator.ShowAsync(new ContentDialog { XamlRoot = DialogRoot,
             Title = UiText.Get("win_update_title"), Content = message,
             CloseButtonText = UiText.Get("win_close") });
 
@@ -154,41 +248,4 @@ public sealed partial class MainWindow : Window
         _tray = null;
     }
 
-    private void TitleBar_PaneToggleRequested(TitleBar sender, object args)
-    {
-        NavView.IsPaneOpen = !NavView.IsPaneOpen;
-    }
-
-    private void TitleBar_BackRequested(TitleBar sender, object args)
-    {
-        NavFrame.GoBack();
-    }
-
-    private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
-    {
-        if (args.IsSettingsSelected)
-        {
-            NavFrame.Navigate(typeof(SettingsPage));
-        }
-        else if (args.SelectedItem is NavigationViewItem item)
-        {
-            switch (item.Tag)
-            {
-                case "home":
-                    NavFrame.Navigate(typeof(HomePage));
-                    break;
-                case "liveBattery":
-                    NavFrame.Navigate(typeof(LiveBatteryPage));
-                    break;
-                case "about":
-                    NavFrame.Navigate(typeof(AboutPage));
-                    break;
-                case "battery":
-                    NavFrame.Navigate(typeof(BatteryLogsPage));
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unknown navigation item tag: {item.Tag}");
-            }
-        }
-    }
 }

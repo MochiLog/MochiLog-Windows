@@ -190,7 +190,9 @@
     "mt_log_pairing": "Pairing",
     "mt_log_general": "General & other",
     "win_collector_reported_error": "The collection tool reported an error: {0}",
-    "win_collection_retry_wait": "{0} file(s) waiting to retry. Acquisition is not complete."
+    "win_collection_retry_wait": "{0} file(s) waiting to retry. Acquisition is not complete.",
+    "ui_memory_title": "Release screen memory in the background",
+    "ui_memory_note": "The screen is rebuilt when reopened. Collection and transfers continue. Unsubmitted form contents are reset."
   },
   "ja": {
     "live_details_empty": "追加の項目はありません。",
@@ -383,7 +385,9 @@
     "mt_log_pairing": "ペアリング",
     "mt_log_general": "全体・その他",
     "win_collector_reported_error": "収集ツールからエラーが報告されました: {0}",
-    "win_collection_retry_wait": "再試行待ち{0}件。取得完了ではありません。"
+    "win_collection_retry_wait": "再試行待ち{0}件。取得完了ではありません。",
+    "ui_memory_title": "常駐時に画面のメモリを解放",
+    "ui_memory_note": "画面は再表示時に作り直します。収集・転送は継続します。入力途中のフォームはリセットされます。"
   },
   "de": {
     "live_details_empty": "Keine weiteren Felder zurückgegeben.",
@@ -576,7 +580,9 @@
     "mt_log_pairing": "Kopplung",
     "mt_log_general": "Allgemein und Sonstiges",
     "win_collector_reported_error": "Das Erfassungswerkzeug hat einen Fehler gemeldet: {0}",
-    "win_collection_retry_wait": "{0} Datei(en) warten auf einen erneuten Versuch. Der Abruf ist nicht abgeschlossen."
+    "win_collection_retry_wait": "{0} Datei(en) warten auf einen erneuten Versuch. Der Abruf ist nicht abgeschlossen.",
+    "ui_memory_title": "Bildschirmspeicher im Hintergrund freigeben",
+    "ui_memory_note": "Beim Öffnen wird die Ansicht neu aufgebaut. Erfassung und Übertragung laufen weiter. Nicht abgesendete Formulare werden zurückgesetzt."
   },
   "es": {
     "live_details_empty": "No se recibieron campos adicionales.",
@@ -769,7 +775,9 @@
     "mt_log_pairing": "Emparejamiento",
     "mt_log_general": "General y otros",
     "win_collector_reported_error": "La herramienta de recopilación informó de un error: {0}",
-    "win_collection_retry_wait": "{0} archivo(s) esperando un nuevo intento. La obtención no ha terminado."
+    "win_collection_retry_wait": "{0} archivo(s) esperando un nuevo intento. La obtención no ha terminado.",
+    "ui_memory_title": "Liberar memoria de la pantalla en segundo plano",
+    "ui_memory_note": "La pantalla se vuelve a crear al abrirla. La recopilación y las transferencias continúan. Los formularios sin enviar se restablecen."
   },
   "fr": {
     "live_details_empty": "Aucun champ supplémentaire reçu.",
@@ -962,7 +970,9 @@
     "mt_log_pairing": "Jumelage",
     "mt_log_general": "Général et autres",
     "win_collector_reported_error": "L’outil de collecte a signalé une erreur : {0}",
-    "win_collection_retry_wait": "{0} fichier(s) en attente d’une nouvelle tentative. La collecte n’est pas terminée."
+    "win_collection_retry_wait": "{0} fichier(s) en attente d’une nouvelle tentative. La collecte n’est pas terminée.",
+    "ui_memory_title": "Libérer la mémoire de la vue en arrière-plan",
+    "ui_memory_note": "La vue est reconstruite à la réouverture. La collecte et les transferts continuent. Les formulaires non envoyés sont réinitialisés."
   },
   "ko": {
     "live_details_empty": "추가 항목이 없습니다.",
@@ -1155,7 +1165,9 @@
     "mt_log_pairing": "페어링",
     "mt_log_general": "일반 및 기타",
     "win_collector_reported_error": "수집 도구에서 오류를 보고했습니다: {0}",
-    "win_collection_retry_wait": "파일 {0}개가 재시도 대기 중입니다. 수집이 아직 완료되지 않았습니다."
+    "win_collection_retry_wait": "파일 {0}개가 재시도 대기 중입니다. 수집이 아직 완료되지 않았습니다.",
+    "ui_memory_title": "백그라운드에서 화면 메모리 해제",
+    "ui_memory_note": "다시 열면 화면을 다시 만듭니다. 수집과 전송은 계속됩니다. 제출하지 않은 양식 내용은 초기화됩니다."
   },
   "zh-Hans": {
     "live_details_empty": "没有返回其他项目。",
@@ -1348,7 +1360,9 @@
     "mt_log_pairing": "配对",
     "mt_log_general": "常规及其他",
     "win_collector_reported_error": "收集工具报告了错误：{0}",
-    "win_collection_retry_wait": "{0} 个文件等待重试。获取尚未完成。"
+    "win_collection_retry_wait": "{0} 个文件等待重试。获取尚未完成。",
+    "ui_memory_title": "后台运行时释放界面内存",
+    "ui_memory_note": "重新打开时会重建界面。收集和传输会继续。未提交的表单内容将重置。"
   },
   "zh-Hant": {
     "live_details_empty": "沒有傳回其他項目。",
@@ -1541,6 +1555,8 @@
     "mt_log_pairing": "配對",
     "mt_log_general": "一般及其他",
     "win_collector_reported_error": "收集工具回報了錯誤：{0}",
-    "win_collection_retry_wait": "{0} 個檔案等待重試。擷取尚未完成。"
+    "win_collection_retry_wait": "{0} 個檔案等待重試。擷取尚未完成。",
+    "ui_memory_title": "背景執行時釋放畫面記憶體",
+    "ui_memory_note": "重新開啟時會重建畫面。收集和傳輸會繼續。尚未提交的表單內容會重設。"
   }
 }

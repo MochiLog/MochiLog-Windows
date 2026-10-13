@@ -39,6 +39,10 @@ public sealed partial class SettingsPage : Page
         TrayToggle.IsOn = TrayPreferences.Enabled;
         TrayToggle.Toggled += TrayToggled;
         UpdateTrayStatus();
+        ReleaseUiToggle.Header = UiText.Get("ui_memory_title");
+        ReleaseUiNote.Text = UiText.Get("ui_memory_note");
+        ReleaseUiToggle.IsOn = UiMemoryPreferences.Enabled;
+        ReleaseUiToggle.Toggled += (_, _) => UiMemoryPreferences.Enabled = ReleaseUiToggle.IsOn;
         SupportTitle.Text = UiText.Get("win_support");
         SupportIntro.Text = UiText.Get("win_support_intro");
         SupportDevicePicker.Header = UiText.Get("win_support_device");
