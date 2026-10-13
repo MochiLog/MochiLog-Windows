@@ -45,28 +45,22 @@ public static partial class Collector
         start.Environment["NO_COLOR"] = "1";
         var successful = false;
         try {
-        using var process = Process.Start(start) ?? throw new IOException("Collector did not start.");
-        using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-        limit.CancelAfter(timeout);
-        var output = process.StandardOutput.ReadToEndAsync(limit.Token);
-        var errors = process.StandardError.ReadToEndAsync(limit.Token);
-        try { await process.WaitForExitAsync(limit.Token); }
-        catch (OperationCanceledException) { process.Kill(true); throw new TimeoutException("Device collection timed out."); }
-        var stdout = await output;
-        var stderr = await errors;
+        var result = await GuardedProcess.RunAsync(start, timeout, cancellation);
+        var stdout = result.Output;
+        var stderr = result.Error;
         // A successful pull-batch can contain per-file failures in a JSON
         // "error" field. Only standalone diagnostics, never JSON data, can
         // turn the entire command into a failure.
         var toolError = ToolFailureLine(stdout, stderr);
-        if (process.ExitCode != 0 || toolError is not null)
+        if (result.ExitCode != 0 || toolError is not null)
         {
             var detail = toolError ?? Regex.Replace(stderr, "\\x1B\\[[0-9;]*m", "")
                 .Split('\n').LastOrDefault(line => !string.IsNullOrWhiteSpace(line))?.Trim()
                 ?? "No error detail returned.";
             var reason = StableDiagnostic(detail);
-            throw new IOException(process.ExitCode == 0
+            throw new IOException(result.ExitCode == 0
                 ? UiText.Format("win_collector_reported_error", reason)
-                : $"Collector exited {process.ExitCode}: {reason}");
+                : $"Collector exited {result.ExitCode}: {reason}");
         }
         successful = true;
         return stdout;

@@ -7,6 +7,8 @@ namespace MochiLog_Windows.Services;
 public static class DiagnosticRoutes
 {
     public sealed record Candidate(string Address, string Source);
+    public sealed record Report(string? Manual, string? TransferPeer, string[] Hints,
+        DateTimeOffset? HintsAt, string? Verified, DateTimeOffset? VerifiedAt, Candidate[] Candidates);
     private sealed class Cache
     {
         public Cache() { }
@@ -97,6 +99,16 @@ public static class DiagnosticRoutes
             if (phone.LastKnownAddress is { Length: > 0 } peer)
                 candidates.Add(new(peer, "transfer peer fallback (unverified)"));
             return candidates.DistinctBy(value => value.Address).ToArray();
+        }
+    }
+    public static Report Describe(PairedPhone phone)
+    {
+        lock (Gate) {
+            var cache = Load(phone.PhysicalDeviceId);
+            return new(phone.ManualAddress, phone.LastKnownAddress,
+                cache.Hints.Where(value => value is not null && PrivateLanAddress(value) is not null)
+                    .Take(4).ToArray(), cache.HintsAt, cache.Verified, cache.VerifiedAt,
+                Candidates(phone).Take(8).ToArray());
         }
     }
 }

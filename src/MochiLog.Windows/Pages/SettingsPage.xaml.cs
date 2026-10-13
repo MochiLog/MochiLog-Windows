@@ -279,7 +279,9 @@ public sealed partial class SettingsPage : Page
         Directory.CreateDirectory(directory);
         var stamp = DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss");
         var computer = Path.Combine(directory, $"MochiLog-Windows-support-{stamp}.json");
-        await File.WriteAllBytesAsync(computer, _runtime.SupportDiagnosticsData(SelectedPhone()));
+        var selected = SelectedPhone();
+        await File.WriteAllBytesAsync(computer,
+            await Task.Run(() => _runtime.SupportDiagnosticsData(selected)));
         string? phone = null;
         if (_runtime.PhoneSupportDiagnosticsData(SelectedPhone()) is { } report) {
             phone = Path.Combine(directory, $"MochiLog-iPhone-support-{stamp}.json");

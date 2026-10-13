@@ -34,12 +34,16 @@ public sealed class CompanionRuntime : IDisposable
     private readonly ConcurrentDictionary<Guid, DateTimeOffset> _batteryAttempt = new();
     private int _batteryViewers;
     private bool _started;
+    private readonly DiagnosticSnapshotStore _diagnosticSnapshots = new(StateStore.Root);
 
     private CompanionRuntime()
     {
         Collector.Trace = Record;
         State = StateStore.Load();
-        try { _events.AddRange(JsonSerializer.Deserialize<string[]>(File.ReadAllText(EventsFile)) ?? []); }
+        try {
+            if (File.Exists(EventsFile) && new FileInfo(EventsFile).Length <= 4 * 1024 * 1024)
+                _events.AddRange((JsonSerializer.Deserialize<string[]>(File.ReadAllText(EventsFile)) ?? []).TakeLast(500));
+        }
         catch (IOException) { }
         catch (JsonException) { }
         MigrateLegacyEvents();
@@ -84,7 +88,53 @@ public sealed class CompanionRuntime : IDisposable
         catch (Exception error) { Record("Transfer server could not start: " + error.Message); }
         _ = PeriodicCollectionAsync(_lifetime.Token);
         _ = PeriodicBatteryAsync(_lifetime.Token);
+        _ = Task.Run(() => PeriodicDiagnosticsAsync(_lifetime.Token));
         _ = RefreshAsync();
+    }
+
+    public NativeDiagnostics.Snapshot DiagnosticSnapshot()
+    {
+        (PairedPhone Phone, CollectionResult? Collection)[] sources;
+        lock (State) {
+            sources = State.Phones.Take(NativeDiagnostics.MaxDevices + 1).Select(phone => {
+                State.LastCollections.TryGetValue(phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var last);
+                return (new PairedPhone { PhysicalDeviceId = phone.PhysicalDeviceId,
+                    Name = phone.Name, Model = phone.Model, ConfirmedAt = phone.ConfirmedAt,
+                    AutomaticPauseUntil = phone.AutomaticPauseUntil,
+                    ManualAddress = phone.ManualAddress, LastKnownAddress = phone.LastKnownAddress }, last);
+            }).ToArray();
+        }
+        var devices = sources.Select(source => {
+            var phone = source.Phone; var last = source.Collection;
+            return new NativeDiagnostics.Device(phone.PhysicalDeviceId, phone.Name, phone.Model,
+                phone.ConfirmedAt is not null, phone.AutomaticPauseUntil, DiagnosticRoutes.Describe(phone),
+                last is null ? null : new(last.Saved, last.Skipped, last.Failed, last.Deferred,
+                    last.RetryHeld, last.AcquisitionComplete, last.LastError));
+        }).ToArray();
+        string[] events;
+        lock (_events) events = _events.ToArray();
+        return NativeDiagnostics.Capture(typeof(CompanionRuntime).Assembly.GetName().Version?.ToString() ?? "unknown",
+            Status, CollectionStatus, devices, events);
+    }
+
+    private async Task PeriodicDiagnosticsAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+        var sample = 0;
+        try {
+            do {
+                try {
+                    var snapshot = DiagnosticSnapshot();
+                    _diagnosticSnapshots.Save(snapshot, DebugRetentionDays);
+                    if (sample++ % 5 == 0) {
+                        var memory = snapshot.Resources;
+                        Record($"Resource snapshot: pid={memory.ProcessId}, privateBytes={memory.PrivateBytes}, workingSetBytes={memory.WorkingSetBytes}, managedBytes={memory.ManagedBytes}, nativeDiagnosticSchema={snapshot.Schema}");
+                    }
+                } catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException) {
+                    Record("Native diagnostic snapshot failed: " + error.Message);
+                }
+            } while (await timer.WaitForNextTickAsync(token));
+        } catch (OperationCanceledException) { }
     }
 
     public void WatchBattery(bool visible)
@@ -381,6 +431,7 @@ public sealed class CompanionRuntime : IDisposable
                 PruneArchive();
                 DebugArchiveSync.PruneAllRemote(value);
                 DebugArchiveSync.RefreshAllSnapshots();
+                _diagnosticSnapshots.Prune(value);
             }
             Changed?.Invoke();
         }
@@ -417,6 +468,7 @@ public sealed class CompanionRuntime : IDisposable
             _events.Clear();
             if (File.Exists(EventsFile)) File.Delete(EventsFile);
             File.WriteAllText(MigrationFile, "1");
+            _diagnosticSnapshots.Clear();
         }
         Changed?.Invoke();
     }
@@ -530,7 +582,13 @@ public sealed class CompanionRuntime : IDisposable
             .Sum(kind => Directory.Exists(Path.Combine(TransferServer.QueuePath(phone), kind))
                 ? Directory.EnumerateFiles(Path.Combine(TransferServer.QueuePath(phone), kind),
                     "Analytics-*.ips.ca.synced", SearchOption.AllDirectories).Count() : 0);
-        var delivered = id is null ? 0 : State.Delivered.Count(token => token.StartsWith(id + "|"));
+        int delivered;
+        CollectionResult? lastCollection;
+        lock (State) {
+            delivered = id is null ? 0 : State.Delivered.Count(token => token.StartsWith(id + "|"));
+            lastCollection = id is not null && State.LastCollections.TryGetValue(id, out var last) ? last : null;
+        }
+        var snapshot = DiagnosticSnapshot();
         return JsonSerializer.SerializeToUtf8Bytes(new
         {
             schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
@@ -539,10 +597,10 @@ public sealed class CompanionRuntime : IDisposable
             deviceName = phone?.Name, deviceModel = phone?.Model,
             pairingConfirmed = phone?.ConfirmedAt is not null,
             pendingFiles = pending, deliveredFiles = delivered,
-            lastCollection = id is not null && State.LastCollections.TryGetValue(id, out var last)
-                ? last : null,
+            lastCollection,
             lastCrash = CrashDiagnostics.Latest(),
-            recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(40).ToArray(),
+            nativeDiagnostics = snapshot,
+            recentEvents = snapshot.RecentEvents.TakeLast(40).ToArray(),
         }, new JsonSerializerOptions { WriteIndented = true });
     }
 

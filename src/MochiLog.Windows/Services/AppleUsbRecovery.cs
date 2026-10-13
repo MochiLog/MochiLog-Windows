@@ -26,10 +26,9 @@ public static class AppleUsbRecovery
         };
         foreach (var arg in new[] { "-NoProfile", "-NonInteractive", "-Command", DeviceQuery })
             start.ArgumentList.Add(arg);
-        using var process = Process.Start(start) ?? throw new IOException("PowerShell did not start.");
-        var output = process.StandardOutput.ReadToEndAsync(cancellation);
-        await process.WaitForExitAsync(cancellation);
-        return process.ExitCode == 0 && !string.IsNullOrWhiteSpace(await output);
+        var result = await GuardedProcess.RunAsync(start, TimeSpan.FromSeconds(30),
+            cancellation, outputLimit: 65536, errorLimit: 65536);
+        return result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.Output);
     }
 
     public static async Task RepairAsync(CancellationToken cancellation)
@@ -46,9 +45,8 @@ public static class AppleUsbRecovery
         var start = new ProcessStartInfo("powershell.exe") { UseShellExecute = true, Verb = "runas" };
         foreach (var arg in new[] { "-NoProfile", "-NonInteractive", "-Command", script })
             start.ArgumentList.Add(arg);
-        using var process = Process.Start(start) ?? throw new IOException("USB repair did not start.");
-        await process.WaitForExitAsync(cancellation);
-        if (process.ExitCode != 0) throw new IOException(UiText.Get("win_usb_repair_failed"));
+        var exitCode = await GuardedProcess.RunElevatedAsync(start, TimeSpan.FromSeconds(90), cancellation);
+        if (exitCode != 0) throw new IOException(UiText.Get("win_usb_repair_failed"));
         for (var attempt = 0; attempt < 4; attempt++)
         {
             var found = await Collector.RunAsync(["usbmux", "list", "--usb", "--simple"],

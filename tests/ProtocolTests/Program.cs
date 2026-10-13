@@ -456,6 +456,15 @@ static class Program
 
     public static async Task Main(string[] args)
     {
+        if (args is ["--guarded-fixture", var kind, var file]) {
+            await GuardedProcessTests.Fixture(kind, file);
+            return;
+        }
+        if (args.SequenceEqual(new[] { "--native-diagnostics" })) {
+            NativeDiagnosticTests.Run();
+            await GuardedProcessTests.Run();
+            return;
+        }
         Check(LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local") == "A4374A9C-4036-30DE-AD77-D8C2176D6D2F",
             "Existing Python UUIDv3 pairing identity must preserve hostname case");
         Check(LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local") != LocalDiagnosticsPairing.Identifier("mixedcase-mac.local"),
@@ -466,6 +475,8 @@ static class Program
         }
         CheckCurrentDiagnostics();
         CheckDiagnosticRoutes();
+        NativeDiagnosticTests.Run();
+        await GuardedProcessTests.Run();
         await CheckSlowTransfer();
         await CheckCloudSharing();
         CheckArchiveExchange();
