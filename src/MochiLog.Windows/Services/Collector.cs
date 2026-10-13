@@ -9,7 +9,10 @@ namespace MochiLog_Windows.Services;
 public sealed record ConnectedDevice(string Udid, string Name, string Model,
     bool UsbConnected = false, bool UsbTrusted = false);
 public sealed record CollectionResult(int Saved, int Skipped, int Failed, string? LastError,
-    int Deferred = 0);
+    int Deferred = 0, int RetryHeld = 0)
+{
+    public bool AcquisitionComplete => Failed == 0 && RetryHeld == 0 && Deferred == 0;
+}
 
 public static partial class Collector
 {
@@ -74,7 +77,7 @@ public static partial class Collector
         CancellationToken cancellation = default)
     {
         var arguments = new List<string> { "battery-snapshot", "--udid", phone.Udid };
-        var address = phone.ManualAddress ?? phone.LastKnownAddress;
+        var address = DiagnosticRoutes.Candidates(phone).FirstOrDefault()?.Address;
         if (!string.IsNullOrEmpty(address)) arguments.AddRange(["--host", address]);
         // RunAsync uses private redirected streams, never log storage.
         return LiveBatterySnapshot.Parse(await RunAsync(arguments, TimeSpan.FromSeconds(45), cancellation));
@@ -305,7 +308,7 @@ public static partial class Collector
         CancellationToken cancellation = default)
     {
         if (OperatingSystem.IsWindows() &&
-            !string.IsNullOrWhiteSpace(phone.ManualAddress ?? phone.LastKnownAddress))
+            DiagnosticRoutes.Candidates(phone).Count > 0)
         {
             try { return await CollectDirectAsync(phone, state, progress, cancellation); }
             catch (Exception error) when (error is not OperationCanceledException)
@@ -324,11 +327,28 @@ public static partial class Collector
     private static async Task<CollectionResult> CollectDirectAsync(PairedPhone phone,
         CompanionState state, Action<int, int>? progress, CancellationToken cancellation)
     {
-        var address = phone.ManualAddress ?? phone.LastKnownAddress!;
-        Trace?.Invoke($"Diagnostic route requested; device={phone.Udid}, transport=RemotePairing, address={address}, addressSource={(phone.ManualAddress is null ? "authenticated transfer peer (diagnostics not yet verified)" : "manual")}");
-        var connection = new[] { "direct-rsd", "scan", "--udid", phone.Udid,
-            "--host", address, "--port", "49152" };
-        var listing = await RunAsync(connection, TimeSpan.FromMinutes(2), cancellation);
+        string? address = null;
+        string? listing = null;
+        Exception? routeFailure = null;
+        foreach (var candidate in DiagnosticRoutes.Candidates(phone))
+        {
+            cancellation.ThrowIfCancellationRequested();
+            try {
+                Trace?.Invoke($"Diagnostic route requested; device={phone.Udid}, transport=RemotePairing, address={candidate.Address}, addressSource={candidate.Source}");
+                var text = await RunAsync(["direct-rsd", "scan", "--udid", phone.Udid,
+                    "--host", candidate.Address, "--port", "49152"], TimeSpan.FromMinutes(2), cancellation);
+                using var validated = JsonDocument.Parse(text);
+                if (validated.RootElement.GetProperty("files").ValueKind != JsonValueKind.Array)
+                    throw new InvalidDataException("Invalid direct diagnostic listing");
+                address = candidate.Address; listing = text;
+                DiagnosticRoutes.RememberVerified(address, phone.PhysicalDeviceId);
+                break;
+            } catch (Exception error) when (error is not OperationCanceledException) {
+                routeFailure = error;
+                Trace?.Invoke($"Diagnostic route rejected; device={phone.Udid}, addressSource={candidate.Source}; error={StableDiagnostic(error.Message)}");
+            }
+        }
+        if (listing is null || address is null) throw routeFailure ?? new IOException("No diagnostic route is available");
         using var scan = JsonDocument.Parse(listing);
         var files = scan.RootElement.GetProperty("files").EnumerateArray().Select(item => new DirectFile(
             item.GetProperty("path").GetString()!, item.GetProperty("source").ValueKind == JsonValueKind.Null
@@ -339,15 +359,16 @@ public static partial class Collector
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
         var pending = new List<DirectFile>();
+        var retryHeld = 0;
         foreach (var item in files)
         {
             var name = Path.GetFileName(item.Path);
             var token = (item.Source is null ? "Host::" : $"Watch::{item.Source}::") + name;
             var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
             lock (state) {
-                if (state.Delivered.Contains(deliveredKey) ||
-                    state.RecheckAfter.TryGetValue(deliveredKey, out var retryAt) &&
-                    retryAt > DateTimeOffset.UtcNow) continue;
+                if (state.Delivered.Contains(deliveredKey)) continue;
+                if (state.RecheckAfter.TryGetValue(deliveredKey, out var retryAt) && retryAt > DateTimeOffset.UtcNow)
+                { retryHeld++; continue; }
             }
             if (new[] { "Host", "Watch" }.Any(kind => File.Exists(
                 Path.Combine(queue, kind, item.Source ?? "", name)))) continue;
@@ -356,7 +377,7 @@ public static partial class Collector
         pending = PrioritizedCandidates(pending.Select(f => (f.Path, f.Source)))
             .Select(f => new DirectFile(f.Path, f.Source)).ToList();
         Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}; downloadDue={pending.Count}");
-        if (pending.Count == 0) { progress?.Invoke(0, 0); return new CollectionResult(0, 0, 0, null); }
+        if (pending.Count == 0) { progress?.Invoke(0, 0); return new CollectionResult(0, 0, 0, null, RetryHeld: retryHeld); }
         var staging = Path.Combine(queue, ".staging-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
         try
@@ -423,7 +444,7 @@ public static partial class Collector
             progress?.Invoke(pending.Count, pending.Count);
             return new CollectionResult(saved, skipped, failed,
                 failed == 0 ? null : lastError ?? "Some diagnostic files could not be downloaded.",
-                deferred);
+                deferred, retryHeld);
         }
         finally { Directory.Delete(staging, true); }
     }
@@ -459,7 +480,7 @@ public static partial class Collector
         files = PrioritizedCandidates(files);
         RecordCandidateListing(phone, files);
         Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}");
-        var saved = 0; var skipped = 0; var failed = 0; var deferred = 0;
+        var saved = 0; var skipped = 0; var failed = 0; var deferred = 0; var retryHeld = 0;
         string? lastError = null;
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
@@ -473,9 +494,9 @@ public static partial class Collector
             progress?.Invoke(index, files.Count);
             var deliveredKey = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
             lock (state) {
-                if (state.Delivered.Contains(deliveredKey) ||
-                    state.RecheckAfter.TryGetValue(deliveredKey, out var retryAt) &&
-                    retryAt > DateTimeOffset.UtcNow) continue;
+                if (state.Delivered.Contains(deliveredKey)) continue;
+                if (state.RecheckAfter.TryGetValue(deliveredKey, out var retryAt) && retryAt > DateTimeOffset.UtcNow)
+                { retryHeld++; continue; }
             }
             var sourceFolder = item.Source ?? "";
             if (new[] { "Host", "Watch" }.Any(kind => File.Exists(
@@ -518,7 +539,7 @@ public static partial class Collector
             finally { if (Directory.Exists(staging)) Directory.Delete(staging, true); }
         }
         progress?.Invoke(files.Count, files.Count);
-        return new CollectionResult(saved, skipped, failed, lastError, deferred);
+        return new CollectionResult(saved, skipped, failed, lastError, deferred, retryHeld);
     }
 
     private static string? BatteryLogKind(string file)

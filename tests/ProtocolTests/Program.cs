@@ -425,6 +425,35 @@ static class Program
         }
     }
 
+    private static void CheckDiagnosticRoutes()
+    {
+        var phone = new PairedPhone { PhysicalDeviceId = Guid.NewGuid(), Udid = "route-fixture",
+            LastKnownAddress = "192.168.3.31" };
+        var now = DateTimeOffset.UtcNow;
+        DiagnosticRoutes.RememberVerified("192.168.40.20", phone.PhysicalDeviceId, now);
+        Check(DiagnosticRoutes.ReceiveHints("[\"192.168.40.21\",\"192.168.40.21\"]", phone.PhysicalDeviceId, now),
+            "Fresh LAN hints were not stored");
+        Check(DiagnosticRoutes.Candidates(phone, now).Select(c => c.Address).SequenceEqual(
+            new[] { "192.168.40.21", "192.168.40.20", "192.168.3.31" }),
+            "A transfer socket peer hid the diagnostic endpoint");
+        foreach (var invalid in new[] { "[\"203.0.113.2\"]", "[\"127.0.0.1\"]", "[\"100.64.0.2\"]",
+            "[\"192.168.40.021\"]", "[\"192.168.40.21\",null]", new string('x', 513) })
+            Check(!DiagnosticRoutes.ReceiveHints(invalid, phone.PhysicalDeviceId, now), "Invalid hint accepted");
+        Check(DiagnosticRoutes.Candidates(phone, now.AddSeconds(3601)).First().Address == "192.168.40.20",
+            "Expired mobile hints remained active");
+        Check(DiagnosticRoutes.Candidates(new() { PhysicalDeviceId = Guid.NewGuid() }, now).Count == 0,
+            "Diagnostic cache leaked across physical devices");
+        phone.ManualAddress = "192.168.40.22";
+        Check(DiagnosticRoutes.Candidates(phone, now).Single().Address == phone.ManualAddress,
+            "Manual endpoint no longer overrides automatic hints");
+        Check(!new CollectionResult(0, 0, 1, "denied").AcquisitionComplete &&
+            !new CollectionResult(0, 0, 0, null, RetryHeld: 1).AcquisitionComplete &&
+            !new CollectionResult(0, 0, 0, null, Deferred: 1).AcquisitionComplete &&
+            new CollectionResult(1, 0, 0, null).AcquisitionComplete,
+            "Failed or held acquisitions were reported as complete");
+        Console.WriteLine("PASS: diagnostic endpoint provenance, expiry, manual overrides and honest retry status");
+    }
+
     public static async Task Main(string[] args)
     {
         Check(LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local") == "A4374A9C-4036-30DE-AD77-D8C2176D6D2F",
@@ -436,6 +465,7 @@ static class Program
             return;
         }
         CheckCurrentDiagnostics();
+        CheckDiagnosticRoutes();
         await CheckSlowTransfer();
         await CheckCloudSharing();
         CheckArchiveExchange();
@@ -765,13 +795,16 @@ static class Program
             version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
             nonce = Upper(addressNonce), ack = "",
             mac = Hex(Hmac(key,
-                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(addressNonce)}|"))
+                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(addressNonce)}|")),
+            diagnosticAddressVersion = "1", diagnosticAddresses = "[\"192.168.40.22\"]"
         }));
         var pullMethod = typeof(TransferServer).GetMethod("Pull",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         _ = pullMethod.Invoke(server, [addressRequest.RootElement, "192.168.3.31"]);
         Check(state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
             "An authenticated address change did not update the wireless collection route.");
+        Check(DiagnosticRoutes.Candidates(state.Phones[0]).All(c => c.Address != "192.168.40.22"),
+            "Unsigned v2 fields changed the diagnostic endpoint");
         var invalidNonce = Guid.NewGuid();
         using var invalidAddressRequest = JsonDocument.Parse(JsonSerializer.Serialize(new {
             version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
@@ -785,7 +818,8 @@ static class Program
             Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid(), Secret = secondKey };
         state.Phones.Add(second);
         StateStore.Save(state);
-        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null, string? liveRevision = null, string? detailsRevision = null) {
+        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null, string? liveRevision = null, string? detailsRevision = null,
+            string? diagnosticHints = null) {
             var at = timestamp ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var inner = JsonSerializer.SerializeToUtf8Bytes(new {
                 version = "2", hostID = Upper(invitation.HostId),
@@ -794,7 +828,9 @@ static class Program
                     $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|")),
                 liveBatteryVersion = liveRevision is null ? null : "1",
                 liveBatteryRevision = liveRevision, liveBatteryDetailsVersion = detailsRevision is null ? null : "1",
-                liveBatteryDetailsRevision = detailsRevision
+                liveBatteryDetailsRevision = detailsRevision,
+                diagnosticAddressVersion = diagnosticHints is null ? null : "1",
+                diagnosticAddresses = diagnosticHints
             });
             var iv = RandomNumberGenerator.GetBytes(12);
             var cipher = new byte[inner.Length];
@@ -915,6 +951,13 @@ static class Program
         liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
         Check(liveJson.GetProperty("state").GetString() == "stale", "Stale battery was shown as current.");
         Check(!JsonSerializer.Serialize(state).Contains("DesignCapacity"), "Current values were persisted.");
+        var hintNonce = Guid.NewGuid();
+        _ = await SecurePull(hintNonce, diagnosticHints: "[\"192.168.40.23\"]");
+        Check(DiagnosticRoutes.Candidates(second).First().Address == "192.168.40.23",
+            "Sealed mobile LAN hints were not adopted");
+        Check((await SecurePull(hintNonce, diagnosticHints: "[\"192.168.40.24\"]")).Length == 0 &&
+            DiagnosticRoutes.Candidates(second).First().Address == "192.168.40.23",
+            "A replayed request replaced diagnostic endpoints");
         var secureNonce = Guid.NewGuid();
         _ = Open(await SecurePull(secureNonce), secondKey, invitation.HostId,
             second.PhysicalDeviceId, secureNonce);

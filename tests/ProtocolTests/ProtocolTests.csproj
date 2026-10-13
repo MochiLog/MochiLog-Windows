@@ -22,6 +22,7 @@
     <Compile Include="..\..\src\MochiLog.Windows\Services\DebugArchiveSync.cs" Link="DebugArchiveSync.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\LiveBattery.cs" Link="LiveBattery.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\Collector.cs" Link="Collector.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\DiagnosticRoutes.cs" Link="DiagnosticRoutes.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\AppleUsbRecovery.cs" Link="AppleUsbRecovery.cs" />
     <Compile Include="..\..\src\MochiLog.Windows\Services\UiText.cs" Link="UiText.cs" />
   </ItemGroup>

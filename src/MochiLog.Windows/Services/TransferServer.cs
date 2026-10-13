@@ -477,12 +477,19 @@ public sealed class TransferServer : IDisposable
                     new byte[] { 0, 0 }.Concat(JsonSerializer.SerializeToUtf8Bytes(
                         new { type = "unpair" })).ToArray());
             }
+            var routeChanged = false;
             if (ValidPeerAddress(peer) && phone.LastKnownAddress != peer)
             {
                 phone.LastKnownAddress = peer;
                 StateStore.Save(_state);
-                PhoneAddressChanged?.Invoke(phone);
+                routeChanged = true;
             }
+            if (secure && Get(request, "diagnosticAddressVersion") == "1" &&
+                Get(request, "diagnosticAddresses") is { } hints &&
+                DiagnosticRoutes.ReceiveHints(hints, physicalId, now)) routeChanged = true;
+            // Notify once, after both updates. Starting collection before the
+            // sealed LAN hints are installed can race back to the old peer IP.
+            if (routeChanged) PhoneAddressChanged?.Invoke(phone);
             if (backgroundNotice) return null;
             if (Get(request, "presence") == "foreground" &&
                 TryHex(Get(request, "presenceMAC"), out var presence) &&

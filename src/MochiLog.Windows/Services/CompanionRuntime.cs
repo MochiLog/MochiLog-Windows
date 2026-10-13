@@ -320,17 +320,20 @@ public sealed class CompanionRuntime : IDisposable
                     var result = await Task.Run(() => Collector.CollectAsync(phone, State,
                         (done, total) => { CollectionStatus = UiText.Format("win_progress", phone.Name, done, total);
                             Changed?.Invoke(); }, _lifetime.Token));
-                    FinishAutomaticFailures(phone, "recovered");
+                    if (result.AcquisitionComplete) FinishAutomaticFailures(phone, "recovered");
+                    else if (result.Failed > 0) RecordCollectionFailure(phone, trigger,
+                        new IOException(result.LastError ?? "Battery log download failed"), manual);
                     CollectionStatus = UiText.Format("win_collection_result", phone.Name,
                         result.Saved, result.Skipped, result.Failed);
                     if (result.LastError is not null) CollectionStatus += " " + result.LastError;
+                    if (result.RetryHeld + result.Deferred > 0) CollectionStatus += " " + UiText.Format("win_collection_retry_wait", result.RetryHeld + result.Deferred);
                     lock (State) {
                         State.LastCollections[phone.PhysicalDeviceId.ToString("D").ToUpperInvariant()] = result;
                         StateStore.Save(State);
                     }
                     Record(CollectionStatus);
                     Record($"{phone.Name}: collection finished; attempt={attempt:D}; saved={result.Saved}, " +
-                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, elapsedMs={started.ElapsedMilliseconds}");
+                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, retryHeld={result.RetryHeld}, acquisitionComplete={result.AcquisitionComplete}, elapsedMs={started.ElapsedMilliseconds}");
                 }
                 catch (Exception error) {
                     Record($"{phone.Name}: collection attempt ended; attempt={attempt:D}; result=failed; elapsedMs={started.ElapsedMilliseconds}");
