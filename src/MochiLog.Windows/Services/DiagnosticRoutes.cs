@@ -95,6 +95,11 @@ public static class DiagnosticRoutes
                     .Select(value => new Candidate(value, "authenticated mobile LAN hint (unverified)")));
             if (Fresh(cache.VerifiedAt, now, TimeSpan.FromDays(7)) && cache.Verified is { } address && PrivateLanAddress(address) is not null)
                 candidates.Add(new(address, "previous OS-authenticated endpoint"));
+            // A mobile app can be paused after today's logs or be suspended.
+            // Retain recent sealed hints as fallbacks; OS pairing still proves identity.
+            if (!Fresh(cache.HintsAt, now, TimeSpan.FromHours(1)) && Fresh(cache.HintsAt, now, TimeSpan.FromHours(24)))
+                candidates.AddRange(cache.Hints.Where(value => value is not null && PrivateLanAddress(value) is not null)
+                    .Select(value => new Candidate(value, "recent authenticated mobile LAN hint (unverified)")));
             // Last candidate preserves older mobile versions without hints.
             if (phone.LastKnownAddress is { Length: > 0 } peer)
                 candidates.Add(new(peer, "transfer peer fallback (unverified)"));

@@ -1,0 +1,106 @@
+using System.Text;
+using System.Text.Json;
+using MochiLog_Windows.Services;
+
+static class CollectionRegressionTests
+{
+    private static void Check(bool condition, string reason)
+    {
+        if (!condition) throw new Exception(reason);
+    }
+
+    public static async Task Run()
+    {
+        Check(Collector.ReadPermissionDenied("FILE_OPEN failed with status: 10: None") &&
+            Collector.ReadPermissionDenied("PERM_DENIED") &&
+            !Collector.ReadPermissionDenied("FILE_OPEN failed with status: 100") &&
+            !Collector.ReadPermissionDenied("TimeoutError 10 seconds"), "Permission gate is too broad");
+        var day = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(9)).ToString("yyyy-MM-dd");
+        var first = $"Analytics-{day}-090007.000.ips.ca.synced";
+        var next = $"Analytics-{day}-090006.000.ips.ca.synced";
+        var third = $"Analytics-{day}-090005.000.ips.ca.synced";
+        const string watch = "ProxiedDevice-ab12";
+        static byte[] Body(bool accessory) => Encoding.UTF8.GetBytes(
+            "{\"os_version\":\"" + (accessory ? "watchOS" : "iPhone OS") + " 27.2\"}\n" +
+            string.Concat(Enumerable.Repeat("last_value_CycleCount last_value_NominalChargeCapacity last_value_AppleRawMaxCapacity\n", 120)));
+        static PairedPhone Phone() => new() { Udid = "collection-fixture", Name = "Collection fixture",
+            Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid(), ManualAddress = "127.0.0.1" };
+        static string Key(PairedPhone phone, string name) => phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|Host::" + name;
+        static string Flag(string[] args, string name) => args[Array.IndexOf(args, name) + 1];
+        var hostPaths = new[] { first, next, third }.Select(name => "/Retired/" + name).ToArray();
+        var watchPath = $"/{watch}/Retired/{first}";
+        var phone = Phone(); var state = new CompanionState();
+        var pulled = new List<string>(); var batches = new List<int>();
+        var deny = true; var includeWatch = true;
+        Task<string> Direct(IEnumerable<string> arguments, TimeSpan timeout, CancellationToken token)
+        {
+            var args = arguments.ToArray();
+            if (args[1] == "scan") {
+                var rows = hostPaths.Select(path => new { path, source = (string?)null }).ToList();
+                if (includeWatch) rows.Add(new { path = watchPath, source = (string?)watch });
+                return Task.FromResult(JsonSerializer.Serialize(new { files = rows }));
+            }
+            Check(args[0] == "direct-rsd" && args[1] == "pull-batch", "Unexpected direct fixture command");
+            var items = JsonSerializer.Deserialize<JsonElement[]>(File.ReadAllBytes(Flag(args, "--manifest")))!;
+            batches.Add(items.Length);
+            var results = new List<object>();
+            for (var local = 0; local < items.Length; local++) {
+                var path = items[local].GetProperty("path").GetString()!;
+                pulled.Add(path);
+                if (deny && path == hostPaths[0]) {
+                    results.Add(new { index = local, ok = false, error = "FILE_OPEN failed with status: 10" });
+                    continue;
+                }
+                var folder = Path.Combine(Flag(args, "--output"), local.ToString());
+                Directory.CreateDirectory(folder);
+                File.WriteAllBytes(Path.Combine(folder, Path.GetFileName(path)), Body(path.Contains(watch)));
+                results.Add(new { index = local, ok = true });
+            }
+            return Task.FromResult(JsonSerializer.Serialize(new { results }));
+        }
+        var result = await Collector.CollectDirectAsync(phone, state, null, CancellationToken.None, Direct);
+        Check(result.Saved == 1 && result.Failed == 1 && result.RetryHeld == 2 && !result.AcquisitionComplete &&
+            pulled.SequenceEqual(new[] { hostPaths[0], watchPath }) && state.Delivered.Count == 0 &&
+            state.RecheckAfter.Count == 1, "Denied host source retried its remaining files or blocked Watch");
+        // An individual file can remain inaccessible after the source recovers.
+        // An untried file must be the next probe, even when the first retry is due.
+        state.RecheckAfter[Key(phone, first)] = DateTimeOffset.MinValue;
+        pulled.Clear(); batches.Clear();
+        result = await Collector.CollectDirectAsync(phone, state, null, CancellationToken.None, Direct);
+        Check(result.Saved == 2 && pulled.First() == hostPaths[1] && result.Failed == 1,
+            "A permanently unreadable first file starved the remaining direct files");
+        var mappedPhone = Phone(); var mappedState = new CompanionState();
+        deny = false; includeWatch = false; pulled.Clear(); batches.Clear();
+        result = await Collector.CollectDirectAsync(mappedPhone, mappedState, null, CancellationToken.None, Direct);
+        Check(result.Saved == 3 && result.AcquisitionComplete && batches.SequenceEqual(new[] { 1, 2 }) &&
+            hostPaths.All(path => File.Exists(Path.Combine(TransferServer.QueuePath(mappedPhone), "Host", Path.GetFileName(path)))),
+            "Split direct batches lost local/global file indices");
+
+        var legacyPhone = Phone(); var legacyState = new CompanionState();
+        pulled.Clear();
+        Task<string> Legacy(IEnumerable<string> arguments, TimeSpan timeout, CancellationToken token)
+        {
+            var args = arguments.ToArray(); var path = Flag(args, "--remote-file");
+            if (args[1] == "ls") return Task.FromResult(path switch {
+                "/" => "/Retired\n/" + watch,
+                "/Retired" => string.Join('\n', hostPaths),
+                _ when path == $"/{watch}/Retired" => watchPath,
+                _ => ""
+            });
+            Check(args[1] == "pull", "Unexpected legacy fixture command");
+            pulled.Add(path);
+            if (path == hostPaths[0]) throw new IOException("FILE_OPEN failed with status: 10");
+            File.WriteAllBytes(Path.Combine(args[2], Path.GetFileName(path)), Body(path.Contains(watch)));
+            return Task.FromResult("");
+        }
+        result = await Collector.CollectLegacyAsync(legacyPhone, legacyState, null, CancellationToken.None, Legacy);
+        Check(result.Saved == 1 && result.Failed == 1 && result.RetryHeld == 2 &&
+            pulled.Count == 2 && pulled.Contains(watchPath) && legacyState.Delivered.Count == 0,
+            "Legacy permission gate blocked Watch or permanently excluded a pending file");
+        legacyState.RecheckAfter[Key(legacyPhone, first)] = DateTimeOffset.MinValue;
+        pulled.Clear();
+        result = await Collector.CollectLegacyAsync(legacyPhone, legacyState, null, CancellationToken.None, Legacy);
+        Check(result.Saved == 2 && pulled.First() == hostPaths[1], "Legacy source probe did not rotate");
+        Console.WriteLine("PASS: direct/legacy source permission gates, Watch isolation, pending recovery and split batch mapping");
+    }
+}

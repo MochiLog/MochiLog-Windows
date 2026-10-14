@@ -439,8 +439,11 @@ static class Program
         foreach (var invalid in new[] { "[\"203.0.113.2\"]", "[\"127.0.0.1\"]", "[\"100.64.0.2\"]",
             "[\"192.168.40.021\"]", "[\"192.168.40.21\",null]", new string('x', 513) })
             Check(!DiagnosticRoutes.ReceiveHints(invalid, phone.PhysicalDeviceId, now), "Invalid hint accepted");
-        Check(DiagnosticRoutes.Candidates(phone, now.AddSeconds(3601)).First().Address == "192.168.40.20",
-            "Expired mobile hints remained active");
+        Check(DiagnosticRoutes.Candidates(phone, now.AddSeconds(3601)).Select(c => c.Address).SequenceEqual(
+            new[] { "192.168.40.20", "192.168.40.21", "192.168.3.31" }),
+            "Recent hint fallback displaced an OS-authenticated endpoint");
+        Check(DiagnosticRoutes.Candidates(phone, now.AddSeconds(86401)).All(c => c.Address != "192.168.40.21"),
+            "An older-than-one-day mobile hint stayed active");
         Check(DiagnosticRoutes.Candidates(new() { PhysicalDeviceId = Guid.NewGuid() }, now).Count == 0,
             "Diagnostic cache leaked across physical devices");
         phone.ManualAddress = "192.168.40.22";
@@ -475,6 +478,7 @@ static class Program
         }
         CheckCurrentDiagnostics();
         CheckDiagnosticRoutes();
+        await CollectionRegressionTests.Run();
         NativeDiagnosticTests.Run();
         await GuardedProcessTests.Run();
         await CheckSlowTransfer();
