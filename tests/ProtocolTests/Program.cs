@@ -915,8 +915,8 @@ static class Program
             "/Retired/" + todayRetryName, null, "FILE_OPEN failed with status: 10", retryClock);
         var pastRetry = Collector.RecordDownloadFailure(retryState, retryPhone,
             "/Retired/" + pastRetryName, null, "FILE_OPEN failed with status: 10", retryClock);
-        Check(todayRetry - retryClock == TimeSpan.FromMinutes(5) && pastRetry - retryClock == TimeSpan.FromMinutes(30),
-            "Failed reads mixed today's and historical retry intervals");
+        Check(todayRetry == retryClock && pastRetry == retryClock,
+            "Failed reads added another cooldown on top of the automatic timer");
         var reloadedRetry = StateStore.Load();
         Check(reloadedRetry.RecheckAfter.Count == 2 && reloadedRetry.Delivered.Count == 0 &&
             reloadedRetry.UnclassifiedObservations.Count == 0,

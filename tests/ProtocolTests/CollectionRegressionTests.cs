@@ -62,9 +62,14 @@ static class CollectionRegressionTests
         Check(result.Saved == 1 && result.Failed == 1 && result.RetryHeld == 2 && !result.AcquisitionComplete &&
             pulled.SequenceEqual(new[] { hostPaths[0], watchPath }) && state.Delivered.Count == 0 &&
             state.RecheckAfter.Count == 1, "Denied host source retried its remaining files or blocked Watch");
+        Check(state.RecheckAfter[Key(phone, first)] <= DateTimeOffset.UtcNow,
+            "Denied read cannot be tried on the next collection");
+        var probeRotation = Collector.ReadProbeOrder(new[] { (hostPaths[0], (string?)null),
+            ("/Retired/Analytics-2026-10-01-090000.ips.ca.synced", (string?)null) },
+            item => item.Item1 == hostPaths[0] ? DateTimeOffset.UtcNow : null);
+        Check(probeRotation[0].Path.Contains("2026-10-01"), "An unreadable current file starved an untried past day");
         // An individual file can remain inaccessible after the source recovers.
         // An untried file must be the next probe, even when the first retry is due.
-        state.RecheckAfter[Key(phone, first)] = DateTimeOffset.MinValue;
         pulled.Clear(); batches.Clear();
         result = await Collector.CollectDirectAsync(phone, state, null, CancellationToken.None, Direct);
         Check(result.Saved == 2 && pulled.First() == hostPaths[1] && result.Failed == 1,
@@ -78,6 +83,7 @@ static class CollectionRegressionTests
 
         var legacyPhone = Phone(); var legacyState = new CompanionState();
         pulled.Clear();
+        var contentOnly = false;
         Task<string> Legacy(IEnumerable<string> arguments, TimeSpan timeout, CancellationToken token)
         {
             var args = arguments.ToArray(); var path = Flag(args, "--remote-file");
@@ -89,18 +95,24 @@ static class CollectionRegressionTests
             });
             Check(args[1] == "pull", "Unexpected legacy fixture command");
             pulled.Add(path);
-            if (path == hostPaths[0]) throw new IOException("FILE_OPEN failed with status: 10");
-            File.WriteAllBytes(Path.Combine(args[2], Path.GetFileName(path)), Body(path.Contains(watch)));
+            if (!contentOnly && path == hostPaths[0]) throw new IOException("FILE_OPEN failed with status: 10");
+            File.WriteAllBytes(Path.Combine(args[2], Path.GetFileName(path)), contentOnly
+                ? Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("unrelated diagnostic value\n", 1000))) : Body(path.Contains(watch)));
             return Task.FromResult("");
         }
         result = await Collector.CollectLegacyAsync(legacyPhone, legacyState, null, CancellationToken.None, Legacy);
         Check(result.Saved == 1 && result.Failed == 1 && result.RetryHeld == 2 &&
             pulled.Count == 2 && pulled.Contains(watchPath) && legacyState.Delivered.Count == 0,
             "Legacy permission gate blocked Watch or permanently excluded a pending file");
-        legacyState.RecheckAfter[Key(legacyPhone, first)] = DateTimeOffset.MinValue;
         pulled.Clear();
         result = await Collector.CollectLegacyAsync(legacyPhone, legacyState, null, CancellationToken.None, Legacy);
         Check(result.Saved == 2 && pulled.First() == hostPaths[1], "Legacy source probe did not rotate");
+        contentOnly = true; pulled.Clear();
+        var contentPhone = Phone(); var contentState = new CompanionState();
+        var firstContent = await Collector.CollectLegacyAsync(contentPhone, contentState, null, CancellationToken.None, Legacy);
+        var heldContent = await Collector.CollectLegacyAsync(contentPhone, contentState, null, CancellationToken.None, Legacy);
+        Check(firstContent.Deferred == 4 && heldContent.RetryHeld == 4 && pulled.Count == 4,
+            "Failure recovery disabled the independent downloaded-content retry policy");
         Console.WriteLine("PASS: direct/legacy source permission gates, Watch isolation, pending recovery and split batch mapping");
     }
 }

@@ -372,10 +372,11 @@ public static partial class Collector
                 Path.Combine(queue, kind, item.Source ?? "", name)))) continue;
             pending.Add(item);
         }
-        HashSet<string> rechecked;
-        lock (state) { rechecked = state.RecheckAfter.Keys.ToHashSet(); }
-        pending = PrioritizedCandidates(pending.Select(f => (f.Path, f.Source)),
-            item => rechecked.Contains(DownloadKey(phone, item.Path, item.Source)))
+        Dictionary<string, DateTimeOffset> attempts;
+        lock (state) { attempts = new(state.RecheckAfter); }
+        pending = ReadProbeOrder(PrioritizedCandidates(pending.Select(f => (f.Path, f.Source)),
+            item => attempts.ContainsKey(DownloadKey(phone, item.Path, item.Source))),
+            item => attempts.TryGetValue(DownloadKey(phone, item.Path, item.Source), out var at) ? at : null)
             .Select(f => new DirectFile(f.Path, f.Source)).ToList();
         Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}; downloadDue={pending.Count}");
         if (pending.Count == 0) { progress?.Invoke(0, 0); return new CollectionResult(0, 0, 0, null, RetryHeld: retryHeld); }
@@ -441,7 +442,7 @@ public static partial class Collector
                     if (reason.Length > 200) reason = reason[..200];
                     var retryAt = RecordDownloadFailure(state, phone, item.Path, item.Source, reason);
                     failed++;
-                    lastError = $"{name}: {reason}; retry={retryAt.ToLocalTime():O}";
+                    lastError = $"{name}: {reason}; retry=next collection";
                     continue;
                 }
                 var downloaded = batchDownloads[index];
@@ -507,9 +508,10 @@ public static partial class Collector
         }
         files = files.DistinctBy(item => (item.Source,
             System.IO.Path.GetFileName(item.Path))).ToList();
-        HashSet<string> rechecked;
-        lock (state) { rechecked = state.RecheckAfter.Keys.ToHashSet(); }
-        files = PrioritizedCandidates(files, item => rechecked.Contains(DownloadKey(phone, item.Path, item.Source)));
+        Dictionary<string, DateTimeOffset> attempts;
+        HashSet<string> delivered;
+        lock (state) { attempts = new(state.RecheckAfter); delivered = new(state.Delivered); }
+        files = PrioritizedCandidates(files, item => attempts.ContainsKey(DownloadKey(phone, item.Path, item.Source)));
         RecordCandidateListing(phone, files);
         Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}");
         var saved = 0; var skipped = 0; var failed = 0; var deferred = 0; var retryHeld = 0;
@@ -518,6 +520,15 @@ public static partial class Collector
         var blocked = 0;
         var queue = TransferServer.QueuePath(phone);
         Directory.CreateDirectory(queue);
+        var due = new List<(string Path, string? Source)>();
+        foreach (var item in files) {
+            var key = DownloadKey(phone, item.Path, item.Source);
+            if (delivered.Contains(key)) continue;
+            if (attempts.TryGetValue(key, out var after) && after > DateTimeOffset.UtcNow) { retryHeld++; continue; }
+            if (new[] { "Host", "Watch" }.Any(kind => File.Exists(Path.Combine(queue, kind, item.Source ?? "", Path.GetFileName(item.Path))))) continue;
+            due.Add(item);
+        }
+        files = ReadProbeOrder(due, item => attempts.TryGetValue(DownloadKey(phone, item.Path, item.Source), out var at) ? at : null);
         for (var index = 0; index < files.Count; index++)
         {
             cancellation.ThrowIfCancellationRequested();
@@ -690,13 +701,27 @@ public static partial class Collector
         .ThenByDescending(f => Path.GetFileName(f.Path), StringComparer.Ordinal)
         .ThenBy(f => f.Source ?? "", StringComparer.Ordinal).ToList();
 
+    internal static List<(string Path, string? Source)> ReadProbeOrder(
+        IEnumerable<(string Path, string? Source)> files,
+        Func<(string Path, string? Source), DateTimeOffset?> attemptedAt)
+    {
+        var ordered = files.ToArray();
+        var probes = ordered.GroupBy(item => item.Source ?? "host").Select(group =>
+            group.OrderBy(item => attemptedAt(item).HasValue)
+                .ThenBy(item => attemptedAt(item) ?? DateTimeOffset.MinValue).First()).ToArray();
+        var chosen = probes.ToHashSet();
+        return probes.Concat(ordered.Where(item => !chosen.Contains(item))).ToList();
+    }
+
     internal static DateTimeOffset RecordDownloadFailure(CompanionState state, PairedPhone phone,
         string path, string? source, string error, DateTimeOffset? now = null)
     {
         var name = Path.GetFileName(path);
         var token = (source is null ? "Host::" : $"Watch::{source}::") + name;
         var key = phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + "|" + token;
-        var retryAt = UnclassifiedRetryAt(name, now);
+        // Automatic attempts already have a five-minute outer scheduler.
+        // Persist attempt order, not another five/thirty-minute failure cooldown.
+        var retryAt = now ?? DateTimeOffset.UtcNow;
         lock (state) {
             state.RecheckAfter[key] = retryAt;
             StateStore.Save(state);
@@ -704,7 +729,7 @@ public static partial class Collector
         // No failure, including permission denial, can enter the delivered ledger.
         var reason = Regex.Replace(StableDiagnostic(error), @"\s+", " ").Trim();
         if (reason.Length > 300) reason = reason[..300];
-        Trace?.Invoke($"{phone.Name}: battery candidate download failed; file={name}; source={source ?? "host"}; retry={retryAt.ToLocalTime():O}; error={reason}");
+        Trace?.Invoke($"{phone.Name}: battery candidate download failed; file={name}; source={source ?? "host"}; retry=next collection; fileCooldown=false; error={reason}");
         return retryAt;
     }
 
