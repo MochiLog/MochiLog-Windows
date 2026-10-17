@@ -1,0 +1,17 @@
+# Compiled collector CI
+
+## Investigation on 2026-10-17
+
+The October 15 successful Windows run restored a 77,038,506-byte compiler cache created on October 10, yet rebuilt all 2,629 C files: zero clcache hits. C compilation lasted from 11:20:16 to 12:24:48 UTC. Its post-job action explicitly skipped saving because the cache key was an exact match. An Actions cache cannot be updated in place, so repeatedly restoring that key also repeatedly discarded newly built compiler outputs.
+
+The October 17 run eventually passed C compilation and reached Inno Setup compression. The former single build step covers compilation, .NET publication and installer compression; its step name alone cannot identify which substage is active. The old output also omitted individual C compiler commands. A long silent interval was not enough to distinguish a stalled process from compilation.
+
+## Changes
+
+- Each successful run now saves the refreshed compiler cache under a unique run/attempt key. Restore prefixes prefer matching build inputs and then the existing platform/Python family. The compiler script itself participates in the input hash.
+- Nuitka now prints C backend commands with `--show-scons`. Compiler choice, optimization settings, native compilation, standalone verification and runtime behavior are unchanged.
+- Installer artifacts are retained for seven days. Compilation reports retain their existing fourteen-day lifetime. GitHub Releases remain the distribution archive.
+
+These changes fix the observed cache update problem and expose compiler progress; they do not prove a particular speedup. Check the next run's clcache hit/miss summary before attributing another long build to a compiler hang. A cold build still compiles the full maintained device library.
+
+Reference: [GitHub cache matching and immutable entries](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).

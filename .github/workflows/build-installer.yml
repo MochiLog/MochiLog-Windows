@@ -25,8 +25,11 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: Build/CompilerCache
-          key: collector-${{ runner.os }}-${{ runner.arch }}-py313-${{ hashFiles('requirements-build.txt', '*.py', 'scripts/collector.nuitka-package.config.yml') }}
+          # Cache entries are immutable. Save the refreshed compiler outputs on
+          # every successful run instead of repeatedly restoring a stale exact hit.
+          key: collector-${{ runner.os }}-${{ runner.arch }}-py313-${{ hashFiles('requirements-build.txt', '*.py', 'scripts/compile-collector.py', 'scripts/collector.nuitka-package.config.yml') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
+            collector-${{ runner.os }}-${{ runner.arch }}-py313-${{ hashFiles('requirements-build.txt', '*.py', 'scripts/compile-collector.py', 'scripts/collector.nuitka-package.config.yml') }}-
             collector-${{ runner.os }}-${{ runner.arch }}-py313-
       - uses: actions/setup-dotnet@v4
         with:
@@ -55,6 +58,7 @@ jobs:
           name: MochiLog-Windows-Alpha-Setup
           path: Build/MochiLog-Windows-Alpha-Setup.exe
           if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: always()
         with:
