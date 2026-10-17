@@ -21,3 +21,13 @@ The compiled transport returns bounded listingFailures metadata. Swift and C# pr
 The new helper field is additive; native readers accept older helper output without that field. Existing pairing identities, request encryption, replay rejection, preflight deduplication, ACK, daily completion and mobile transfer formats are unchanged. Python remains only the maintained transport adapter; report selection and application policy remain native.
 
 Regression checks reproduce an inaccessible archive with readable current Watch data, an unavailable current directory with an independent archived listing, omitted optional archive folders, a partial result with no pending downloads, and recovery on the next collection. The complete native Mac suite and complete Release suite on the physical Windows PC passed, along with all ten Python tests in each repository. Physical installed-build verification and release artifact results are recorded below after packaging.
+
+## Packaging and physical verification
+
+The [Windows installer run](https://github.com/MochiLog/MochiLog-Windows/actions/runs/38991531838) completed successfully for source commit aa8b8d85de32e1c15aa707419b22c3716d56f021. Python transport and native encrypted-protocol tests passed, followed by installer installation/uninstallation and standalone runtime verification without user Python. The same installer was hash-verified on the physical Windows PC before an in-place update. Uninstallation tests ran only on the disposable CI runner.
+
+The installed app reported 0.1.32.0 in a fresh 12:33 JST native snapshot. Its confirmed pairing identity was preserved, and older collection summaries decoded with listingFailures=0. Private memory was 150,876,160 bytes and managed memory was 4,157,400 bytes at startup. The new helper completed USB and Bonjour discovery within their deadlines; the subsequent OS diagnostic connection was unavailable. The corrected last-search message appeared. Earlier successful iPad listings had zero current-day candidates; no successful acquisition of a new physical iPad report is claimed. At 12:34 the app remained running with 202,240,000 private bytes and 11,307,464 managed bytes.
+
+Installer: 151655897 bytes; SHA-256 17ccb0e6f6c047b22b5bdfeb97a39caffc5acc963ff393ab768dd2d6a00df8f6.
+
+The long build investigation and compiler-cache refresh fix are recorded in [CI build notes](CI_BUILD_NOTES.md). These are build-system changes; their effect on the next run's duration is not yet measured.

@@ -7,6 +7,7 @@
 - 一覧取得の失敗をファイル取得の失敗と分けて診断ログに記録します。接続が戻った後の再試行間隔は延ばしていません。
 - 既存のペアリングを引き継ぎます。暗号化、再送防止、受信済みログの事前確認、確認応答の仕組みは維持しています。
 - 新しい案内を8言語に対応させました。
+- 端末未検出の表示を、現在のロック状態ではなく「前回の検索結果」と分かる案内に修正しました。
 
 ## English
 
@@ -15,5 +16,4 @@
 - Diagnostic logs now distinguish directory-listing failures from file-download failures. The normal retry interval has not been extended.
 - Existing pairings are retained. Encryption, replay protection, duplicate preflight checks and receipt acknowledgements are unchanged.
 - The new partial-result explanation is available in all eight supported languages.
-
-The empty-search message now identifies the result of the last search rather than implying that a currently connected device is locked.
+- The empty-search message now identifies the result of the last search rather than implying that a currently connected device is locked.

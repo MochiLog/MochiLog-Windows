@@ -4,7 +4,7 @@
 
 The October 15 successful Windows run restored a 77,038,506-byte compiler cache created on October 10, yet rebuilt all 2,629 C files: zero clcache hits. C compilation lasted from 11:20:16 to 12:24:48 UTC. Its post-job action explicitly skipped saving because the cache key was an exact match. An Actions cache cannot be updated in place, so repeatedly restoring that key also repeatedly discarded newly built compiler outputs.
 
-The October 17 run eventually passed C compilation and reached Inno Setup compression. The former single build step covers compilation, .NET publication and installer compression; its step name alone cannot identify which substage is active. The old output also omitted individual C compiler commands. A long silent interval was not enough to distinguish a stalled process from compilation.
+The [October 17 run](https://github.com/MochiLog/MochiLog-Windows/actions/runs/38991531838) completed successfully. C compilation lasted from 01:47:00 to 03:21:10 UTC, about 94 minutes, with zero hits and 2,628 misses. It saved a new cache because this source change produced a new input key. There is no evidence that this run hung. The former single build step covers compilation, .NET publication and installer compression; its step name alone cannot identify which substage is active. The old output also omitted individual C compiler commands. A long silent interval was not enough to distinguish a stalled process from compilation.
 
 ## Changes
 
