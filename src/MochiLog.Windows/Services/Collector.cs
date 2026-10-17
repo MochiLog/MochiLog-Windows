@@ -9,9 +9,9 @@ namespace MochiLog_Windows.Services;
 public sealed record ConnectedDevice(string Udid, string Name, string Model,
     bool UsbConnected = false, bool UsbTrusted = false);
 public sealed record CollectionResult(int Saved, int Skipped, int Failed, string? LastError,
-    int Deferred = 0, int RetryHeld = 0)
+    int Deferred = 0, int RetryHeld = 0, int ListingFailures = 0)
 {
-    public bool AcquisitionComplete => Failed == 0 && RetryHeld == 0 && Deferred == 0;
+    public bool AcquisitionComplete => Failed == 0 && RetryHeld == 0 && Deferred == 0 && ListingFailures == 0;
 }
 
 public static partial class Collector
@@ -320,6 +320,24 @@ public static partial class Collector
 
     private sealed record DirectFile(string Path, string? Source);
 
+    private static string? ListingWarning(string? error, int failures) => failures == 0 ? error :
+        string.Join(" ", new[] { error, UiText.Get("win_collection_listing_incomplete") }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private static int ReadListingFailures(JsonElement scan, PairedPhone phone)
+    {
+        if (!scan.TryGetProperty("listingFailures", out var failures)) return 0;
+        if (failures.ValueKind != JsonValueKind.Array || failures.GetArrayLength() > 128)
+            throw new InvalidDataException("Invalid diagnostic listing failures");
+        foreach (var failure in failures.EnumerateArray()) {
+            var directory = failure.GetProperty("directory").GetString() ?? "unknown";
+            var source = failure.GetProperty("source").GetString() ?? "host";
+            var reason = failure.GetProperty("error").GetString() ?? "Unknown error";
+            Trace?.Invoke($"{phone.Name}: diagnostic directory listing incomplete; directory={StableDiagnostic(directory)}; source={StableDiagnostic(source)}; error={StableDiagnostic(reason)}; retry=next collection");
+        }
+        return failures.GetArrayLength();
+    }
+
     internal static async Task<CollectionResult> CollectDirectAsync(PairedPhone phone,
         CompanionState state, Action<int, int>? progress, CancellationToken cancellation,
         Func<IEnumerable<string>, TimeSpan, CancellationToken, Task<string>>? runCommand = null)
@@ -327,6 +345,7 @@ public static partial class Collector
         var run = runCommand ?? RunAsync;
         string? address = null;
         string? listing = null;
+        var listingFailures = 0;
         Exception? routeFailure = null;
         foreach (var candidate in DiagnosticRoutes.Candidates(phone))
         {
@@ -338,6 +357,7 @@ public static partial class Collector
                 using var validated = JsonDocument.Parse(text);
                 if (validated.RootElement.GetProperty("files").ValueKind != JsonValueKind.Array)
                     throw new InvalidDataException("Invalid direct diagnostic listing");
+                listingFailures = ReadListingFailures(validated.RootElement, phone);
                 address = candidate.Address; listing = text;
                 DiagnosticRoutes.RememberVerified(address, phone.PhysicalDeviceId);
                 break;
@@ -352,6 +372,7 @@ public static partial class Collector
             item.GetProperty("path").GetString()!, item.GetProperty("source").ValueKind == JsonValueKind.Null
                 ? null : item.GetProperty("source").GetString()))
             .Where(item => CandidateLogPath(item.Path, item.Source))
+            .OrderBy(item => item.Path.Contains("/Retired/", StringComparison.Ordinal) ? 0 : 1)
             .DistinctBy(item => (item.Source, Path.GetFileName(item.Path))).ToArray();
         RecordCandidateListing(phone, files.Select(f => (f.Path, f.Source)));
         var queue = TransferServer.QueuePath(phone);
@@ -379,7 +400,11 @@ public static partial class Collector
             item => attempts.TryGetValue(DownloadKey(phone, item.Path, item.Source), out var at) ? at : null)
             .Select(f => new DirectFile(f.Path, f.Source)).ToList();
         Trace?.Invoke($"{phone.Name}: diagnostic listing ready; hostCandidates={files.Count(f => f.Source is null)}; proxyCandidates={files.Count(f => f.Source is not null)}; downloadDue={pending.Count}");
-        if (pending.Count == 0) { progress?.Invoke(0, 0); return new CollectionResult(0, 0, 0, null, RetryHeld: retryHeld); }
+        if (pending.Count == 0) {
+            progress?.Invoke(0, 0);
+            return new CollectionResult(0, 0, 0, ListingWarning(null, listingFailures),
+                RetryHeld: retryHeld, ListingFailures: listingFailures);
+        }
         progress?.Invoke(0, pending.Count);
         var staging = Path.Combine(queue, ".staging-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
@@ -472,8 +497,8 @@ public static partial class Collector
             if (blockedIndices.Count > 0)
                 Trace?.Invoke($"{phone.Name}: source read gate held {blockedIndices.Count} unattempted file(s); trigger=AFC permission denied; files remain pending; retry=next collection");
             return new CollectionResult(saved, skipped, failed,
-                failed == 0 ? null : lastError ?? "Some diagnostic files could not be downloaded.",
-                deferred, retryHeld);
+                ListingWarning(failed == 0 ? null : lastError ?? "Some diagnostic files could not be downloaded.", listingFailures),
+                deferred, retryHeld, listingFailures);
         }
         finally { Directory.Delete(staging, true); }
     }
@@ -488,25 +513,33 @@ public static partial class Collector
         var sources = root.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim()).Where(line => ProxiedPath().IsMatch(line)).ToArray();
         var files = new List<(string Path, string? Source)>();
-        async Task AddDirectory(string path, string? source, string? cachedListing = null)
+        var listingFailures = 0;
+        async Task<string?> AddDirectory(string path, string? source, string? cachedListing = null)
         {
             try
             {
                 var listing = cachedListing ?? await run(["crash", "ls", ..connection,
                     "--remote-file", path, "--depth", "1"], TimeSpan.FromSeconds(90), cancellation);
                 files.AddRange(AnalyticsEntries(path, source, listing));
+                return listing;
             }
-            catch (Exception error) when (source is not null && error is not OperationCanceledException) {
-                Trace?.Invoke($"{phone.Name}: accessory listing unavailable; source={source}; error={StableDiagnostic(error.Message)}");
+            catch (Exception error) when (error is not OperationCanceledException) {
+                listingFailures++;
+                Trace?.Invoke($"{phone.Name}: diagnostic directory listing incomplete; directory={path}; source={source ?? "host"}; error={StableDiagnostic(error.Message)}; retry=next collection");
+                return null;
             }
         }
-        await AddDirectory("/Retired", null);
         await AddDirectory("/", null, root);
+        if (root.Split('\n', StringSplitOptions.TrimEntries).Contains("/Retired"))
+            await AddDirectory("/Retired", null);
         foreach (var source in sources) {
-            await AddDirectory(source + "/Retired", source[1..]);
-            await AddDirectory(source, source[1..]);
+            var current = await AddDirectory(source, source[1..]);
+            var retired = source + "/Retired";
+            if (current is null || current.Split('\n', StringSplitOptions.TrimEntries).Contains(retired))
+                await AddDirectory(retired, source[1..]);
         }
-        files = files.DistinctBy(item => (item.Source,
+        files = files.OrderBy(item => item.Path.Contains("/Retired/", StringComparison.Ordinal) ? 0 : 1)
+            .DistinctBy(item => (item.Source,
             System.IO.Path.GetFileName(item.Path))).ToList();
         Dictionary<string, DateTimeOffset> attempts;
         HashSet<string> delivered;
@@ -591,7 +624,8 @@ public static partial class Collector
         progress?.Invoke(files.Count, files.Count);
         if (blocked > 0)
             Trace?.Invoke($"{phone.Name}: source read gate held {blocked} unattempted file(s); trigger=AFC permission denied; files remain pending; retry=next collection");
-        return new CollectionResult(saved, skipped, failed, lastError, deferred, retryHeld);
+        return new CollectionResult(saved, skipped, failed, ListingWarning(lastError, listingFailures),
+            deferred, retryHeld, listingFailures);
     }
 
     private static string? BatteryLogKind(string file)

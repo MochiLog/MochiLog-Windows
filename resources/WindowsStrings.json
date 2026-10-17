@@ -75,7 +75,7 @@
     "win_license": "Open source licenses",
     "win_repo": "Project and updates on GitHub",
     "win_searching": "Searching for trusted iPhone and iPad devices…",
-    "win_none_found": "No unlocked trusted device was found. Connect once by USB or check Wi-Fi.",
+    "win_none_found": "The last search found no devices. Search again if the connection has changed.",
     "win_devices_available": "{0} device(s) available",
     "win_usb_wait": "Configuring USB trust…",
     "win_usb_ready": "{0}: USB trust recorded. Disconnect USB and verify Wi-Fi.",
@@ -192,7 +192,8 @@
     "win_collector_reported_error": "The collection tool reported an error: {0}",
     "win_collection_retry_wait": "{0} file(s) waiting to retry. Acquisition is not complete.",
     "ui_memory_title": "Release screen memory in the background",
-    "ui_memory_note": "The screen is rebuilt when reopened. Collection and transfers continue. Unsubmitted form contents are reset."
+    "ui_memory_note": "The screen is rebuilt when reopened. Collection and transfers continue. Unsubmitted form contents are reset.",
+    "win_collection_listing_incomplete": "Some log lists could not be checked. Available logs were saved; the remaining lists will be retried automatically."
   },
   "ja": {
     "live_details_empty": "追加の項目はありません。",
@@ -270,7 +271,7 @@
     "win_license": "オープンソースライセンス",
     "win_repo": "GitHubのプロジェクトと更新情報",
     "win_searching": "信頼済みのiPhone・iPadを探しています…",
-    "win_none_found": "ロック解除された信頼済みの端末が見つかりません。初回はUSB接続するか、Wi-Fiを確認してください。",
+    "win_none_found": "前回の検索では端末が見つかりませんでした。接続状態が変わった場合は再検索してください。",
     "win_devices_available": "利用可能な端末：{0}台",
     "win_usb_wait": "USBの信頼設定を進めています…",
     "win_usb_ready": "{0}：USBの信頼設定が完了。ケーブルを外してWi-Fiを確認してください。",
@@ -387,7 +388,8 @@
     "win_collector_reported_error": "収集ツールからエラーが報告されました: {0}",
     "win_collection_retry_wait": "再試行待ち{0}件。取得完了ではありません。",
     "ui_memory_title": "常駐時に画面のメモリを解放",
-    "ui_memory_note": "画面は再表示時に作り直します。収集・転送は継続します。入力途中のフォームはリセットされます。"
+    "ui_memory_note": "画面は再表示時に作り直します。収集・転送は継続します。入力途中のフォームはリセットされます。",
+    "win_collection_listing_incomplete": "一部のログ一覧を確認できませんでした。確認できたログは保存し、残りは次回自動で再試行します。"
   },
   "de": {
     "live_details_empty": "Keine weiteren Felder zurückgegeben.",
@@ -465,7 +467,7 @@
     "win_license": "Open-Source-Lizenzen",
     "win_repo": "Projekt und Updates auf GitHub",
     "win_searching": "Suche nach vertrauenswürdigen iPhones und iPads…",
-    "win_none_found": "Kein entsperrtes vertrauenswürdiges Gerät gefunden. Einmal per USB verbinden oder WLAN prüfen.",
+    "win_none_found": "Bei der letzten Suche wurden keine Geräte gefunden. Suchen Sie erneut, wenn sich die Verbindung geändert hat.",
     "win_devices_available": "{0} Gerät(e) verfügbar",
     "win_usb_wait": "USB-Vertrauen wird eingerichtet…",
     "win_usb_ready": "{0}: USB-Vertrauen gespeichert. Kabel trennen und WLAN prüfen.",
@@ -582,7 +584,8 @@
     "win_collector_reported_error": "Das Erfassungswerkzeug hat einen Fehler gemeldet: {0}",
     "win_collection_retry_wait": "{0} Datei(en) warten auf einen erneuten Versuch. Der Abruf ist nicht abgeschlossen.",
     "ui_memory_title": "Bildschirmspeicher im Hintergrund freigeben",
-    "ui_memory_note": "Beim Öffnen wird die Ansicht neu aufgebaut. Erfassung und Übertragung laufen weiter. Nicht abgesendete Formulare werden zurückgesetzt."
+    "ui_memory_note": "Beim Öffnen wird die Ansicht neu aufgebaut. Erfassung und Übertragung laufen weiter. Nicht abgesendete Formulare werden zurückgesetzt.",
+    "win_collection_listing_incomplete": "Einige Protokolllisten konnten nicht geprüft werden. Verfügbare Protokolle wurden gespeichert; die übrigen Listen werden automatisch erneut geprüft."
   },
   "es": {
     "live_details_empty": "No se recibieron campos adicionales.",
@@ -660,7 +663,7 @@
     "win_license": "Licencias de código abierto",
     "win_repo": "Proyecto y actualizaciones en GitHub",
     "win_searching": "Buscando iPhone y iPad de confianza…",
-    "win_none_found": "No se encontró ningún dispositivo desbloqueado y de confianza. Conéctalo una vez por USB o revisa la Wi-Fi.",
+    "win_none_found": "No se encontraron dispositivos en la última búsqueda. Vuelve a buscar si ha cambiado la conexión.",
     "win_devices_available": "{0} dispositivo(s) disponibles",
     "win_usb_wait": "Configurando la confianza USB…",
     "win_usb_ready": "{0}: confianza USB guardada. Desconecta el cable y comprueba la Wi-Fi.",
@@ -777,7 +780,8 @@
     "win_collector_reported_error": "La herramienta de recopilación informó de un error: {0}",
     "win_collection_retry_wait": "{0} archivo(s) esperando un nuevo intento. La obtención no ha terminado.",
     "ui_memory_title": "Liberar memoria de la pantalla en segundo plano",
-    "ui_memory_note": "La pantalla se vuelve a crear al abrirla. La recopilación y las transferencias continúan. Los formularios sin enviar se restablecen."
+    "ui_memory_note": "La pantalla se vuelve a crear al abrirla. La recopilación y las transferencias continúan. Los formularios sin enviar se restablecen.",
+    "win_collection_listing_incomplete": "No se pudieron consultar algunas listas de registros. Se guardaron los registros disponibles; las listas restantes se volverán a consultar automáticamente."
   },
   "fr": {
     "live_details_empty": "Aucun champ supplémentaire reçu.",
@@ -855,7 +859,7 @@
     "win_license": "Licences open source",
     "win_repo": "Projet et mises à jour sur GitHub",
     "win_searching": "Recherche d’iPhone et d’iPad approuvés…",
-    "win_none_found": "Aucun appareil approuvé et déverrouillé. Branchez-le une fois en USB ou vérifiez le Wi-Fi.",
+    "win_none_found": "Aucun appareil n’a été trouvé lors de la dernière recherche. Relancez la recherche si la connexion a changé.",
     "win_devices_available": "{0} appareil(s) disponible(s)",
     "win_usb_wait": "Établissement de la confiance USB…",
     "win_usb_ready": "{0} : confiance USB enregistrée. Débranchez et vérifiez le Wi-Fi.",
@@ -972,7 +976,8 @@
     "win_collector_reported_error": "L’outil de collecte a signalé une erreur : {0}",
     "win_collection_retry_wait": "{0} fichier(s) en attente d’une nouvelle tentative. La collecte n’est pas terminée.",
     "ui_memory_title": "Libérer la mémoire de la vue en arrière-plan",
-    "ui_memory_note": "La vue est reconstruite à la réouverture. La collecte et les transferts continuent. Les formulaires non envoyés sont réinitialisés."
+    "ui_memory_note": "La vue est reconstruite à la réouverture. La collecte et les transferts continuent. Les formulaires non envoyés sont réinitialisés.",
+    "win_collection_listing_incomplete": "Certaines listes de journaux n’ont pas pu être consultées. Les journaux disponibles ont été enregistrés ; les autres listes seront vérifiées à nouveau automatiquement."
   },
   "ko": {
     "live_details_empty": "추가 항목이 없습니다.",
@@ -1050,7 +1055,7 @@
     "win_license": "오픈 소스 라이선스",
     "win_repo": "GitHub 프로젝트 및 업데이트",
     "win_searching": "신뢰된 iPhone과 iPad를 찾는 중…",
-    "win_none_found": "잠금 해제된 신뢰 기기를 찾지 못했습니다. 처음에는 USB로 연결하거나 Wi-Fi를 확인하세요.",
+    "win_none_found": "지난 검색에서 기기를 찾지 못했습니다. 연결 상태가 바뀌었다면 다시 검색해 주세요.",
     "win_devices_available": "사용 가능한 기기 {0}대",
     "win_usb_wait": "USB 신뢰 설정 중…",
     "win_usb_ready": "{0}: USB 신뢰 등록됨. 케이블을 분리하고 Wi-Fi를 확인하세요.",
@@ -1167,7 +1172,8 @@
     "win_collector_reported_error": "수집 도구에서 오류를 보고했습니다: {0}",
     "win_collection_retry_wait": "파일 {0}개가 재시도 대기 중입니다. 수집이 아직 완료되지 않았습니다.",
     "ui_memory_title": "백그라운드에서 화면 메모리 해제",
-    "ui_memory_note": "다시 열면 화면을 다시 만듭니다. 수집과 전송은 계속됩니다. 제출하지 않은 양식 내용은 초기화됩니다."
+    "ui_memory_note": "다시 열면 화면을 다시 만듭니다. 수집과 전송은 계속됩니다. 제출하지 않은 양식 내용은 초기화됩니다.",
+    "win_collection_listing_incomplete": "일부 로그 목록을 확인하지 못했습니다. 확인된 로그는 저장했으며 나머지 목록은 다음에 자동으로 다시 확인합니다."
   },
   "zh-Hans": {
     "live_details_empty": "没有返回其他项目。",
@@ -1245,7 +1251,7 @@
     "win_license": "开源许可证",
     "win_repo": "GitHub 项目与更新",
     "win_searching": "正在搜索受信任的 iPhone 和 iPad…",
-    "win_none_found": "未找到已解锁的受信任设备。首次请用 USB 连接或检查 Wi-Fi。",
+    "win_none_found": "上次搜索未找到设备。连接状态发生变化后，请重新搜索。",
     "win_devices_available": "可用设备：{0} 台",
     "win_usb_wait": "正在设置 USB 信任…",
     "win_usb_ready": "{0}：已保存 USB 信任。拔下数据线并检查 Wi-Fi。",
@@ -1362,7 +1368,8 @@
     "win_collector_reported_error": "收集工具报告了错误：{0}",
     "win_collection_retry_wait": "{0} 个文件等待重试。获取尚未完成。",
     "ui_memory_title": "后台运行时释放界面内存",
-    "ui_memory_note": "重新打开时会重建界面。收集和传输会继续。未提交的表单内容将重置。"
+    "ui_memory_note": "重新打开时会重建界面。收集和传输会继续。未提交的表单内容将重置。",
+    "win_collection_listing_incomplete": "部分日志列表无法检查。已保存可用日志，其余列表将在下次自动重试。"
   },
   "zh-Hant": {
     "live_details_empty": "沒有傳回其他項目。",
@@ -1440,7 +1447,7 @@
     "win_license": "開放原始碼授權",
     "win_repo": "GitHub 專案與更新",
     "win_searching": "正在搜尋受信任的 iPhone 和 iPad…",
-    "win_none_found": "找不到已解鎖的受信任裝置。首次請使用 USB 連接或檢查 Wi-Fi。",
+    "win_none_found": "上次搜尋未找到裝置。連線狀態變更後，請重新搜尋。",
     "win_devices_available": "可用裝置：{0} 部",
     "win_usb_wait": "正在設定 USB 信任…",
     "win_usb_ready": "{0}：已儲存 USB 信任。拔下資料線並檢查 Wi-Fi。",
@@ -1557,6 +1564,7 @@
     "win_collector_reported_error": "收集工具回報了錯誤：{0}",
     "win_collection_retry_wait": "{0} 個檔案等待重試。擷取尚未完成。",
     "ui_memory_title": "背景執行時釋放畫面記憶體",
-    "ui_memory_note": "重新開啟時會重建畫面。收集和傳輸會繼續。尚未提交的表單內容會重設。"
+    "ui_memory_note": "重新開啟時會重建畫面。收集和傳輸會繼續。尚未提交的表單內容會重設。",
+    "win_collection_listing_incomplete": "部分日誌列表無法檢查。已儲存可用日誌，其餘列表將在下次自動重試。"
   }
 }

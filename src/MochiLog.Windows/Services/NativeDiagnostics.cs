@@ -15,7 +15,7 @@ public static class NativeDiagnostics
         long PeakWorkingSetBytes, long ManagedBytes, long TotalAllocatedBytes,
         int Gen0Collections, int Gen1Collections, int Gen2Collections);
     public sealed record Collection(int Saved, int Skipped, int Failed, int Deferred,
-        int RetryHeld, bool AcquisitionComplete, string? Error);
+        int RetryHeld, bool AcquisitionComplete, string? Error, int ListingFailures = 0);
     public sealed record Device(Guid PhysicalDeviceId, string Name, string Model,
         bool PairingConfirmed, DateTimeOffset? AutomaticPauseUntil,
         DiagnosticRoutes.Report Routes, Collection? LastCollection);

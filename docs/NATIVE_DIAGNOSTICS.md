@@ -44,3 +44,7 @@ The persistent MainWindow owns the HWND, tray icon and app-level update checks. 
 The runtime, server, pairings, queue and live battery cache are not disposed. The off setting retains the shell. Activity logs record the trigger, whether the old shell was collected, and before/after memory measurements. Shared framework and background-service memory remain part of the running app; there is no artificial working-set trim.
 
 The explicit local check can be launched with --verify-ui-memory. It writes a small typed ui-memory-test.json, restores the previous preference and leaves the app open. On the physical Windows machine, all three release/reopen cycles passed, the released shells were collected, the last page was restored, the disabled setting retained the screen, and the background server instance was preserved. Managed memory changed from 10.05 to 6.35 MiB on the first cycle and stayed near 7 MiB on subsequent cycles. This check is separate from the protocol suite and does not alter battery records or pairings.
+
+## Incomplete directory listings (2026-10-17)
+
+Collection summaries now include an additive listingFailures count. A directory that could not be checked is distinct from a failed file download or a successfully checked empty directory. Partial listings retain available reports, stay incomplete and are retried by the existing scheduler. Per-directory errors and final counts enter the activity log. Older saved summaries without the new field still decode; the snapshot schema and encrypted mobile protocol are unchanged.

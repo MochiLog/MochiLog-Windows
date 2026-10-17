@@ -11,6 +11,10 @@ static class CollectionRegressionTests
 
     public static async Task Run()
     {
+        var oldResult = JsonSerializer.Deserialize<CollectionResult>(
+            """{"Saved":1,"Skipped":0,"Failed":0,"LastError":null,"Deferred":0,"RetryHeld":0}""")!;
+        Check(oldResult.ListingFailures == 0 && oldResult.AcquisitionComplete,
+            "A collection result from an older version no longer loads");
         Check(Collector.ReadPermissionDenied("FILE_OPEN failed with status: 10: None") &&
             Collector.ReadPermissionDenied("PERM_DENIED") &&
             !Collector.ReadPermissionDenied("FILE_OPEN failed with status: 100") &&
@@ -31,12 +35,13 @@ static class CollectionRegressionTests
         var watchPath = $"/{watch}/Retired/{first}";
         var phone = Phone(); var state = new CompanionState();
         var pulled = new List<string>(); var batches = new List<int>();
-        var deny = true; var includeWatch = true;
+        var deny = true; var includeWatch = true; var includeCurrentDuplicate = false;
         Task<string> Direct(IEnumerable<string> arguments, TimeSpan timeout, CancellationToken token)
         {
             var args = arguments.ToArray();
             if (args[1] == "scan") {
                 var rows = hostPaths.Select(path => new { path, source = (string?)null }).ToList();
+                if (includeCurrentDuplicate) rows.Insert(0, new { path = "/" + first, source = (string?)null });
                 if (includeWatch) rows.Add(new { path = watchPath, source = (string?)watch });
                 return Task.FromResult(JsonSerializer.Serialize(new { files = rows }));
             }
@@ -75,9 +80,10 @@ static class CollectionRegressionTests
         Check(result.Saved == 2 && pulled.First() == hostPaths[1] && result.Failed == 1,
             "A permanently unreadable first file starved the remaining direct files");
         var mappedPhone = Phone(); var mappedState = new CompanionState();
-        deny = false; includeWatch = false; pulled.Clear(); batches.Clear();
+        deny = false; includeWatch = false; includeCurrentDuplicate = true; pulled.Clear(); batches.Clear();
         result = await Collector.CollectDirectAsync(mappedPhone, mappedState, null, CancellationToken.None, Direct);
         Check(result.Saved == 3 && result.AcquisitionComplete && batches.SequenceEqual(new[] { 1, 2 }) &&
+            !pulled.Contains("/" + first) &&
             hostPaths.All(path => File.Exists(Path.Combine(TransferServer.QueuePath(mappedPhone), "Host", Path.GetFileName(path)))),
             "Split direct batches lost local/global file indices");
 
@@ -91,6 +97,7 @@ static class CollectionRegressionTests
                 "/" => "/Retired\n/" + watch,
                 "/Retired" => string.Join('\n', hostPaths),
                 _ when path == $"/{watch}/Retired" => watchPath,
+                _ when path == $"/{watch}" => $"/{watch}/Retired",
                 _ => ""
             });
             Check(args[1] == "pull", "Unexpected legacy fixture command");
@@ -113,6 +120,37 @@ static class CollectionRegressionTests
         var heldContent = await Collector.CollectLegacyAsync(contentPhone, contentState, null, CancellationToken.None, Legacy);
         Check(firstContent.Deferred == 4 && heldContent.RetryHeld == 4 && pulled.Count == 4,
             "Failure recovery disabled the independent downloaded-content retry policy");
+        var partialPhone = Phone(); var partialState = new CompanionState();
+        var listingRecovered = false;
+        Task<string> Partial(IEnumerable<string> arguments, TimeSpan timeout, CancellationToken token)
+        {
+            var args = arguments.ToArray(); var path = Flag(args, "--remote-file");
+            if (args[1] == "ls") {
+                if (path == "/") return Task.FromResult($"/Retired\n/{first}\n/{watch}");
+                if (path == "/Retired") return Task.FromResult("");
+                if (path == $"/{watch}") return Task.FromResult($"/{watch}/Retired\n/{watch}/{first}");
+                if (listingRecovered) return Task.FromResult("");
+                throw new IOException("Accessory archive temporarily unavailable");
+            }
+            File.WriteAllBytes(Path.Combine(args[2], Path.GetFileName(path)), Body(path.Contains(watch)));
+            return Task.FromResult("");
+        }
+        result = await Collector.CollectLegacyAsync(partialPhone, partialState, null, CancellationToken.None, Partial);
+        Check(result.Saved == 2 && result.Failed == 0 && result.ListingFailures == 1 &&
+            !result.AcquisitionComplete && result.LastError is not null,
+            "An unreadable archive hid the current Watch report or falsely completed acquisition");
+        result = await Collector.CollectLegacyAsync(partialPhone, partialState, null, CancellationToken.None, Partial);
+        Check(result.Saved == 0 && result.ListingFailures == 1 && !result.AcquisitionComplete,
+            "An empty pending queue hid an incomplete listing");
+        listingRecovered = true;
+        result = await Collector.CollectLegacyAsync(partialPhone, partialState, null, CancellationToken.None, Partial);
+        Check(result.AcquisitionComplete && result.ListingFailures == 0,
+            "A transient listing error persisted after recovery");
+        Task<string> PartialDirect(IEnumerable<string> arguments, TimeSpan timeout, CancellationToken token) =>
+            Task.FromResult("""{"files":[],"listingFailures":[{"directory":"/ProxiedDevice-ab12","source":"ProxiedDevice-ab12","error":"TimeoutError"}]}""");
+        result = await Collector.CollectDirectAsync(Phone(), new(), null, CancellationToken.None, PartialDirect);
+        Check(result.ListingFailures == 1 && !result.AcquisitionComplete,
+            "Direct helper listing failures were discarded");
         Console.WriteLine("PASS: direct/legacy source permission gates, Watch isolation, pending recovery and split batch mapping");
     }
 }

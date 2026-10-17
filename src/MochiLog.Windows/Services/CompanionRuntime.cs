@@ -109,7 +109,7 @@ public sealed class CompanionRuntime : IDisposable
             return new NativeDiagnostics.Device(phone.PhysicalDeviceId, phone.Name, phone.Model,
                 phone.ConfirmedAt is not null, phone.AutomaticPauseUntil, DiagnosticRoutes.Describe(phone),
                 last is null ? null : new(last.Saved, last.Skipped, last.Failed, last.Deferred,
-                    last.RetryHeld, last.AcquisitionComplete, last.LastError));
+                    last.RetryHeld, last.AcquisitionComplete, last.LastError, last.ListingFailures));
         }).ToArray();
         string[] events;
         lock (_events) events = _events.ToArray();
@@ -371,7 +371,7 @@ public sealed class CompanionRuntime : IDisposable
                         (done, total) => { CollectionStatus = UiText.Format("win_progress", phone.Name, done, total);
                             Changed?.Invoke(); }, _lifetime.Token));
                     if (result.AcquisitionComplete) FinishAutomaticFailures(phone, "recovered");
-                    else if (result.Failed > 0) RecordCollectionFailure(phone, trigger,
+                    else if (result.Failed > 0 || result.ListingFailures > 0) RecordCollectionFailure(phone, trigger,
                         new IOException(result.LastError ?? "Battery log download failed"), manual);
                     CollectionStatus = UiText.Format("win_collection_result", phone.Name,
                         result.Saved, result.Skipped, result.Failed);
@@ -383,7 +383,7 @@ public sealed class CompanionRuntime : IDisposable
                     }
                     Record(CollectionStatus);
                     Record($"{phone.Name}: collection finished; attempt={attempt:D}; saved={result.Saved}, " +
-                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, retryHeld={result.RetryHeld}, acquisitionComplete={result.AcquisitionComplete}, elapsedMs={started.ElapsedMilliseconds}");
+                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, retryHeld={result.RetryHeld}, listingFailures={result.ListingFailures}, acquisitionComplete={result.AcquisitionComplete}, elapsedMs={started.ElapsedMilliseconds}");
                 }
                 catch (Exception error) {
                     Record($"{phone.Name}: collection attempt ended; attempt={attempt:D}; result=failed; elapsedMs={started.ElapsedMilliseconds}");
