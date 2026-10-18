@@ -11,144 +11,365 @@ using Org.BouncyCastle.Security;
 static class Program
 {
     private static int _serverPort;
+
     private static string Upper(Guid id) => id.ToString("D").ToUpperInvariant();
+
     private static byte[] Hmac(byte[] key, string text) =>
         HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(text));
+
     private static string Hex(byte[] bytes) => Convert.ToHexString(bytes).ToLowerInvariant();
+
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 
     private sealed class DelayedStream(int milliseconds) : MemoryStream
     {
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken token = default)
+        public override async ValueTask WriteAsync(
+            ReadOnlyMemory<byte> bytes,
+            CancellationToken token = default
+        )
         {
             await Task.Delay(milliseconds, token);
             await base.WriteAsync(bytes, token);
         }
     }
+
     private static async Task CheckSlowTransfer()
     {
         using var slow = new DelayedStream(250);
         var packet = new byte[4 * 64 * 1024];
-        await TransferWriteLoop.WriteAsync(slow, packet, TimeSpan.FromMilliseconds(800), CancellationToken.None);
-        Check(slow.Length == packet.Length, "Progressing transfer was canceled by a whole-file deadline");
+        await TransferWriteLoop.WriteAsync(
+            slow,
+            packet,
+            TimeSpan.FromMilliseconds(800),
+            CancellationToken.None
+        );
+        Check(
+            slow.Length == packet.Length,
+            "Progressing transfer was canceled by a whole-file deadline"
+        );
         using var stalled = new DelayedStream(1000);
-        try {
-            await TransferWriteLoop.WriteAsync(stalled, packet, TimeSpan.FromMilliseconds(300), CancellationToken.None);
+        try
+        {
+            await TransferWriteLoop.WriteAsync(
+                stalled,
+                packet,
+                TimeSpan.FromMilliseconds(300),
+                CancellationToken.None
+            );
             throw new Exception("Stalled transfer ignored idle timeout");
-        } catch (OperationCanceledException) { }
-        using var stopped = new CancellationTokenSource(); stopped.Cancel();
-        try {
-            await TransferWriteLoop.WriteAsync(slow, packet, TimeSpan.FromSeconds(25), stopped.Token);
+        }
+        catch (OperationCanceledException) { }
+        using var stopped = new CancellationTokenSource();
+        stopped.Cancel();
+        try
+        {
+            await TransferWriteLoop.WriteAsync(
+                slow,
+                packet,
+                TimeSpan.FromSeconds(25),
+                stopped.Token
+            );
             throw new Exception("Canceled transfer ignored cancellation");
-        } catch (OperationCanceledException) { }
-        Console.WriteLine("PASS: slow progressing transfer, idle stall timeout and shutdown cancellation");
+        }
+        catch (OperationCanceledException) { }
+        Console.WriteLine(
+            "PASS: slow progressing transfer, idle stall timeout and shutdown cancellation"
+        );
     }
 
     private static async Task CheckCloudSharing()
     {
-        Console.WriteLine("Checking encrypted cloud sharing with four peers and protected source ACKs");
-        var peers = Enumerable.Range(0, 4).Select(i => new PairedPhone { Udid = "cloud-" + i,
-            Name = "Cloud peer " + i, Model = "iPad16,6", PhysicalDeviceId = Guid.NewGuid(),
-            Secret = Enumerable.Repeat((byte)(30 + i), 32).ToArray(), ConfirmedAt = DateTimeOffset.UtcNow }).ToArray();
+        Console.WriteLine(
+            "Checking encrypted cloud sharing with four peers and protected source ACKs"
+        );
+        var peers = Enumerable
+            .Range(0, 4)
+            .Select(i => new PairedPhone
+            {
+                Udid = "cloud-" + i,
+                Name = "Cloud peer " + i,
+                Model = "iPad16,6",
+                PhysicalDeviceId = Guid.NewGuid(),
+                Secret = Enumerable.Repeat((byte)(30 + i), 32).ToArray(),
+                ConfirmedAt = DateTimeOffset.UtcNow,
+            })
+            .ToArray();
         var state = new CompanionState { HostId = Guid.NewGuid(), Phones = peers.ToList() };
         var audit = new List<string>();
         using var server = new TransferServer(state, 0);
-        server.StatusChanged += line => { lock (audit) audit.Add(line); };
-        server.Start(); _serverPort = server.ListeningPort;
+        server.StatusChanged += line =>
+        {
+            lock (audit)
+                audit.Add(line);
+        };
+        server.Start();
+        _serverPort = server.ListeningPort;
         var scope = new string('a', 64);
         const string name = "Analytics-2026-10-08-090000.ips.ca.synced";
         var file = Path.Combine(TransferServer.QueuePath(peers[1]), "Host", name);
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         var bytes = Encoding.UTF8.GetBytes("original-iPad-cloud-log");
         File.WriteAllBytes(file, bytes);
-        async Task<(string Name, byte[] Content)> Pull(int i, string? account, bool policy = false,
-            string ack = "", string? token = null, string? digest = null, string? decision = null, int? liveSource = null, bool deny = false, bool sourceIdentity = true)
+        async Task<(string Name, byte[] Content)> Pull(
+            int i,
+            string? account,
+            bool policy = false,
+            string ack = "",
+            string? token = null,
+            string? digest = null,
+            string? decision = null,
+            int? liveSource = null,
+            bool deny = false,
+            bool sourceIdentity = true
+        )
         {
-            var peer = peers[i]; var nonce = Guid.NewGuid();
-            var fields = new Dictionary<string, string> { ["version"] = "2", ["hostID"] = Upper(state.HostId),
-                ["physicalDeviceID"] = Upper(peer.PhysicalDeviceId), ["nonce"] = Upper(nonce), ["ack"] = ack,
-                ["mac"] = Hex(Hmac(peer.Secret, $"v2|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{ack}")),
-                ["cloudSharingVersion"] = "1", ["cloudSharingScope"] = account ?? "" };
-            if (sourceIdentity) fields["logSourceIdentityVersion"] = "1";
-            if (liveSource is not null) {
-                fields["liveBatteryVersion"] = "1"; fields["liveBatterySharedVersion"] = "1";
+            var peer = peers[i];
+            var nonce = Guid.NewGuid();
+            var fields = new Dictionary<string, string>
+            {
+                ["version"] = "2",
+                ["hostID"] = Upper(state.HostId),
+                ["physicalDeviceID"] = Upper(peer.PhysicalDeviceId),
+                ["nonce"] = Upper(nonce),
+                ["ack"] = ack,
+                ["mac"] = Hex(
+                    Hmac(
+                        peer.Secret,
+                        $"v2|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{ack}"
+                    )
+                ),
+                ["cloudSharingVersion"] = "1",
+                ["cloudSharingScope"] = account ?? "",
+            };
+            if (sourceIdentity)
+                fields["logSourceIdentityVersion"] = "1";
+            if (liveSource is not null)
+            {
+                fields["liveBatteryVersion"] = "1";
+                fields["liveBatterySharedVersion"] = "1";
                 fields["liveBatterySourceID"] = Upper(peers[liveSource.Value].PhysicalDeviceId);
-            } else if (policy) fields["cloudSharingOnly"] = "1";
-            else {
-                fields["offerVersion"] = "1";
-                fields["offerMAC"] = Hex(Hmac(peer.Secret, $"file-offer|v1|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}"));
             }
-            if (token is not null) {
-                fields["offerToken"] = token; fields["offerDigest"] = digest!; fields["offerDecision"] = decision!;
-                fields["offerDecisionMAC"] = Hex(Hmac(peer.Secret, $"file-decision|v1|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{token}|{digest}|{decision}"));
+            else if (policy)
+                fields["cloudSharingOnly"] = "1";
+            else
+            {
+                fields["offerVersion"] = "1";
+                fields["offerMAC"] = Hex(
+                    Hmac(
+                        peer.Secret,
+                        $"file-offer|v1|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}"
+                    )
+                );
+            }
+            if (token is not null)
+            {
+                fields["offerToken"] = token;
+                fields["offerDigest"] = digest!;
+                fields["offerDecision"] = decision!;
+                fields["offerDecisionMAC"] = Hex(
+                    Hmac(
+                        peer.Secret,
+                        $"file-decision|v1|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{token}|{digest}|{decision}"
+                    )
+                );
             }
             var at = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var plain = JsonSerializer.SerializeToUtf8Bytes(fields); var iv = RandomNumberGenerator.GetBytes(12);
-            var cipher = new byte[plain.Length]; var tag = new byte[16];
-            using (var aes = new AesGcm(peer.Secret, 16)) aes.Encrypt(iv, plain, cipher, tag,
-                Encoding.UTF8.GetBytes($"v3|request|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{at}"));
-            var response = await ExchangeAsync(new { version = "3", hostID = Upper(state.HostId),
-                physicalDeviceID = Upper(peer.PhysicalDeviceId), nonce = Upper(nonce), issuedAt = at,
-                box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray()) });
-            if (deny) { Check(response.Length == 0, "Unauthorized current values returned"); return ("", Encoding.UTF8.GetBytes("{}")); }
+            var plain = JsonSerializer.SerializeToUtf8Bytes(fields);
+            var iv = RandomNumberGenerator.GetBytes(12);
+            var cipher = new byte[plain.Length];
+            var tag = new byte[16];
+            using (var aes = new AesGcm(peer.Secret, 16))
+                aes.Encrypt(
+                    iv,
+                    plain,
+                    cipher,
+                    tag,
+                    Encoding.UTF8.GetBytes(
+                        $"v3|request|{Upper(state.HostId)}|{Upper(peer.PhysicalDeviceId)}|{Upper(nonce)}|{at}"
+                    )
+                );
+            var response = await ExchangeAsync(
+                new
+                {
+                    version = "3",
+                    hostID = Upper(state.HostId),
+                    physicalDeviceID = Upper(peer.PhysicalDeviceId),
+                    nonce = Upper(nonce),
+                    issuedAt = at,
+                    box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray()),
+                }
+            );
+            if (deny)
+            {
+                Check(response.Length == 0, "Unauthorized current values returned");
+                return ("", Encoding.UTF8.GetBytes("{}"));
+            }
             return Open(response, peer.Secret, state.HostId, peer.PhysicalDeviceId, nonce);
         }
-        bool IsOffer((string Name, byte[] Content) reply) => JsonDocument.Parse(reply.Content).RootElement.TryGetProperty("type", out var type) && type.GetString() == "file-offer";
+        bool IsOffer((string Name, byte[] Content) reply) =>
+            JsonDocument.Parse(reply.Content).RootElement.TryGetProperty("type", out var type)
+            && type.GetString() == "file-offer";
         await Pull(0, scope, true);
         Check(!IsOffer(await Pull(0, scope)), "Source without consent was shared");
         await Pull(1, scope, true);
         var identityPolicy = JsonDocument.Parse((await Pull(0, scope, true)).Content).RootElement;
-        var models = JsonSerializer.Deserialize<Dictionary<string, string>>(identityPolicy.GetProperty("sourceModels").GetString()!)!;
-        Check(models[peers[1].PhysicalDeviceId.ToString("D")] == peers[1].Model, "Delivered log source identity unavailable");
-        Check(!models.ContainsKey(peers[2].PhysicalDeviceId.ToString("D")), "Unconsented model leaked");
-        Check(!IsOffer(await Pull(0, scope, sourceIdentity: false)), "Old recipient received foreign logs without origin model support");
+        var models = JsonSerializer.Deserialize<Dictionary<string, string>>(
+            identityPolicy.GetProperty("sourceModels").GetString()!
+        )!;
+        Check(
+            models[peers[1].PhysicalDeviceId.ToString("D")] == peers[1].Model,
+            "Delivered log source identity unavailable"
+        );
+        Check(
+            !models.ContainsKey(peers[2].PhysicalDeviceId.ToString("D")),
+            "Unconsented model leaked"
+        );
+        Check(
+            !IsOffer(await Pull(0, scope, sourceIdentity: false)),
+            "Old recipient received foreign logs without origin model support"
+        );
         var offer = JsonDocument.Parse((await Pull(0, scope)).Content).RootElement;
-        Check(offer.GetProperty("sourceModel").GetString() == peers[1].Model, "Offer used recipient model");
-        var token = offer.GetProperty("token").GetString()!; var digest = offer.GetProperty("sha256").GetString()!;
-        Check(CloudLogSharing.Parse(token)?.Origin == peers[1].PhysicalDeviceId, "Origin ID was lost");
+        Check(
+            offer.GetProperty("sourceModel").GetString() == peers[1].Model,
+            "Offer used recipient model"
+        );
+        var token = offer.GetProperty("token").GetString()!;
+        var digest = offer.GetProperty("sha256").GetString()!;
+        Check(
+            CloudLogSharing.Parse(token)?.Origin == peers[1].PhysicalDeviceId,
+            "Origin ID was lost"
+        );
         var body = await Pull(0, scope, token: token, digest: digest, decision: "send");
-        Check(body.Name == token && body.Content.SequenceEqual(bytes), "Foreign body was not delivered");
+        Check(
+            body.Name == token && body.Content.SequenceEqual(bytes),
+            "Foreign body was not delivered"
+        );
         await Pull(0, scope, ack: token);
-        Check(File.Exists(file) && !state.Delivered.Contains(Upper(peers[1].PhysicalDeviceId) + "|Host::" + name), "Foreign ACK consumed source queue");
+        Check(
+            File.Exists(file)
+                && !state.Delivered.Contains(Upper(peers[1].PhysicalDeviceId) + "|Host::" + name),
+            "Foreign ACK consumed source queue"
+        );
         await Pull(2, scope, true);
         Check(IsOffer(await Pull(2, scope)), "First recipient ACK suppressed third recipient");
         await Pull(2, scope, token: token, digest: digest, decision: "have");
         Check(File.Exists(file), "Foreign have deleted source");
         Check(!IsOffer(await Pull(3, new string('b', 64))), "Different account received source");
         await Pull(1, null, true);
-        Check((await Pull(3, scope, token: token, digest: digest, decision: "send")).Name.Length == 0,
-            "Source OFF did not revoke outstanding offer");
+        Check(
+            (await Pull(3, scope, token: token, digest: digest, decision: "send")).Name.Length == 0,
+            "Source OFF did not revoke outstanding offer"
+        );
         await Pull(3, scope, ack: token);
         Check(File.Exists(file), "Revoked ACK consumed source");
         Console.WriteLine("Checking consent-scoped current values and isolated raw-log queues");
-        var liveValues = new Dictionary<string, int> { ["CycleCount"] = 245, ["DesignCapacity"] = 4000 };
+        var liveValues = new Dictionary<string, int>
+        {
+            ["CycleCount"] = 245,
+            ["DesignCapacity"] = 4000,
+        };
         var liveDigest = new string('a', 64);
-        server.LiveBattery.Set(peers[1].PhysicalDeviceId, new(liveValues, liveDigest, DateTimeOffset.UtcNow, false));
+        server.LiveBattery.Set(
+            peers[1].PhysicalDeviceId,
+            new(liveValues, liveDigest, DateTimeOffset.UtcNow, false)
+        );
         await Pull(0, scope, liveSource: 1, deny: true);
         await Pull(1, scope, true);
-        var manifest = JsonDocument.Parse((await Pull(0, scope, liveSource: 0)).Content).RootElement;
-        Check(manifest.GetProperty("sources").EnumerateArray().Any(p => p.GetProperty("physicalDeviceID").GetString() == Upper(peers[1].PhysicalDeviceId)), "Eligible source absent");
+        var manifest = JsonDocument
+            .Parse((await Pull(0, scope, liveSource: 0)).Content)
+            .RootElement;
+        Check(
+            manifest
+                .GetProperty("sources")
+                .EnumerateArray()
+                .Any(p =>
+                    p.GetProperty("physicalDeviceID").GetString()
+                    == Upper(peers[1].PhysicalDeviceId)
+                ),
+            "Eligible source absent"
+        );
         var current = JsonDocument.Parse((await Pull(0, scope, liveSource: 1)).Content).RootElement;
-        Check(current.GetProperty("sourcePhysicalDeviceID").GetString() == Upper(peers[1].PhysicalDeviceId) && current.TryGetProperty("values", out _), "Current source identity/value lost");
+        Check(
+            current.GetProperty("sourcePhysicalDeviceID").GetString()
+                == Upper(peers[1].PhysicalDeviceId)
+                && current.TryGetProperty("values", out _),
+            "Current source identity/value lost"
+        );
         await Pull(0, null, liveSource: 1, deny: true);
         await Pull(0, new string('c', 64), liveSource: 1, deny: true);
         await Pull(0, null, liveSource: 0);
         Check(File.Exists(file), "Current values consumed raw source file");
-        lock (audit) {
-            Check(audit.Any(l => l.Contains("Cloud sharing: source=") && l.Contains("recipient=") && l.Contains("decision=")), "Sharing decision audit missing");
-            Check(audit.Any(l => l.Contains("Transfer trace:") && l.Contains("elapsedMs=")), "Transfer timing audit missing");
-            Check(!audit.Any(l => l.Contains(scope)), "Cloud account scope leaked into support logs");
+        lock (audit)
+        {
+            Check(
+                audit.Any(l =>
+                    l.Contains("Cloud sharing: source=")
+                    && l.Contains("recipient=")
+                    && l.Contains("decision=")
+                ),
+                "Sharing decision audit missing"
+            );
+            Check(
+                audit.Any(l => l.Contains("Transfer trace:") && l.Contains("elapsedMs=")),
+                "Transfer timing audit missing"
+            );
+            Check(
+                !audit.Any(l => l.Contains(scope)),
+                "Cloud account scope leaked into support logs"
+            );
         }
-        Check(!CloudLogSharing.DebugLabel(token).Contains(scope) && CloudLogSharing.DebugLabel(token).Contains(peers[1].PhysicalDeviceId.ToString("D")), "Shared log label exposed scope or lost origin");
-        var grants = new CloudLogSharing(); var clock = DateTimeOffset.UtcNow;
-        grants.Update(peers[0].PhysicalDeviceId, scope, clock); grants.Update(peers[1].PhysicalDeviceId, scope, clock);
-        Check(grants.Eligible(scope, peers[1].PhysicalDeviceId, peers[0].PhysicalDeviceId, peers, clock), "Fresh grants failed");
-        Check(!grants.Eligible(scope, peers[1].PhysicalDeviceId, peers[0].PhysicalDeviceId, peers, clock.AddMinutes(15)), "Expired grant survived");
-        Check(!grants.Eligible(scope, peers[1].PhysicalDeviceId, peers[0].PhysicalDeviceId, [peers[0]], clock), "Removed source remained eligible");
-        Check(CloudLogSharing.Parse($"Shared::{scope}::{peers[1].PhysicalDeviceId:D}::Host::../Analytics-a.ips.ca.synced") is null, "Traversal accepted");
+        Check(
+            !CloudLogSharing.DebugLabel(token).Contains(scope)
+                && CloudLogSharing
+                    .DebugLabel(token)
+                    .Contains(peers[1].PhysicalDeviceId.ToString("D")),
+            "Shared log label exposed scope or lost origin"
+        );
+        var grants = new CloudLogSharing();
+        var clock = DateTimeOffset.UtcNow;
+        grants.Update(peers[0].PhysicalDeviceId, scope, clock);
+        grants.Update(peers[1].PhysicalDeviceId, scope, clock);
+        Check(
+            grants.Eligible(
+                scope,
+                peers[1].PhysicalDeviceId,
+                peers[0].PhysicalDeviceId,
+                peers,
+                clock
+            ),
+            "Fresh grants failed"
+        );
+        Check(
+            !grants.Eligible(
+                scope,
+                peers[1].PhysicalDeviceId,
+                peers[0].PhysicalDeviceId,
+                peers,
+                clock.AddMinutes(15)
+            ),
+            "Expired grant survived"
+        );
+        Check(
+            !grants.Eligible(
+                scope,
+                peers[1].PhysicalDeviceId,
+                peers[0].PhysicalDeviceId,
+                [peers[0]],
+                clock
+            ),
+            "Removed source remained eligible"
+        );
+        Check(
+            CloudLogSharing.Parse(
+                $"Shared::{scope}::{peers[1].PhysicalDeviceId:D}::Host::../Analytics-a.ips.ca.synced"
+            )
+                is null,
+            "Traversal accepted"
+        );
         Check(!IsOffer(await Pull(3, null)), "Recipient OFF received foreign log");
         Directory.Delete(TransferServer.QueuePath(peers[1]), true);
     }
@@ -156,102 +377,189 @@ static class Program
     private static void CheckArchiveExchange()
     {
         var deviceId = Guid.NewGuid();
-        var day = DateTime.Today.ToString("yyyyMMdd",
-            System.Globalization.CultureInfo.InvariantCulture);
-        var fullDay = DateTime.Today.ToString("yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture);
+        var day = DateTime.Today.ToString(
+            "yyyyMMdd",
+            System.Globalization.CultureInfo.InvariantCulture
+        );
+        var fullDay = DateTime.Today.ToString(
+            "yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture
+        );
         var local = Path.Combine(StateStore.Root, "DebugLogs");
         Directory.CreateDirectory(local);
         var computerData = Encoding.UTF8.GetBytes(new string('x', 10_000));
         File.WriteAllBytes(Path.Combine(local, fullDay + ".log"), computerData);
-        Check(DebugArchiveSync.LocalManifest(deviceId)[day] == computerData.Length,
-            "Computer archive manifest omitted a day.");
+        Check(
+            DebugArchiveSync.LocalManifest(deviceId)[day] == computerData.Length,
+            "Computer archive manifest omitted a day."
+        );
         var phoneData = Encoding.UTF8.GetBytes("phone archive line\n");
-        var report = JsonSerializer.SerializeToUtf8Bytes(new {
-            archiveManifest = new Dictionary<string, int> { [day] = phoneData.Length },
-            archiveRequest = new { day, offset = 0 },
-            archiveChunk = new { day, offset = 0,
-                data = Convert.ToBase64String(phoneData) }
-        });
+        var report = JsonSerializer.SerializeToUtf8Bytes(
+            new
+            {
+                archiveManifest = new Dictionary<string, int> { [day] = phoneData.Length },
+                archiveRequest = new { day, offset = 0 },
+                archiveChunk = new
+                {
+                    day,
+                    offset = 0,
+                    data = Convert.ToBase64String(phoneData),
+                },
+            }
+        );
         var chunk = DebugArchiveSync.ComputerChunk(report);
-        Check(chunk is not null && chunk["data"] is string encodedChunk &&
-            Convert.FromBase64String(encodedChunk).Length == 8_192 &&
-            computerData.AsSpan(0, 8_192).SequenceEqual(Convert.FromBase64String(encodedChunk)),
-            "Computer archive chunk did not match the requested day or size.");
+        Check(
+            chunk is not null
+                && chunk["data"] is string encodedChunk
+                && Convert.FromBase64String(encodedChunk).Length == 8_192
+                && computerData
+                    .AsSpan(0, 8_192)
+                    .SequenceEqual(Convert.FromBase64String(encodedChunk)),
+            "Computer archive chunk did not match the requested day or size."
+        );
         var progress = new List<string>();
         DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30, progress.Add);
         DebugArchiveSync.ReceivePhoneChunk(report, deviceId, 30, progress.Add);
-        Check(DebugArchiveSync.PhoneText(deviceId, fullDay) ==
-            Encoding.UTF8.GetString(phoneData),
-            "Retried phone archive chunk was duplicated.");
-        Check(progress.Any(message => message.Contains("phone chunk stored")) &&
-            progress.Any(message => message.Contains("phone chunk skipped")),
-            "Stored and rejected diagnostic chunks have no progress audit.");
-        var bounded = JsonSerializer.SerializeToUtf8Bytes(new {
-            archiveRequest = new { day, offset = 0, end = 127 }
-        });
-        Check(Convert.FromBase64String((string)DebugArchiveSync.ComputerChunk(bounded)!["data"]).Length == 127,
-            "A growing archive exceeded the advertised snapshot end.");
-        var invalidEnd = JsonSerializer.SerializeToUtf8Bytes(new {
-            archiveRequest = new { day, offset = 127, end = 127 }
-        });
-        Check(DebugArchiveSync.ComputerChunk(invalidEnd) is null,
-            "An invalid archive end was accepted.");
-        var extended = JsonSerializer.SerializeToUtf8Bytes(new {
-            archiveManifest = new Dictionary<string, int> { [day] = phoneData.Length + 1 }
-        });
+        Check(
+            DebugArchiveSync.PhoneText(deviceId, fullDay) == Encoding.UTF8.GetString(phoneData),
+            "Retried phone archive chunk was duplicated."
+        );
+        Check(
+            progress.Any(message => message.Contains("phone chunk stored"))
+                && progress.Any(message => message.Contains("phone chunk skipped")),
+            "Stored and rejected diagnostic chunks have no progress audit."
+        );
+        var bounded = JsonSerializer.SerializeToUtf8Bytes(
+            new
+            {
+                archiveRequest = new
+                {
+                    day,
+                    offset = 0,
+                    end = 127,
+                },
+            }
+        );
+        Check(
+            Convert
+                .FromBase64String((string)DebugArchiveSync.ComputerChunk(bounded)!["data"])
+                .Length == 127,
+            "A growing archive exceeded the advertised snapshot end."
+        );
+        var invalidEnd = JsonSerializer.SerializeToUtf8Bytes(
+            new
+            {
+                archiveRequest = new
+                {
+                    day,
+                    offset = 127,
+                    end = 127,
+                },
+            }
+        );
+        Check(
+            DebugArchiveSync.ComputerChunk(invalidEnd) is null,
+            "An invalid archive end was accepted."
+        );
+        var extended = JsonSerializer.SerializeToUtf8Bytes(
+            new { archiveManifest = new Dictionary<string, int> { [day] = phoneData.Length + 1 } }
+        );
         var request = DebugArchiveSync.RequestPhoneChunk(extended, deviceId);
-        Check(request is not null && Convert.ToInt64(request["offset"]) == phoneData.Length,
-            "Phone archive did not resume from the stored byte offset.");
-        Check(Convert.ToInt64(request!["end"]) == phoneData.Length + 1,
-            "Archive request omitted its snapshot end.");
-        for (var offset = 1; offset <= 4; offset++) {
+        Check(
+            request is not null && Convert.ToInt64(request["offset"]) == phoneData.Length,
+            "Phone archive did not resume from the stored byte offset."
+        );
+        Check(
+            Convert.ToInt64(request!["end"]) == phoneData.Length + 1,
+            "Archive request omitted its snapshot end."
+        );
+        for (var offset = 1; offset <= 4; offset++)
+        {
             var date = DateTime.Today.AddDays(-offset);
-            var oldCompact = date.ToString("yyyyMMdd",
-                System.Globalization.CultureInfo.InvariantCulture);
-            var oldDay = date.ToString("yyyy-MM-dd",
-                System.Globalization.CultureInfo.InvariantCulture);
+            var oldCompact = date.ToString(
+                "yyyyMMdd",
+                System.Globalization.CultureInfo.InvariantCulture
+            );
+            var oldDay = date.ToString(
+                "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture
+            );
             File.WriteAllBytes(Path.Combine(local, oldDay + ".log"), computerData);
-            var oldReport = JsonSerializer.SerializeToUtf8Bytes(new {
-                archiveChunk = new { day = oldCompact, offset = 0,
-                    data = Convert.ToBase64String(phoneData) }
-            });
+            var oldReport = JsonSerializer.SerializeToUtf8Bytes(
+                new
+                {
+                    archiveChunk = new
+                    {
+                        day = oldCompact,
+                        offset = 0,
+                        data = Convert.ToBase64String(phoneData),
+                    },
+                }
+            );
             DebugArchiveSync.ReceivePhoneChunk(oldReport, deviceId, 30);
         }
         DebugArchiveSync.RefreshSnapshot(deviceId);
-        Check(DebugArchiveSync.LocalManifest(deviceId).Count >= 5,
-            "Five computer archive days were not available.");
-        Check(DebugArchiveSync.PhoneDays(deviceId).Count >= 5,
-            "Five phone archive days were not available.");
+        Check(
+            DebugArchiveSync.LocalManifest(deviceId).Count >= 5,
+            "Five computer archive days were not available."
+        );
+        Check(
+            DebugArchiveSync.PhoneDays(deviceId).Count >= 5,
+            "Five phone archive days were not available."
+        );
     }
 
     private static void CheckCurrentDiagnostics()
     {
-        Check(Collector.ToolFailureLine(
-            "{\"results\":[{\"index\":0,\"ok\":false,\"error\":\"FILE_OPEN failed\"}]}",
-            "") is null,
-            "A file-level JSON error was mistaken for a failed collection command.");
-        Check(Collector.ToolFailureLine("", "ERROR: device connection failed") is not null,
-            "A real collector diagnostic was ignored.");
+        Check(
+            Collector.ToolFailureLine(
+                "{\"results\":[{\"index\":0,\"ok\":false,\"error\":\"FILE_OPEN failed\"}]}",
+                ""
+            )
+                is null,
+            "A file-level JSON error was mistaken for a failed collection command."
+        );
+        Check(
+            Collector.ToolFailureLine("", "ERROR: device connection failed") is not null,
+            "A real collector diagnostic was ignored."
+        );
         const string name = "Analytics-2026-10-01-090003.000.ips.ca.synced";
-        var current = Collector.AnalyticsEntries("/", null,
-            $"/{name}\n/Analytics-2026-10-01-023246.session.ips.ca.synced\n");
+        var current = Collector.AnalyticsEntries(
+            "/",
+            null,
+            $"/{name}\n/Analytics-2026-10-01-023246.session.ips.ca.synced\n"
+        );
         var retired = Collector.AnalyticsEntries("/Retired", null, $"/Retired/{name}\n");
-        Check(current.Count == 1 && current[0].Path == "/" + name &&
-            retired.Count == 1 && retired[0].Path == "/Retired/" + name,
-            "Current diagnostic files were hidden or session files were accepted.");
-        Check(Collector.IsLikelyDailyReport("/Retired/" + name, null) &&
-            Collector.IsLikelyDailyReport(
-                "/ProxiedDevice-abcdef/Retired/Analytics-2026-10-01-090017.ips.ca.synced",
-                "ProxiedDevice-abcdef") &&
-            !Collector.IsLikelyDailyReport("/Retired/Analytics-2026-10-01-090003.ips.ca.synced", null),
-            "A truncated daily battery report could be permanently excluded.");
+        Check(
+            current.Count == 1
+                && current[0].Path == "/" + name
+                && retired.Count == 1
+                && retired[0].Path == "/Retired/" + name,
+            "Current diagnostic files were hidden or session files were accepted."
+        );
+        Check(
+            Collector.IsLikelyDailyReport("/Retired/" + name, null)
+                && Collector.IsLikelyDailyReport(
+                    "/ProxiedDevice-abcdef/Retired/Analytics-2026-10-01-090017.ips.ca.synced",
+                    "ProxiedDevice-abcdef"
+                )
+                && !Collector.IsLikelyDailyReport(
+                    "/Retired/Analytics-2026-10-01-090003.ips.ca.synced",
+                    null
+                ),
+            "A truncated daily battery report could be permanently excluded."
+        );
     }
 
     private static void CheckBatteryLogStorage()
     {
-        var phone = new PairedPhone { Udid = "storage-test", Name = "Storage Test",
-            Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid() };
+        var phone = new PairedPhone
+        {
+            Udid = "storage-test",
+            Name = "Storage Test",
+            Model = "iPhone18,3",
+            PhysicalDeviceId = Guid.NewGuid(),
+        };
         var queue = Path.Combine(TransferServer.QueuePath(phone), "Host");
         Directory.CreateDirectory(queue);
         var file = Path.Combine(queue, "Analytics-2026-09-29-storage.ips.ca.synced");
@@ -259,27 +567,43 @@ static class Program
         BatteryLogStorage.UpdateSettings(false, 500, 1);
         File.WriteAllBytes(file, raw);
         BatteryLogStorage.ArchiveAcknowledged(file, phone);
-        Check(!File.Exists(file) && BatteryLogStorage.List([phone]).Count == 0,
-            "Immediate-delete mode retained an acknowledged log.");
+        Check(
+            !File.Exists(file) && BatteryLogStorage.List([phone]).Count == 0,
+            "Immediate-delete mode retained an acknowledged log."
+        );
         BatteryLogStorage.UpdateSettings(true, 500, 1);
         File.WriteAllBytes(file, raw);
         BatteryLogStorage.ArchiveAcknowledged(file, phone);
         var archived = BatteryLogStorage.List([phone]);
-        Check(archived.Count == 1 && !archived[0].Pending,
-            "Keep mode did not archive an acknowledged log.");
+        Check(
+            archived.Count == 1 && !archived[0].Pending,
+            "Keep mode did not archive an acknowledged log."
+        );
         var export = Path.Combine(StateStore.Root, "test-export");
         BatteryLogStorage.Export(archived, export);
-        Check(File.ReadAllBytes(Path.Combine(export, Upper(phone.PhysicalDeviceId),
-            "Host", Path.GetFileName(file))).SequenceEqual(raw),
-            "Battery log export changed the raw file.");
-        Check(BatteryLogStorage.Requeue(archived, [phone]) == 1 && File.Exists(file),
-            "Manual resend did not restore the pending queue file.");
-        Check(BatteryLogStorage.List([phone]).Count == 2,
-            "Pending and archived copies were not both listed.");
+        Check(
+            File.ReadAllBytes(
+                    Path.Combine(
+                        export,
+                        Upper(phone.PhysicalDeviceId),
+                        "Host",
+                        Path.GetFileName(file)
+                    )
+                )
+                .SequenceEqual(raw),
+            "Battery log export changed the raw file."
+        );
+        Check(
+            BatteryLogStorage.Requeue(archived, [phone]) == 1 && File.Exists(file),
+            "Manual resend did not restore the pending queue file."
+        );
+        Check(
+            BatteryLogStorage.List([phone]).Count == 2,
+            "Pending and archived copies were not both listed."
+        );
         BatteryLogStorage.ArchiveAcknowledged(file, phone);
         BatteryLogStorage.Delete(archived);
-        Check(BatteryLogStorage.List([phone]).Count == 0,
-            "Deleting the archived log left a copy.");
+        Check(BatteryLogStorage.List([phone]).Count == 0, "Deleting the archived log left a copy.");
         BatteryLogStorage.UpdateSettings(false, 500, 1);
     }
 
@@ -287,72 +611,155 @@ static class Program
     {
         var root = Path.Combine(Path.GetTempPath(), "mochilog-log-" + Guid.NewGuid());
         Directory.CreateDirectory(root);
-        try {
+        try
+        {
             var day = "2026-10-10";
             var file = Path.Combine(root, day + ".log");
             var legacy = "2026-10-10T10:00:00+09:00 | old event\n";
             File.WriteAllText(file, legacy);
-            DiagnosticLogArchive.Append("2026-10-10T11:00:00+09:00 | Local scheduler: OS wake", root, "4.0.0", "1050");
+            DiagnosticLogArchive.Append(
+                "2026-10-10T11:00:00+09:00 | Local scheduler: OS wake",
+                root,
+                "4.0.0",
+                "1050"
+            );
             var prefix = File.ReadAllBytes(file);
-            Check(System.Text.Encoding.UTF8.GetString(prefix).StartsWith(legacy), "Legacy log prefix changed.");
-            DiagnosticLogArchive.Append("2026-10-10T11:00:01+09:00 | Connection: ready", root, "4.0.0", "1050");
+            Check(
+                System.Text.Encoding.UTF8.GetString(prefix).StartsWith(legacy),
+                "Legacy log prefix changed."
+            );
+            DiagnosticLogArchive.Append(
+                "2026-10-10T11:00:01+09:00 | Connection: ready",
+                root,
+                "4.0.0",
+                "1050"
+            );
             var after = File.ReadAllBytes(file);
-            Check(after.AsSpan(0, prefix.Length).SequenceEqual(prefix), "Diagnostic chunk offsets became invalid.");
-            foreach (var category in new[] { "background", "pc-transfer" }) {
-                var lines = File.ReadAllLines(Path.Combine(root, day, category + "-v2-4.0.0-1050.log"));
+            Check(
+                after.AsSpan(0, prefix.Length).SequenceEqual(prefix),
+                "Diagnostic chunk offsets became invalid."
+            );
+            foreach (var category in new[] { "background", "pc-transfer" })
+            {
+                var lines = File.ReadAllLines(
+                    Path.Combine(root, day, category + "-v2-4.0.0-1050.log")
+                );
                 using var header = JsonDocument.Parse(lines[0][2..]);
-                Check(header.RootElement.GetProperty("formatVersion").GetInt32() == 2 &&
-                    header.RootElement.GetProperty("category").GetString() == category &&
-                    header.RootElement.GetProperty("build").GetString() == "1050", "Feature log header is incorrect.");
+                Check(
+                    header.RootElement.GetProperty("formatVersion").GetInt32() == 2
+                        && header.RootElement.GetProperty("category").GetString() == category
+                        && header.RootElement.GetProperty("build").GetString() == "1050",
+                    "Feature log header is incorrect."
+                );
                 Check(lines[1].StartsWith("2026-10-10T"), "Metadata repeated on every log line.");
             }
-            Check(File.ReadAllText(file).Split("# ").Length == 2, "Compatibility header repeated per event.");
-            DiagnosticLogArchive.Append("2026-10-09T11:00:00+09:00 | old migrated", root, legacy: true);
-            Check(File.Exists(Path.Combine(root, "2026-10-09", "general-v1-legacy.log")), "Legacy format was mislabeled v2.");
+            Check(
+                File.ReadAllText(file).Split("# ").Length == 2,
+                "Compatibility header repeated per event."
+            );
+            DiagnosticLogArchive.Append(
+                "2026-10-09T11:00:00+09:00 | old migrated",
+                root,
+                legacy: true
+            );
+            Check(
+                File.Exists(Path.Combine(root, "2026-10-09", "general-v1-legacy.log")),
+                "Legacy format was mislabeled v2."
+            );
             var combined = File.ReadAllText(file);
-            Check(DiagnosticLogViewer.Categories(combined).Contains("background"), "Received archive categories missing.");
+            Check(
+                DiagnosticLogViewer.Categories(combined).Contains("background"),
+                "Received archive categories missing."
+            );
             var background = DiagnosticLogViewer.Text(combined, "background");
-            Check(background.Contains("OS wake") && !background.Contains("Connection: ready") &&
-                background.Contains("\"formatVersion\":2"), "Feature viewer mixed categories or dropped format metadata.");
-            Check(DiagnosticLogViewer.Text(combined, null) == combined, "All view changed original content.");
-            var future = "# {\"type\":\"mochilog-diagnostic-log\",\"formatVersion\":99}\nFuture payload: arbitrary data";
-            Check(DiagnosticLogViewer.Text(future, "general").Contains("arbitrary data"), "Future log format was hidden.");
-            Check(DiagnosticLogViewer.Text(legacy, "general").Contains("\"formatVersion\":1"), "Legacy log was mislabeled.");
+            Check(
+                background.Contains("OS wake")
+                    && !background.Contains("Connection: ready")
+                    && background.Contains("\"formatVersion\":2"),
+                "Feature viewer mixed categories or dropped format metadata."
+            );
+            Check(
+                DiagnosticLogViewer.Text(combined, null) == combined,
+                "All view changed original content."
+            );
+            var future =
+                "# {\"type\":\"mochilog-diagnostic-log\",\"formatVersion\":99}\nFuture payload: arbitrary data";
+            Check(
+                DiagnosticLogViewer.Text(future, "general").Contains("arbitrary data"),
+                "Future log format was hidden."
+            );
+            Check(
+                DiagnosticLogViewer.Text(legacy, "general").Contains("\"formatVersion\":1"),
+                "Legacy log was mislabeled."
+            );
             DiagnosticLogArchive.RemoveDay("../outside", root);
             Check(File.Exists(file), "Invalid day removed logs.");
             DiagnosticLogArchive.RemoveDay(day, root);
-            Check(!File.Exists(file) && !Directory.Exists(Path.Combine(root, day)), "Feature logs survived user deletion.");
-        } finally { Directory.Delete(root, true); }
+            Check(
+                !File.Exists(file) && !Directory.Exists(Path.Combine(root, day)),
+                "Feature logs survived user deletion."
+            );
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
     }
 
     private static void CheckDailyCollectionCoverage()
     {
         StoredBatteryLog Row(string kind, string? source, string day) =>
-            new(Guid.NewGuid().ToString(),
-                $"Analytics-{day}-090000.ips.ca.synced", Guid.NewGuid(), "Test",
-                kind, source, 100_000, DateTimeOffset.UtcNow, true);
+            new(
+                Guid.NewGuid().ToString(),
+                $"Analytics-{day}-090000.ips.ca.synced",
+                Guid.NewGuid(),
+                "Test",
+                kind,
+                source,
+                100_000,
+                DateTimeOffset.UtcNow,
+                true
+            );
         var host = Row("Host", null, "2026-10-03");
         var firstWatch = Row("Watch", "ProxiedDevice-a1", "2026-10-03");
         var secondWatch = Row("Watch", "ProxiedDevice-b2", "2026-10-02");
-        Check(BatteryLogStorage.HasRequiredDailyLogs("iPad16,6", [host], "2026-10-03"),
-            "iPad host log did not stop collection.");
-        Check(!BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [host], "2026-10-03"),
-            "Unknown Watch state stopped iPhone collection.");
-        Check(!BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3",
-            [host, firstWatch, secondWatch], "2026-10-03"),
-            "A second known Watch was ignored.");
-        Check(BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3",
-            [host, firstWatch, secondWatch,
-                Row("Watch", "ProxiedDevice-b2", "2026-10-03")], "2026-10-03"),
-            "Complete iPhone and Watch logs did not stop collection.");
-        var receipts = new BatteryLogStorage.VerifiedBatteryReceipt[] {
+        Check(
+            BatteryLogStorage.HasRequiredDailyLogs("iPad16,6", [host], "2026-10-03"),
+            "iPad host log did not stop collection."
+        );
+        Check(
+            !BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [host], "2026-10-03"),
+            "Unknown Watch state stopped iPhone collection."
+        );
+        Check(
+            !BatteryLogStorage.HasRequiredDailyLogs(
+                "iPhone18,3",
+                [host, firstWatch, secondWatch],
+                "2026-10-03"
+            ),
+            "A second known Watch was ignored."
+        );
+        Check(
+            BatteryLogStorage.HasRequiredDailyLogs(
+                "iPhone18,3",
+                [host, firstWatch, secondWatch, Row("Watch", "ProxiedDevice-b2", "2026-10-03")],
+                "2026-10-03"
+            ),
+            "Complete iPhone and Watch logs did not stop collection."
+        );
+        var receipts = new BatteryLogStorage.VerifiedBatteryReceipt[]
+        {
             new("Host", null, "2026-10-03"),
-            new("Watch", "ProxiedDevice-a1", "2026-10-03")
+            new("Watch", "ProxiedDevice-a1", "2026-10-03"),
         };
-        Check(BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [], "2026-10-03", receipts),
-            "Deleting acknowledged raw files restarted daily collection.");
-        Check(!BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [], "2026-10-04", receipts),
-            "Yesterday's acknowledged logs stopped today's collection.");
+        Check(
+            BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [], "2026-10-03", receipts),
+            "Deleting acknowledged raw files restarted daily collection."
+        );
+        Check(
+            !BatteryLogStorage.HasRequiredDailyLogs("iPhone18,3", [], "2026-10-04", receipts),
+            "Yesterday's acknowledged logs stopped today's collection."
+        );
     }
 
     private static byte[] Derive(byte[] shared, Guid session, Guid host, Guid physical)
@@ -375,8 +782,13 @@ static class Program
         return output.ToArray();
     }
 
-    private static (string Name, byte[] Content) Open(byte[] response, byte[] secret,
-        Guid host, Guid physical, Guid nonce)
+    private static (string Name, byte[] Content) Open(
+        byte[] response,
+        byte[] secret,
+        Guid host,
+        Guid physical,
+        Guid nonce
+    )
     {
         Check(response.Length >= 32, "Encrypted response was missing.");
         var length = BinaryPrimitives.ReadUInt32BigEndian(response.AsSpan(0, 4));
@@ -384,10 +796,16 @@ static class Program
         var combined = response.AsSpan(4);
         var plain = new byte[combined.Length - 28];
         var aad = Encoding.UTF8.GetBytes(
-            $"v2|response|{Upper(host)}|{Upper(physical)}|{Upper(nonce)}");
+            $"v2|response|{Upper(host)}|{Upper(physical)}|{Upper(nonce)}"
+        );
         using var aes = new AesGcm(secret, 16);
-        aes.Decrypt(combined[..12], combined.Slice(12, plain.Length),
-            combined.Slice(12 + plain.Length, 16), plain, aad);
+        aes.Decrypt(
+            combined[..12],
+            combined.Slice(12, plain.Length),
+            combined.Slice(12 + plain.Length, 16),
+            plain,
+            aad
+        );
         var nameLength = BinaryPrimitives.ReadUInt16BigEndian(plain.AsSpan(0, 2));
         var name = Encoding.UTF8.GetString(plain.AsSpan(2, nameLength));
         return (name, plain.AsSpan(2 + nameLength).ToArray());
@@ -397,82 +815,158 @@ static class Program
     private static async Task ServeLiveSimulator()
     {
         var id = Guid.Parse("00000000-0000-0000-0000-000000000002");
-        var phone = new PairedPhone { Udid = "synthetic", Name = "iPhone Test", Model = "iPhone",
-            PhysicalDeviceId = id, Secret = Enumerable.Repeat((byte)7, 32).ToArray(),
-            ConfirmedAt = DateTimeOffset.UtcNow };
-        var state = new CompanionState {
-            HostId = Guid.Parse("00000000-0000-0000-0000-000000000001"), Phones = [phone] };
+        var phone = new PairedPhone
+        {
+            Udid = "synthetic",
+            Name = "iPhone Test",
+            Model = "iPhone",
+            PhysicalDeviceId = id,
+            Secret = Enumerable.Repeat((byte)7, 32).ToArray(),
+            ConfirmedAt = DateTimeOffset.UtcNow,
+        };
+        var state = new CompanionState
+        {
+            HostId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Phones = [phone],
+        };
         using var server = new TransferServer(state, 0);
-        var values = new Dictionary<string, int> { ["CycleCount"] = 245, ["DesignCapacity"] = 4000,
-            ["NominalChargeCapacity"] = 3820, ["AppleRawMaxCapacity"] = 3850,
-            ["FullChargeCapacity"] = 3800, ["CurrentCapacity"] = 67 };
+        var values = new Dictionary<string, int>
+        {
+            ["CycleCount"] = 245,
+            ["DesignCapacity"] = 4000,
+            ["NominalChargeCapacity"] = 3820,
+            ["AppleRawMaxCapacity"] = 3850,
+            ["FullChargeCapacity"] = 3800,
+            ["CurrentCapacity"] = 67,
+        };
         var canonical = new SortedDictionary<string, object>(StringComparer.Ordinal);
-        foreach (var item in values) canonical[item.Key] = item.Value;
+        foreach (var item in values)
+            canonical[item.Key] = item.Value;
         canonical["IsCharging"] = false;
         var revision = Hex(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(canonical)));
-        const string allFields = "[{\"path\":[\"BatteryData\",\"Huge\"],\"kind\":\"number\",\"value\":\"18446744073709551615\"}]";
+        const string allFields =
+            "[{\"path\":[\"BatteryData\",\"Huge\"],\"kind\":\"number\",\"value\":\"18446744073709551615\"}]";
         var allFieldsHash = Hex(SHA256.HashData(Encoding.UTF8.GetBytes(allFields)));
-        server.LiveBattery.Set(id, new(values, revision, DateTimeOffset.UtcNow, false, allFields, allFieldsHash));
+        server.LiveBattery.Set(
+            id,
+            new(values, revision, DateTimeOffset.UtcNow, false, allFields, allFieldsHash)
+        );
         server.LiveBatteryRequested += (_, _) => Console.WriteLine("authenticated live request");
-        try {
+        try
+        {
             server.Start();
             Console.WriteLine("PORT=" + server.ListeningPort);
             Console.Out.Flush();
             await Task.Delay(TimeSpan.FromMinutes(10));
-        } finally {
+        }
+        finally
+        {
             server.Dispose();
-            if (Directory.Exists(StateStore.Root)) Directory.Delete(StateStore.Root, true);
+            if (Directory.Exists(StateStore.Root))
+                Directory.Delete(StateStore.Root, true);
         }
     }
 
     private static void CheckDiagnosticRoutes()
     {
-        var phone = new PairedPhone { PhysicalDeviceId = Guid.NewGuid(), Udid = "route-fixture",
-            LastKnownAddress = "192.168.3.31" };
+        var phone = new PairedPhone
+        {
+            PhysicalDeviceId = Guid.NewGuid(),
+            Udid = "route-fixture",
+            LastKnownAddress = "192.168.3.31",
+        };
         var now = DateTimeOffset.UtcNow;
         DiagnosticRoutes.RememberVerified("192.168.40.20", phone.PhysicalDeviceId, now);
-        Check(DiagnosticRoutes.ReceiveHints("[\"192.168.40.21\",\"192.168.40.21\"]", phone.PhysicalDeviceId, now),
-            "Fresh LAN hints were not stored");
-        Check(DiagnosticRoutes.Candidates(phone, now).Select(c => c.Address).SequenceEqual(
-            new[] { "192.168.40.21", "192.168.40.20", "192.168.3.31" }),
-            "A transfer socket peer hid the diagnostic endpoint");
-        foreach (var invalid in new[] { "[\"203.0.113.2\"]", "[\"127.0.0.1\"]", "[\"100.64.0.2\"]",
-            "[\"192.168.40.021\"]", "[\"192.168.40.21\",null]", new string('x', 513) })
-            Check(!DiagnosticRoutes.ReceiveHints(invalid, phone.PhysicalDeviceId, now), "Invalid hint accepted");
-        Check(DiagnosticRoutes.Candidates(phone, now.AddSeconds(3601)).Select(c => c.Address).SequenceEqual(
-            new[] { "192.168.40.20", "192.168.40.21", "192.168.3.31" }),
-            "Recent hint fallback displaced an OS-authenticated endpoint");
-        Check(DiagnosticRoutes.Candidates(phone, now.AddSeconds(86401)).All(c => c.Address != "192.168.40.21"),
-            "An older-than-one-day mobile hint stayed active");
-        Check(DiagnosticRoutes.Candidates(new() { PhysicalDeviceId = Guid.NewGuid() }, now).Count == 0,
-            "Diagnostic cache leaked across physical devices");
+        Check(
+            DiagnosticRoutes.ReceiveHints(
+                "[\"192.168.40.21\",\"192.168.40.21\"]",
+                phone.PhysicalDeviceId,
+                now
+            ),
+            "Fresh LAN hints were not stored"
+        );
+        Check(
+            DiagnosticRoutes
+                .Candidates(phone, now)
+                .Select(c => c.Address)
+                .SequenceEqual(new[] { "192.168.40.21", "192.168.40.20", "192.168.3.31" }),
+            "A transfer socket peer hid the diagnostic endpoint"
+        );
+        foreach (
+            var invalid in new[]
+            {
+                "[\"203.0.113.2\"]",
+                "[\"127.0.0.1\"]",
+                "[\"100.64.0.2\"]",
+                "[\"192.168.40.021\"]",
+                "[\"192.168.40.21\",null]",
+                new string('x', 513),
+            }
+        )
+            Check(
+                !DiagnosticRoutes.ReceiveHints(invalid, phone.PhysicalDeviceId, now),
+                "Invalid hint accepted"
+            );
+        Check(
+            DiagnosticRoutes
+                .Candidates(phone, now.AddSeconds(3601))
+                .Select(c => c.Address)
+                .SequenceEqual(new[] { "192.168.40.20", "192.168.40.21", "192.168.3.31" }),
+            "Recent hint fallback displaced an OS-authenticated endpoint"
+        );
+        Check(
+            DiagnosticRoutes
+                .Candidates(phone, now.AddSeconds(86401))
+                .All(c => c.Address != "192.168.40.21"),
+            "An older-than-one-day mobile hint stayed active"
+        );
+        Check(
+            DiagnosticRoutes.Candidates(new() { PhysicalDeviceId = Guid.NewGuid() }, now).Count
+                == 0,
+            "Diagnostic cache leaked across physical devices"
+        );
         phone.ManualAddress = "192.168.40.22";
-        Check(DiagnosticRoutes.Candidates(phone, now).Single().Address == phone.ManualAddress,
-            "Manual endpoint no longer overrides automatic hints");
-        Check(!new CollectionResult(0, 0, 1, "denied").AcquisitionComplete &&
-            !new CollectionResult(0, 0, 0, null, RetryHeld: 1).AcquisitionComplete &&
-            !new CollectionResult(0, 0, 0, null, Deferred: 1).AcquisitionComplete &&
-            new CollectionResult(1, 0, 0, null).AcquisitionComplete,
-            "Failed or held acquisitions were reported as complete");
-        Console.WriteLine("PASS: diagnostic endpoint provenance, expiry, manual overrides and honest retry status");
+        Check(
+            DiagnosticRoutes.Candidates(phone, now).Single().Address == phone.ManualAddress,
+            "Manual endpoint no longer overrides automatic hints"
+        );
+        Check(
+            !new CollectionResult(0, 0, 1, "denied").AcquisitionComplete
+                && !new CollectionResult(0, 0, 0, null, RetryHeld: 1).AcquisitionComplete
+                && !new CollectionResult(0, 0, 0, null, Deferred: 1).AcquisitionComplete
+                && new CollectionResult(1, 0, 0, null).AcquisitionComplete,
+            "Failed or held acquisitions were reported as complete"
+        );
+        Console.WriteLine(
+            "PASS: diagnostic endpoint provenance, expiry, manual overrides and honest retry status"
+        );
     }
 
     public static async Task Main(string[] args)
     {
-        if (args is ["--guarded-fixture", var kind, var file]) {
+        if (args is ["--guarded-fixture", var kind, var file])
+        {
             await GuardedProcessTests.Fixture(kind, file);
             return;
         }
-        if (args.SequenceEqual(new[] { "--native-diagnostics" })) {
+        if (args.SequenceEqual(new[] { "--native-diagnostics" }))
+        {
             NativeDiagnosticTests.Run();
             await GuardedProcessTests.Run();
             return;
         }
-        Check(LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local") == "A4374A9C-4036-30DE-AD77-D8C2176D6D2F",
-            "Existing Python UUIDv3 pairing identity must preserve hostname case");
-        Check(LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local") != LocalDiagnosticsPairing.Identifier("mixedcase-mac.local"),
-            "Hostname normalization must not replace a trusted host identity");
-        if (args.SequenceEqual(new[] { "--live-simulator" })) {
+        Check(
+            LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local")
+                == "A4374A9C-4036-30DE-AD77-D8C2176D6D2F",
+            "Existing Python UUIDv3 pairing identity must preserve hostname case"
+        );
+        Check(
+            LocalDiagnosticsPairing.Identifier("MixedCase-Mac.local")
+                != LocalDiagnosticsPairing.Identifier("mixedcase-mac.local"),
+            "Hostname normalization must not replace a trusted host identity"
+        );
+        if (args.SequenceEqual(new[] { "--live-simulator" }))
+        {
             await ServeLiveSimulator();
             return;
         }
@@ -494,20 +988,26 @@ static class Program
             var fallbackState = new CompanionState();
             using var fallback = new TransferServer(fallbackState, blockedPort);
             fallback.Start();
-            Check(fallback.ListeningPort != blockedPort &&
-                fallbackState.TransferPort == fallback.ListeningPort &&
-                StateStore.Load().TransferPort == fallback.ListeningPort,
-                "Reserved transfer port did not fall back to a persisted available port.");
-            var fallbackInvitation = fallback.BeginPairing(new ConnectedDevice(
-                "fallback-device", "Fallback iPad", "iPad16,6"));
-            Check(fallbackInvitation.Url.Contains($"port={fallback.ListeningPort}"),
-                "Pairing QR did not advertise the selected transfer port.");
+            Check(
+                fallback.ListeningPort != blockedPort
+                    && fallbackState.TransferPort == fallback.ListeningPort
+                    && StateStore.Load().TransferPort == fallback.ListeningPort,
+                "Reserved transfer port did not fall back to a persisted available port."
+            );
+            var fallbackInvitation = fallback.BeginPairing(
+                new ConnectedDevice("fallback-device", "Fallback iPad", "iPad16,6")
+            );
+            Check(
+                fallbackInvitation.Url.Contains($"port={fallback.ListeningPort}"),
+                "Pairing QR did not advertise the selected transfer port."
+            );
         }
         var state = new CompanionState();
         using var server = new TransferServer(state);
         var preflightEvents = new List<string>();
         var idleEvents = new List<string>();
-        server.StatusChanged += message => {
+        server.StatusChanged += message =>
+        {
             if (message.Contains("preflight", StringComparison.Ordinal))
                 preflightEvents.Add(message);
             if (message.Contains(": no new logs", StringComparison.Ordinal))
@@ -515,16 +1015,23 @@ static class Program
         };
         server.Start();
         _serverPort = server.ListeningPort;
-        try {
+        try
+        {
             server.BeginPairing(new ConnectedDevice("untrusted", "Untrusted iPad", ""));
             throw new Exception("An untrusted device produced a pairing QR.");
-        } catch (InvalidOperationException) { }
+        }
+        catch (InvalidOperationException) { }
         var device = new ConnectedDevice("test-iphone", "Protocol iPhone", "iPhone18,3");
         var invitation = server.BeginPairing(device);
         var qr = new Uri(invitation.Url);
-        var fields = qr.Query.TrimStart('?').Split('&').Select(part => part.Split('=', 2))
-            .ToDictionary(part => Uri.UnescapeDataString(part[0]),
-                part => Uri.UnescapeDataString(part[1]));
+        var fields = qr
+            .Query.TrimStart('?')
+            .Split('&')
+            .Select(part => part.Split('=', 2))
+            .ToDictionary(
+                part => Uri.UnescapeDataString(part[0]),
+                part => Uri.UnescapeDataString(part[1])
+            );
         Check(fields["v"] == "3" && fields["platform"] == "windows", "QR version is wrong.");
         var publicKey = Convert.FromBase64String(fields["public"]);
         var clientPrivate = new X25519PrivateKeyParameters(new SecureRandom());
@@ -534,194 +1041,374 @@ static class Program
         clientPrivate.GenerateSecret(new X25519PublicKeyParameters(publicKey, 0), shared, 0);
         var physical = Guid.NewGuid();
         var key = Derive(shared, invitation.SessionId, invitation.HostId, physical);
-        var common = new Dictionary<string, string> {
-            ["sessionID"] = Upper(invitation.SessionId), ["version"] = "3",
+        var common = new Dictionary<string, string>
+        {
+            ["sessionID"] = Upper(invitation.SessionId),
+            ["version"] = "3",
             ["physicalDeviceID"] = Upper(physical),
-            ["clientPublicKey"] = Convert.ToBase64String(clientPublic)
+            ["clientPublicKey"] = Convert.ToBase64String(clientPublic),
         };
         var init = new Dictionary<string, string>(common) { ["type"] = "pair-init" };
         var challenge = JsonDocument.Parse(await ExchangeAsync(init)).RootElement;
-        Check(challenge.GetProperty("proof").GetString() ==
-            Hex(Hmac(key, $"pair-challenge|{Upper(invitation.SessionId)}")),
-            "Pairing challenge MAC was wrong.");
-        var incorrect = new Dictionary<string, string>(common) {
-            ["type"] = "pair-confirm", ["confirmationMAC"] = Hex(Hmac(key,
-                $"pair-confirm|{Upper(invitation.SessionId)}|000000-wrong"))
-        };
-        Check((await ExchangeAsync(incorrect)).Length == 0 && state.Phones.Count == 0,
-            "An incorrect confirmation code paired the phone.");
-        var confirm = new Dictionary<string, string>(common) {
+        Check(
+            challenge.GetProperty("proof").GetString()
+                == Hex(Hmac(key, $"pair-challenge|{Upper(invitation.SessionId)}")),
+            "Pairing challenge MAC was wrong."
+        );
+        var incorrect = new Dictionary<string, string>(common)
+        {
             ["type"] = "pair-confirm",
-            ["confirmationMAC"] = Hex(Hmac(key,
-                $"pair-confirm|{Upper(invitation.SessionId)}|{invitation.Code}"))
+            ["confirmationMAC"] = Hex(
+                Hmac(key, $"pair-confirm|{Upper(invitation.SessionId)}|000000-wrong")
+            ),
+        };
+        Check(
+            (await ExchangeAsync(incorrect)).Length == 0 && state.Phones.Count == 0,
+            "An incorrect confirmation code paired the phone."
+        );
+        var confirm = new Dictionary<string, string>(common)
+        {
+            ["type"] = "pair-confirm",
+            ["confirmationMAC"] = Hex(
+                Hmac(key, $"pair-confirm|{Upper(invitation.SessionId)}|{invitation.Code}")
+            ),
         };
         var completed = JsonDocument.Parse(await ExchangeAsync(confirm)).RootElement;
-        Check(completed.GetProperty("proof").GetString() ==
-            Hex(Hmac(key, $"pair-complete|{Upper(invitation.SessionId)}")),
-            "Pairing completion MAC was wrong.");
-        Check(state.Phones.Count == 1 && state.Phones[0].PhysicalDeviceId == physical,
-            "Windows changed the mobile device's physical ID.");
+        Check(
+            completed.GetProperty("proof").GetString()
+                == Hex(Hmac(key, $"pair-complete|{Upper(invitation.SessionId)}")),
+            "Pairing completion MAC was wrong."
+        );
+        Check(
+            state.Phones.Count == 1 && state.Phones[0].PhysicalDeviceId == physical,
+            "Windows changed the mobile device's physical ID."
+        );
         var encryptedState = File.ReadAllBytes(Path.Combine(StateStore.Root, "state.bin"));
-        Check(!Encoding.UTF8.GetString(encryptedState).Contains("PhysicalDeviceId") &&
-            StateStore.Load().Phones[0].Secret.SequenceEqual(key),
-            "Pairing keys were not protected and recoverable through Windows DPAPI.");
+        Check(
+            !Encoding.UTF8.GetString(encryptedState).Contains("PhysicalDeviceId")
+                && StateStore.Load().Phones[0].Secret.SequenceEqual(key),
+            "Pairing keys were not protected and recoverable through Windows DPAPI."
+        );
 
         var queue = Path.Combine(TransferServer.QueuePath(state.Phones[0]), "Host");
         Directory.CreateDirectory(queue);
         var uncertain = Path.Combine(queue, ".unclassified-test");
         await File.WriteAllBytesAsync(uncertain, new byte[1_000_000]);
-        Check(Collector.ShouldRecheckUnclassified(uncertain),
-            "A large unclassified Analytics download must remain eligible for retry.");
+        Check(
+            Collector.ShouldRecheckUnclassified(uncertain),
+            "A large unclassified Analytics download must remain eligible for retry."
+        );
         await File.WriteAllTextAsync(uncertain, "short unrelated diagnostic");
-        Check(!Collector.ShouldRecheckUnclassified(uncertain),
-            "A small unrelated diagnostic should be excluded.");
+        Check(
+            !Collector.ShouldRecheckUnclassified(uncertain),
+            "A small unrelated diagnostic should be excluded."
+        );
         var observationClock = new DateTimeOffset(2026, 10, 10, 9, 0, 0, TimeSpan.FromHours(9));
         var firstObservation = Collector.ObserveUnclassified(uncertain, null, observationClock);
-        var earlyObservation = Collector.ObserveUnclassified(uncertain, firstObservation,
-            observationClock.AddMinutes(5));
-        Check(earlyObservation?.Confirmations == 1,
-            "Five-minute retries accelerated permanent exclusion.");
-        var secondObservation = Collector.ObserveUnclassified(uncertain, earlyObservation,
-            observationClock.AddMinutes(30));
-        var thirdObservation = Collector.ObserveUnclassified(uncertain, secondObservation,
-            observationClock.AddMinutes(60));
+        var earlyObservation = Collector.ObserveUnclassified(
+            uncertain,
+            firstObservation,
+            observationClock.AddMinutes(5)
+        );
+        Check(
+            earlyObservation?.Confirmations == 1,
+            "Five-minute retries accelerated permanent exclusion."
+        );
+        var secondObservation = Collector.ObserveUnclassified(
+            uncertain,
+            earlyObservation,
+            observationClock.AddMinutes(30)
+        );
+        var thirdObservation = Collector.ObserveUnclassified(
+            uncertain,
+            secondObservation,
+            observationClock.AddMinutes(60)
+        );
         var oldObservation = JsonSerializer.Deserialize<UnclassifiedObservation>(
-            "{\"Fingerprint\":\"old\",\"Confirmations\":2}")!;
+            "{\"Fingerprint\":\"old\",\"Confirmations\":2}"
+        )!;
         oldObservation.Fingerprint = firstObservation!.Fingerprint;
-        var migratedObservation = Collector.ObserveUnclassified(uncertain, oldObservation, observationClock);
-        Check(migratedObservation?.Confirmations == 2 && migratedObservation.LastConfirmedAt is not null,
-            "Old state immediately became a third exclusion confirmation.");
+        var migratedObservation = Collector.ObserveUnclassified(
+            uncertain,
+            oldObservation,
+            observationClock
+        );
+        Check(
+            migratedObservation?.Confirmations == 2
+                && migratedObservation.LastConfirmedAt is not null,
+            "Old state immediately became a third exclusion confirmation."
+        );
         var restoredObservation = JsonSerializer.Deserialize<UnclassifiedObservation>(
-            JsonSerializer.Serialize(secondObservation));
-        Check(restoredObservation?.LastConfirmedAt == secondObservation?.LastConfirmedAt,
-            "Restart lost the spaced confirmation time.");
-        Check(Collector.UnclassifiedRetryAt("Analytics-2026-10-10-090006.ips.ca.synced", observationClock)
-            - observationClock == TimeSpan.FromMinutes(5) &&
-            Collector.UnclassifiedRetryAt("Analytics-2026-10-09-090006.ips.ca.synced", observationClock)
-            - observationClock == TimeSpan.FromMinutes(30), "Retry schedules were mixed.");
+            JsonSerializer.Serialize(secondObservation)
+        );
+        Check(
+            restoredObservation?.LastConfirmedAt == secondObservation?.LastConfirmedAt,
+            "Restart lost the spaced confirmation time."
+        );
+        Check(
+            Collector.UnclassifiedRetryAt(
+                "Analytics-2026-10-10-090006.ips.ca.synced",
+                observationClock
+            ) - observationClock
+                == TimeSpan.FromMinutes(5)
+                && Collector.UnclassifiedRetryAt(
+                    "Analytics-2026-10-09-090006.ips.ca.synced",
+                    observationClock
+                ) - observationClock
+                    == TimeSpan.FromMinutes(30),
+            "Retry schedules were mixed."
+        );
         var beforeMidnight = observationClock.AddHours(-9).AddMinutes(-1);
-        Check(Collector.UnclassifiedRetryAt("Analytics-2026-10-09-090006.ips.ca.synced", beforeMidnight)
-            - beforeMidnight == TimeSpan.FromMinutes(5), "Retry did not use the Japanese log day.");
-        var diagnosticA = "Collector exited 0: 2026-10-10 09:03:18 host pymobiledevice3.__main__[9212] ERROR Device is not connected";
-        var diagnosticB = "Collector exited 0: 2026-10-10 09:08:18 host pymobiledevice3.__main__[22064] ERROR Device is not connected";
-        Check(Collector.StableDiagnostic(diagnosticA) == Collector.StableDiagnostic(diagnosticB) &&
-            Collector.StableDiagnostic(diagnosticA).Contains("Device is not connected") &&
-            Collector.StableDiagnostic("TimeoutError") != Collector.StableDiagnostic("InvalidHostID"),
-            "Diagnostic prefixes prevent grouping or the actual reason was lost.");
-        Check(firstObservation?.Confirmations == 1 && secondObservation?.Confirmations == 2 &&
-            thirdObservation?.Confirmations == 3,
-            "Stable non-battery downloads should stop after three checks.");
+        Check(
+            Collector.UnclassifiedRetryAt(
+                "Analytics-2026-10-09-090006.ips.ca.synced",
+                beforeMidnight
+            ) - beforeMidnight
+                == TimeSpan.FromMinutes(5),
+            "Retry did not use the Japanese log day."
+        );
+        var diagnosticA =
+            "Collector exited 0: 2026-10-10 09:03:18 host pymobiledevice3.__main__[9212] ERROR Device is not connected";
+        var diagnosticB =
+            "Collector exited 0: 2026-10-10 09:08:18 host pymobiledevice3.__main__[22064] ERROR Device is not connected";
+        Check(
+            Collector.StableDiagnostic(diagnosticA) == Collector.StableDiagnostic(diagnosticB)
+                && Collector.StableDiagnostic(diagnosticA).Contains("Device is not connected")
+                && Collector.StableDiagnostic("TimeoutError")
+                    != Collector.StableDiagnostic("InvalidHostID"),
+            "Diagnostic prefixes prevent grouping or the actual reason was lost."
+        );
+        Check(
+            firstObservation?.Confirmations == 1
+                && secondObservation?.Confirmations == 2
+                && thirdObservation?.Confirmations == 3,
+            "Stable non-battery downloads should stop after three checks."
+        );
         await File.WriteAllBytesAsync(uncertain, []);
-        Check(Collector.ObserveUnclassified(uncertain, thirdObservation) is null,
-            "An empty pull must not confirm a non-battery report.");
+        Check(
+            Collector.ObserveUnclassified(uncertain, thirdObservation) is null,
+            "An empty pull must not confirm a non-battery report."
+        );
         await File.WriteAllTextAsync(uncertain, "changed diagnostic");
-        Check(Collector.ObserveUnclassified(uncertain, thirdObservation)?.Confirmations == 1,
-            "A changed report must start a new confirmation count.");
+        Check(
+            Collector.ObserveUnclassified(uncertain, thirdObservation)?.Confirmations == 1,
+            "A changed report must start a new confirmation count."
+        );
         File.Delete(uncertain);
         var name = "Analytics-2026-09-27-test.ips.ca.synced";
         var payload = Encoding.UTF8.GetBytes("diagnostic transport fixture");
         await File.WriteAllBytesAsync(Path.Combine(queue, name), payload);
         var unfinished = Path.Combine(TransferServer.QueuePath(state.Phones[0]), ".staging-test");
         Directory.CreateDirectory(unfinished);
-        await File.WriteAllBytesAsync(Path.Combine(unfinished,
-            "Analytics-2026-09-01-unclassified.ips.ca.synced"), payload);
-        async Task<byte[]> Pull(Guid nonce, string ack = "") => await ExchangeAsync(new {
-            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(nonce), ack,
-            mac = Hex(Hmac(key,
-                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|{ack}"))
-        });
-        async Task<(string Name, byte[] Content)> PullOffer(Guid nonce,
-            string? token = null, string? digest = null, string? decision = null) {
-            var fields = new Dictionary<string, string> {
-                ["version"] = "2", ["hostID"] = Upper(invitation.HostId),
-                ["physicalDeviceID"] = Upper(physical), ["nonce"] = Upper(nonce),
-                ["ack"] = "", ["mac"] = Hex(Hmac(key,
-                    $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|")),
-                ["offerVersion"] = "1", ["offerMAC"] = Hex(Hmac(key,
-                    $"file-offer|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}"))
+        await File.WriteAllBytesAsync(
+            Path.Combine(unfinished, "Analytics-2026-09-01-unclassified.ips.ca.synced"),
+            payload
+        );
+        async Task<byte[]> Pull(Guid nonce, string ack = "") =>
+            await ExchangeAsync(
+                new
+                {
+                    version = "2",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(physical),
+                    nonce = Upper(nonce),
+                    ack,
+                    mac = Hex(
+                        Hmac(
+                            key,
+                            $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|{ack}"
+                        )
+                    ),
+                }
+            );
+        async Task<(string Name, byte[] Content)> PullOffer(
+            Guid nonce,
+            string? token = null,
+            string? digest = null,
+            string? decision = null
+        )
+        {
+            var fields = new Dictionary<string, string>
+            {
+                ["version"] = "2",
+                ["hostID"] = Upper(invitation.HostId),
+                ["physicalDeviceID"] = Upper(physical),
+                ["nonce"] = Upper(nonce),
+                ["ack"] = "",
+                ["mac"] = Hex(
+                    Hmac(key, $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|")
+                ),
+                ["offerVersion"] = "1",
+                ["offerMAC"] = Hex(
+                    Hmac(
+                        key,
+                        $"file-offer|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}"
+                    )
+                ),
             };
-            if (token is not null && digest is not null && decision is not null) {
+            if (token is not null && digest is not null && decision is not null)
+            {
                 fields["offerToken"] = token;
                 fields["offerDigest"] = digest;
                 fields["offerDecision"] = decision;
-                fields["offerDecisionMAC"] = Hex(Hmac(key,
-                    $"file-decision|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|{token}|{digest}|{decision}"));
+                fields["offerDecisionMAC"] = Hex(
+                    Hmac(
+                        key,
+                        $"file-decision|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(nonce)}|{token}|{digest}|{decision}"
+                    )
+                );
             }
             return Open(await ExchangeAsync(fields), key, invitation.HostId, physical, nonce);
         }
         var badNonce = Guid.NewGuid();
-        Check((await ExchangeAsync(new {
-            version = "2", hostID = Upper(invitation.HostId),
-            physicalDeviceID = Upper(physical), nonce = Upper(badNonce), ack = "",
-            mac = new string('0', 64)
-        })).Length == 0, "Invalid request authentication was accepted.");
+        Check(
+            (
+                await ExchangeAsync(
+                    new
+                    {
+                        version = "2",
+                        hostID = Upper(invitation.HostId),
+                        physicalDeviceID = Upper(physical),
+                        nonce = Upper(badNonce),
+                        ack = "",
+                        mac = new string('0', 64),
+                    }
+                )
+            ).Length == 0,
+            "Invalid request authentication was accepted."
+        );
         var firstNonce = Guid.NewGuid();
         var first = Open(await Pull(firstNonce), key, invitation.HostId, physical, firstNonce);
-        Check(first.Name == "Host::" + name && first.Content.SequenceEqual(payload),
-            "Encrypted battery log transfer failed.");
+        Check(
+            first.Name == "Host::" + name && first.Content.SequenceEqual(payload),
+            "Encrypted battery log transfer failed."
+        );
         Check((await Pull(firstNonce)).Length == 0, "Repeated nonce was accepted.");
         var backgroundNonce = Guid.NewGuid();
-        var backgroundNotice = new {
-            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(backgroundNonce), ack = "", presence = "background",
-            mac = Hex(Hmac(key,
-                $"v2|background|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(backgroundNonce)}"))
+        var backgroundNotice = new
+        {
+            version = "2",
+            hostID = Upper(invitation.HostId),
+            physicalDeviceID = Upper(physical),
+            nonce = Upper(backgroundNonce),
+            ack = "",
+            presence = "background",
+            mac = Hex(
+                Hmac(
+                    key,
+                    $"v2|background|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(backgroundNonce)}"
+                )
+            ),
         };
-        Check((await ExchangeAsync(backgroundNotice)).Length == 0,
-            "Authenticated background notice returned log data.");
-        Check((await ExchangeAsync(backgroundNotice)).Length == 0,
-            "Repeated background notice returned log data.");
-        Check((await Pull(backgroundNonce)).Length == 0,
-            "Background nonce was not recorded for replay rejection.");
+        Check(
+            (await ExchangeAsync(backgroundNotice)).Length == 0,
+            "Authenticated background notice returned log data."
+        );
+        Check(
+            (await ExchangeAsync(backgroundNotice)).Length == 0,
+            "Repeated background notice returned log data."
+        );
+        Check(
+            (await Pull(backgroundNonce)).Length == 0,
+            "Background nonce was not recorded for replay rejection."
+        );
         var diagnosticNonce = Guid.NewGuid();
         var diagnostic = Encoding.UTF8.GetBytes("encrypted phone diagnostic fixture");
         var diagnosticIv = RandomNumberGenerator.GetBytes(12);
         var diagnosticCipher = new byte[diagnostic.Length];
         var diagnosticTag = new byte[16];
         var diagnosticContext = Encoding.UTF8.GetBytes(
-            $"v2|diagnostics|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(diagnosticNonce)}");
+            $"v2|diagnostics|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(diagnosticNonce)}"
+        );
         using (var aes = new AesGcm(key, 16))
-            aes.Encrypt(diagnosticIv, diagnostic, diagnosticCipher, diagnosticTag, diagnosticContext);
+            aes.Encrypt(
+                diagnosticIv,
+                diagnostic,
+                diagnosticCipher,
+                diagnosticTag,
+                diagnosticContext
+            );
         var diagnosticBox = diagnosticIv.Concat(diagnosticCipher).Concat(diagnosticTag).ToArray();
-        var diagnosticResponse = await ExchangeAsync(new {
-            version = "2", hostID = Upper(invitation.HostId),
-            physicalDeviceID = Upper(physical), nonce = Upper(diagnosticNonce), ack = "",
-            mac = Hex(Hmac(key,
-                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(diagnosticNonce)}|")),
-            clientDiagnosticsBox = Convert.ToBase64String(diagnosticBox)
-        });
-        Check(diagnosticResponse.Length > 0 &&
-            state.PhoneDiagnostics.TryGetValue(Upper(physical), out var storedDiagnostic) &&
-            storedDiagnostic.SequenceEqual(diagnostic),
-            "Encrypted phone diagnostics were not authenticated and saved.");
+        var diagnosticResponse = await ExchangeAsync(
+            new
+            {
+                version = "2",
+                hostID = Upper(invitation.HostId),
+                physicalDeviceID = Upper(physical),
+                nonce = Upper(diagnosticNonce),
+                ack = "",
+                mac = Hex(
+                    Hmac(
+                        key,
+                        $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(diagnosticNonce)}|"
+                    )
+                ),
+                clientDiagnosticsBox = Convert.ToBase64String(diagnosticBox),
+            }
+        );
+        Check(
+            diagnosticResponse.Length > 0
+                && state.PhoneDiagnostics.TryGetValue(Upper(physical), out var storedDiagnostic)
+                && storedDiagnostic.SequenceEqual(diagnostic),
+            "Encrypted phone diagnostics were not authenticated and saved."
+        );
         BatteryLogStorage.UpdateSettings(true, 500, 1);
         var ackNonce = Guid.NewGuid();
-        var final = Open(await Pull(ackNonce, first.Name), key,
-            invitation.HostId, physical, ackNonce);
-        Check(final.Name.Length == 0 && !File.Exists(Path.Combine(queue, name)),
-            "File acknowledgement did not complete the batch.");
-        Check(state.Delivered.Contains(Upper(physical) + "|" + first.Name),
-            "Delivered file was not marked.");
+        var final = Open(
+            await Pull(ackNonce, first.Name),
+            key,
+            invitation.HostId,
+            physical,
+            ackNonce
+        );
+        Check(
+            final.Name.Length == 0 && !File.Exists(Path.Combine(queue, name)),
+            "File acknowledgement did not complete the batch."
+        );
+        Check(
+            state.Delivered.Contains(Upper(physical) + "|" + first.Name),
+            "Delivered file was not marked."
+        );
         var repeatedIdleNonce = Guid.NewGuid();
-        var repeatedIdle = Open(await Pull(repeatedIdleNonce), key,
-            invitation.HostId, physical, repeatedIdleNonce);
-        Check(repeatedIdle.Name.Length == 0 && idleEvents.Count == 1,
-            "Repeated empty pulls produced duplicate idle status events.");
-        var archivedForResend = BatteryLogStorage.List(state.Phones).Where(row => !row.Pending).ToArray();
-        Check(archivedForResend.Length == 1 &&
-            BatteryLogStorage.Requeue(archivedForResend, state.Phones) == 1,
-            "Acknowledged log was not available for manual resend.");
+        var repeatedIdle = Open(
+            await Pull(repeatedIdleNonce),
+            key,
+            invitation.HostId,
+            physical,
+            repeatedIdleNonce
+        );
+        Check(
+            repeatedIdle.Name.Length == 0 && idleEvents.Count == 1,
+            "Repeated empty pulls produced duplicate idle status events."
+        );
+        var archivedForResend = BatteryLogStorage
+            .List(state.Phones)
+            .Where(row => !row.Pending)
+            .ToArray();
+        Check(
+            archivedForResend.Length == 1
+                && BatteryLogStorage.Requeue(archivedForResend, state.Phones) == 1,
+            "Acknowledged log was not available for manual resend."
+        );
         var resendNonce = Guid.NewGuid();
         var resent = Open(await Pull(resendNonce), key, invitation.HostId, physical, resendNonce);
-        Check(resent.Name == first.Name && resent.Content.SequenceEqual(payload),
-            "Manual resend did not deliver the selected raw log.");
+        Check(
+            resent.Name == first.Name && resent.Content.SequenceEqual(payload),
+            "Manual resend did not deliver the selected raw log."
+        );
         var resendAckNonce = Guid.NewGuid();
-        var resendEnd = Open(await Pull(resendAckNonce, resent.Name), key,
-            invitation.HostId, physical, resendAckNonce);
-        Check(resendEnd.Name.Length == 0 &&
-            BatteryLogStorage.List(state.Phones).Count(row => row.Pending) == 0,
-            "Repeated acknowledgement left the resend pending.");
+        var resendEnd = Open(
+            await Pull(resendAckNonce, resent.Name),
+            key,
+            invitation.HostId,
+            physical,
+            resendAckNonce
+        );
+        Check(
+            resendEnd.Name.Length == 0
+                && BatteryLogStorage.List(state.Phones).Count(row => row.Pending) == 0,
+            "Repeated acknowledgement left the resend pending."
+        );
         BatteryLogStorage.Delete(archivedForResend);
         BatteryLogStorage.UpdateSettings(false, 500, 1);
         var duplicateName = "Analytics-2026-09-28-090000.ips.ca.synced";
@@ -730,319 +1417,726 @@ static class Program
         var offered = await PullOffer(Guid.NewGuid());
         var offer = JsonDocument.Parse(offered.Content).RootElement;
         var digest = Hex(SHA256.HashData(payload));
-        Check(offered.Name.Length == 0 && offer.GetProperty("type").GetString() == "file-offer" &&
-            offer.GetProperty("sha256").GetString() == digest &&
-            offer.GetProperty("token").GetString() == "Host::" + duplicateName,
-            "Preflight sent bytes or an incorrect digest.");
-        var mismatch = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName,
-            new string('0', 64), "have");
-        Check(mismatch.Name.Length == 0 && File.Exists(duplicatePath),
-            "Mismatched digest removed a queued log.");
-        var skipped = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName,
-            digest, "have");
-        Check(skipped.Name.Length == 0 && !File.Exists(duplicatePath),
-            "Matching mobile receipt did not suppress duplicate transfer.");
-        Check(preflightEvents.Any(message => message.Contains("preflight offer Host::" + duplicateName)) &&
-            preflightEvents.Any(message => message.Contains("preflight decision=have, action=skip Host::" + duplicateName)) &&
-            preflightEvents.Any(message => message.Contains("digest changed")),
-            "Preflight offer, duplicate decision, or rejection was missing from the debug event stream.");
+        Check(
+            offered.Name.Length == 0
+                && offer.GetProperty("type").GetString() == "file-offer"
+                && offer.GetProperty("sha256").GetString() == digest
+                && offer.GetProperty("token").GetString() == "Host::" + duplicateName,
+            "Preflight sent bytes or an incorrect digest."
+        );
+        var mismatch = await PullOffer(
+            Guid.NewGuid(),
+            "Host::" + duplicateName,
+            new string('0', 64),
+            "have"
+        );
+        Check(
+            mismatch.Name.Length == 0 && File.Exists(duplicatePath),
+            "Mismatched digest removed a queued log."
+        );
+        var skipped = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName, digest, "have");
+        Check(
+            skipped.Name.Length == 0 && !File.Exists(duplicatePath),
+            "Matching mobile receipt did not suppress duplicate transfer."
+        );
+        Check(
+            preflightEvents.Any(message =>
+                message.Contains("preflight offer Host::" + duplicateName)
+            )
+                && preflightEvents.Any(message =>
+                    message.Contains("preflight decision=have, action=skip Host::" + duplicateName)
+                )
+                && preflightEvents.Any(message => message.Contains("digest changed")),
+            "Preflight offer, duplicate decision, or rejection was missing from the debug event stream."
+        );
         await File.WriteAllBytesAsync(duplicatePath, payload);
         await File.WriteAllBytesAsync(duplicatePath + ".force-resend", []);
-        var forcedOffer = JsonDocument.Parse((await PullOffer(Guid.NewGuid())).Content)
-            .RootElement;
-        Check(forcedOffer.GetProperty("force").GetString() == "true",
-            "Manual resend was not identified.");
+        var forcedOffer = JsonDocument.Parse((await PullOffer(Guid.NewGuid())).Content).RootElement;
+        Check(
+            forcedOffer.GetProperty("force").GetString() == "true",
+            "Manual resend was not identified."
+        );
         _ = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName, digest, "have");
-        Check(File.Exists(duplicatePath),
-            "A mobile duplicate decision cancelled an explicit manual resend.");
-        var sent = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName,
-            digest, "send");
-        Check(sent.Name == "Host::" + duplicateName && sent.Content.SequenceEqual(payload),
-            "Approved preflight did not deliver a manual resend.");
+        Check(
+            File.Exists(duplicatePath),
+            "A mobile duplicate decision cancelled an explicit manual resend."
+        );
+        var sent = await PullOffer(Guid.NewGuid(), "Host::" + duplicateName, digest, "send");
+        Check(
+            sent.Name == "Host::" + duplicateName && sent.Content.SequenceEqual(payload),
+            "Approved preflight did not deliver a manual resend."
+        );
         _ = await Pull(Guid.NewGuid(), sent.Name);
-        Check(!File.Exists(duplicatePath + ".force-resend"),
-            "Manual resend marker remained after acknowledgement.");
+        Check(
+            !File.Exists(duplicatePath + ".force-resend"),
+            "Manual resend marker remained after acknowledgement."
+        );
         var pauseUntil = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
         var invalidPauseNonce = Guid.NewGuid();
-        var invalidPause = Open(await ExchangeAsync(new {
-            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(invalidPauseNonce), ack = "",
-            mac = Hex(Hmac(key,
-                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(invalidPauseNonce)}|")),
-            dailyPauseUntil = pauseUntil, dailyPauseMAC = new string('0', 64)
-        }), key, invitation.HostId, physical, invalidPauseNonce);
-        Check(invalidPause.Name.Length == 0 && state.Phones[0].AutomaticPauseUntil is null,
-            "Invalid pause proof changed collection state.");
+        var invalidPause = Open(
+            await ExchangeAsync(
+                new
+                {
+                    version = "2",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(physical),
+                    nonce = Upper(invalidPauseNonce),
+                    ack = "",
+                    mac = Hex(
+                        Hmac(
+                            key,
+                            $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(invalidPauseNonce)}|"
+                        )
+                    ),
+                    dailyPauseUntil = pauseUntil,
+                    dailyPauseMAC = new string('0', 64),
+                }
+            ),
+            key,
+            invitation.HostId,
+            physical,
+            invalidPauseNonce
+        );
+        Check(
+            invalidPause.Name.Length == 0 && state.Phones[0].AutomaticPauseUntil is null,
+            "Invalid pause proof changed collection state."
+        );
         var pauseNonce = Guid.NewGuid();
-        var acceptedPause = Open(await ExchangeAsync(new {
-            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(pauseNonce), ack = "",
-            mac = Hex(Hmac(key,
-                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(pauseNonce)}|")),
-            dailyPauseUntil = pauseUntil,
-            dailyPauseMAC = Hex(Hmac(key,
-                $"daily-pause|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(pauseNonce)}|{pauseUntil}"))
-        }), key, invitation.HostId, physical, pauseNonce);
+        var acceptedPause = Open(
+            await ExchangeAsync(
+                new
+                {
+                    version = "2",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(physical),
+                    nonce = Upper(pauseNonce),
+                    ack = "",
+                    mac = Hex(
+                        Hmac(
+                            key,
+                            $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(pauseNonce)}|"
+                        )
+                    ),
+                    dailyPauseUntil = pauseUntil,
+                    dailyPauseMAC = Hex(
+                        Hmac(
+                            key,
+                            $"daily-pause|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(pauseNonce)}|{pauseUntil}"
+                        )
+                    ),
+                }
+            ),
+            key,
+            invitation.HostId,
+            physical,
+            pauseNonce
+        );
         var pauseAck = JsonDocument.Parse(acceptedPause.Content).RootElement;
-        Check(acceptedPause.Name.Length == 0 &&
-            pauseAck.GetProperty("type").GetString() == "daily-pause-ack" &&
-            pauseAck.GetProperty("until").GetString() == pauseUntil &&
-            StateStore.Load().Phones[0].AutomaticPauseUntil is not null,
-            "Authenticated pause was not acknowledged and persisted.");
-        Check((await Pull(pauseNonce)).Length == 0,
-            "A pause request nonce was accepted twice.");
+        Check(
+            acceptedPause.Name.Length == 0
+                && pauseAck.GetProperty("type").GetString() == "daily-pause-ack"
+                && pauseAck.GetProperty("until").GetString() == pauseUntil
+                && StateStore.Load().Phones[0].AutomaticPauseUntil is not null,
+            "Authenticated pause was not acknowledged and persisted."
+        );
+        Check((await Pull(pauseNonce)).Length == 0, "A pause request nonce was accepted twice.");
         var resumeNonce = Guid.NewGuid();
-        var resumed = Open(await ExchangeAsync(new {
-            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(resumeNonce), ack = "",
-            mac = Hex(Hmac(key,
-                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(resumeNonce)}|")),
-            dailyResumeMAC = Hex(Hmac(key,
-                $"daily-resume|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(resumeNonce)}"))
-        }), key, invitation.HostId, physical, resumeNonce);
-        Check(JsonDocument.Parse(resumed.Content).RootElement.GetProperty("type").GetString() ==
-            "daily-resume-ack" && StateStore.Load().Phones[0].AutomaticPauseUntil is null,
-            "Authenticated resume did not clear the collection pause.");
+        var resumed = Open(
+            await ExchangeAsync(
+                new
+                {
+                    version = "2",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(physical),
+                    nonce = Upper(resumeNonce),
+                    ack = "",
+                    mac = Hex(
+                        Hmac(
+                            key,
+                            $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(resumeNonce)}|"
+                        )
+                    ),
+                    dailyResumeMAC = Hex(
+                        Hmac(
+                            key,
+                            $"daily-resume|v1|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(resumeNonce)}"
+                        )
+                    ),
+                }
+            ),
+            key,
+            invitation.HostId,
+            physical,
+            resumeNonce
+        );
+        Check(
+            JsonDocument.Parse(resumed.Content).RootElement.GetProperty("type").GetString()
+                == "daily-resume-ack"
+                && StateStore.Load().Phones[0].AutomaticPauseUntil is null,
+            "Authenticated resume did not clear the collection pause."
+        );
         var addressChanges = 0;
         server.PhoneAddressChanged += _ => addressChanges++;
         var addressNonce = Guid.NewGuid();
-        using var addressRequest = JsonDocument.Parse(JsonSerializer.Serialize(new {
-            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(addressNonce), ack = "",
-            mac = Hex(Hmac(key,
-                $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(addressNonce)}|")),
-            diagnosticAddressVersion = "1", diagnosticAddresses = "[\"192.168.40.22\"]"
-        }));
-        var pullMethod = typeof(TransferServer).GetMethod("Pull",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        using var addressRequest = JsonDocument.Parse(
+            JsonSerializer.Serialize(
+                new
+                {
+                    version = "2",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(physical),
+                    nonce = Upper(addressNonce),
+                    ack = "",
+                    mac = Hex(
+                        Hmac(
+                            key,
+                            $"v2|{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(addressNonce)}|"
+                        )
+                    ),
+                    diagnosticAddressVersion = "1",
+                    diagnosticAddresses = "[\"192.168.40.22\"]",
+                }
+            )
+        );
+        var pullMethod = typeof(TransferServer).GetMethod(
+            "Pull",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+        )!;
         _ = pullMethod.Invoke(server, [addressRequest.RootElement, "192.168.3.31"]);
-        Check(state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
-            "An authenticated address change did not update the wireless collection route.");
-        Check(DiagnosticRoutes.Candidates(state.Phones[0]).All(c => c.Address != "192.168.40.22"),
-            "Unsigned v2 fields changed the diagnostic endpoint");
+        Check(
+            state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
+            "An authenticated address change did not update the wireless collection route."
+        );
+        Check(
+            DiagnosticRoutes.Candidates(state.Phones[0]).All(c => c.Address != "192.168.40.22"),
+            "Unsigned v2 fields changed the diagnostic endpoint"
+        );
         var invalidNonce = Guid.NewGuid();
-        using var invalidAddressRequest = JsonDocument.Parse(JsonSerializer.Serialize(new {
-            version = "2", hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(invalidNonce), ack = "", mac = new string('0', 64)
-        }));
+        using var invalidAddressRequest = JsonDocument.Parse(
+            JsonSerializer.Serialize(
+                new
+                {
+                    version = "2",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(physical),
+                    nonce = Upper(invalidNonce),
+                    ack = "",
+                    mac = new string('0', 64),
+                }
+            )
+        );
         _ = pullMethod.Invoke(server, [invalidAddressRequest.RootElement, "192.168.3.32"]);
-        Check(state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
-            "An unauthenticated request changed the device address.");
+        Check(
+            state.Phones[0].LastKnownAddress == "192.168.3.31" && addressChanges == 1,
+            "An unauthenticated request changed the device address."
+        );
         var secondKey = RandomNumberGenerator.GetBytes(32);
-        var second = new PairedPhone { Udid = "other-iphone", Name = "Other iPhone",
-            Model = "iPhone18,3", PhysicalDeviceId = Guid.NewGuid(), Secret = secondKey };
+        var second = new PairedPhone
+        {
+            Udid = "other-iphone",
+            Name = "Other iPhone",
+            Model = "iPhone18,3",
+            PhysicalDeviceId = Guid.NewGuid(),
+            Secret = secondKey,
+        };
         state.Phones.Add(second);
         StateStore.Save(state);
-        async Task<byte[]> SecurePull(Guid nonce, long? timestamp = null, string? liveRevision = null, string? detailsRevision = null,
-            string? diagnosticHints = null) {
+        async Task<byte[]> SecurePull(
+            Guid nonce,
+            long? timestamp = null,
+            string? liveRevision = null,
+            string? detailsRevision = null,
+            string? diagnosticHints = null
+        )
+        {
             var at = timestamp ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var inner = JsonSerializer.SerializeToUtf8Bytes(new {
-                version = "2", hostID = Upper(invitation.HostId),
-                physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(nonce), ack = "",
-                mac = Hex(Hmac(secondKey,
-                    $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|")),
-                liveBatteryVersion = liveRevision is null ? null : "1",
-                liveBatteryRevision = liveRevision, liveBatteryDetailsVersion = detailsRevision is null ? null : "1",
-                liveBatteryDetailsRevision = detailsRevision,
-                diagnosticAddressVersion = diagnosticHints is null ? null : "1",
-                diagnosticAddresses = diagnosticHints
-            });
+            var inner = JsonSerializer.SerializeToUtf8Bytes(
+                new
+                {
+                    version = "2",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(second.PhysicalDeviceId),
+                    nonce = Upper(nonce),
+                    ack = "",
+                    mac = Hex(
+                        Hmac(
+                            secondKey,
+                            $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|"
+                        )
+                    ),
+                    liveBatteryVersion = liveRevision is null ? null : "1",
+                    liveBatteryRevision = liveRevision,
+                    liveBatteryDetailsVersion = detailsRevision is null ? null : "1",
+                    liveBatteryDetailsRevision = detailsRevision,
+                    diagnosticAddressVersion = diagnosticHints is null ? null : "1",
+                    diagnosticAddresses = diagnosticHints,
+                }
+            );
             var iv = RandomNumberGenerator.GetBytes(12);
             var cipher = new byte[inner.Length];
             var tag = new byte[16];
             var aad = Encoding.UTF8.GetBytes(
-                $"v3|request|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|{at}");
+                $"v3|request|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(nonce)}|{at}"
+            );
             using (var aes = new AesGcm(secondKey, 16))
                 aes.Encrypt(iv, inner, cipher, tag, aad);
-            return await ExchangeAsync(new {
-                version = "3", hostID = Upper(invitation.HostId),
-                physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(nonce),
-                issuedAt = at, box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray())
-            });
+            return await ExchangeAsync(
+                new
+                {
+                    version = "3",
+                    hostID = Upper(invitation.HostId),
+                    physicalDeviceID = Upper(second.PhysicalDeviceId),
+                    nonce = Upper(nonce),
+                    issuedAt = at,
+                    box = Convert.ToBase64String(iv.Concat(cipher).Concat(tag).ToArray()),
+                }
+            );
         }
-        var registryXML = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "battery-registry.xml"));
+        var registryXML = File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "Fixtures", "battery-registry.xml")
+        );
         var native = LiveBatterySnapshot.Parse(registryXML);
-        Check(native.Values.Count == 4 && native.Values["CycleCount"] == 245 && native.Values["DesignCapacity"] == 3000 &&
-            native.Values["FullChargeCapacity"] == 3100 && native.Values["CurrentCapacity"] == 67 && native.Charging == true,
-            "Native validation lost precedence or accepted boolean/unknown capacities");
-        Check(native.Fields.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "Huge" }) && f.Value == "18446744073709551615"),
-            "Native UInt64 lost precision");
-        Check(native.Fields.Any(f => f.Path.SequenceEqual(new[] { "Binary" }) && f.Kind == "data" && f.Value == "AQI=") &&
-            native.Fields.Any(f => f.Path.SequenceEqual(new[] { "Date" }) && f.Kind == "date") &&
-            native.Fields.Any(f => f.Path.SequenceEqual(new[] { "EmptyDictionary" }) && f.Kind == "dictionary") &&
-            native.Fields.Any(f => f.Path.SequenceEqual(new[] { "EmptyArray" }) && f.Kind == "array"), "Typed leaves lost");
+        Check(
+            native.Values.Count == 4
+                && native.Values["CycleCount"] == 245
+                && native.Values["DesignCapacity"] == 3000
+                && native.Values["FullChargeCapacity"] == 3100
+                && native.Values["CurrentCapacity"] == 67
+                && native.Charging == true,
+            "Native validation lost precedence or accepted boolean/unknown capacities"
+        );
+        Check(
+            native.Fields.Any(f =>
+                f.Path.SequenceEqual(new[] { "BatteryData", "Huge" })
+                && f.Value == "18446744073709551615"
+            ),
+            "Native UInt64 lost precision"
+        );
+        Check(
+            native.Fields.Any(f =>
+                f.Path.SequenceEqual(new[] { "Binary" }) && f.Kind == "data" && f.Value == "AQI="
+            )
+                && native.Fields.Any(f =>
+                    f.Path.SequenceEqual(new[] { "Date" }) && f.Kind == "date"
+                )
+                && native.Fields.Any(f =>
+                    f.Path.SequenceEqual(new[] { "EmptyDictionary" }) && f.Kind == "dictionary"
+                )
+                && native.Fields.Any(f =>
+                    f.Path.SequenceEqual(new[] { "EmptyArray" }) && f.Kind == "array"
+                ),
+            "Typed leaves lost"
+        );
         var table = BatteryPresentation.Summary(native.Values, native.Charging, native.Fields);
         var optional = BatteryPresentation.Details(native.Values, native.Charging, native.Fields);
-        Check(table.Any(r => r.Key == "DesignCapacity" && r.Value == 4000.ToString("N0")) &&
-            table.Any(r => r.Key == "Voltage" && r.Value == "4010" && r.Unit == " mV") &&
-            table.Any(r => r.Key == "ExternalConnected" && r.Kind == "boolean") &&
-            !table.Any(r => r.Key is "UnknownCode" or "Huge" or "NominalChargeCapacity" or "AppleRawMaxCapacity" or "FullChargeCapacity" or "CurrentCapacity"), "Summary guessed an unknown field");
-        Check(optional.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "CurrentCapacity" })) &&
-            optional.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "DesignCapacity" }) && f.Value == "3000") &&
-            optional.Any(f => f.Path[0] == "IOReportLegend") && !optional.Any(f => f.Path.SequenceEqual(new[] { "Voltage" })),
-            "Details lost ambiguous fields or repeated verified rows");
-        Check(BatteryPresentation.Details(new(), true, [new(["IsCharging"], "boolean", "false"), new(["Voltage"], "string", "4010")]).Length == 2,
-            "Invalid or contradictory values disappeared");
-        var changedNative = LiveBatterySnapshot.Parse(registryXML.Replace("<integer>7</integer>", "<integer>8</integer>", StringComparison.Ordinal));
-        Check(native.Revision == changedNative.Revision && native.DetailsRevision != changedNative.DetailsRevision,
-            "Details altered core revision");
-        foreach (var invalid in new[] { new string('a', 1048577),
-            registryXML.Replace("<integer>4010</integer>", "<string>" + new string('a', 131073) + "</string>"),
-            "<?xml version=\"1.0\"?><!DOCTYPE plist [<!ENTITY test SYSTEM \"file:///not-readable\">]><plist><dict><key>X</key><string>&test;</string></dict></plist>" }) {
+        Check(
+            table.Any(r => r.Key == "DesignCapacity" && r.Value == 4000.ToString("N0"))
+                && table.Any(r => r.Key == "Voltage" && r.Value == "4010" && r.Unit == " mV")
+                && table.Any(r => r.Key == "ExternalConnected" && r.Kind == "boolean")
+                && !table.Any(r =>
+                    r.Key
+                        is "UnknownCode"
+                            or "Huge"
+                            or "NominalChargeCapacity"
+                            or "AppleRawMaxCapacity"
+                            or "FullChargeCapacity"
+                            or "CurrentCapacity"
+                ),
+            "Summary guessed an unknown field"
+        );
+        Check(
+            optional.Any(f => f.Path.SequenceEqual(new[] { "BatteryData", "CurrentCapacity" }))
+                && optional.Any(f =>
+                    f.Path.SequenceEqual(new[] { "BatteryData", "DesignCapacity" })
+                    && f.Value == "3000"
+                )
+                && optional.Any(f => f.Path[0] == "IOReportLegend")
+                && !optional.Any(f => f.Path.SequenceEqual(new[] { "Voltage" })),
+            "Details lost ambiguous fields or repeated verified rows"
+        );
+        Check(
+            BatteryPresentation
+                .Details(
+                    new(),
+                    true,
+                    [new(["IsCharging"], "boolean", "false"), new(["Voltage"], "string", "4010")]
+                )
+                .Length == 2,
+            "Invalid or contradictory values disappeared"
+        );
+        var changedNative = LiveBatterySnapshot.Parse(
+            registryXML.Replace(
+                "<integer>7</integer>",
+                "<integer>8</integer>",
+                StringComparison.Ordinal
+            )
+        );
+        Check(
+            native.Revision == changedNative.Revision
+                && native.DetailsRevision != changedNative.DetailsRevision,
+            "Details altered core revision"
+        );
+        foreach (
+            var invalid in new[]
+            {
+                new string('a', 1048577),
+                registryXML.Replace(
+                    "<integer>4010</integer>",
+                    "<string>" + new string('a', 131073) + "</string>"
+                ),
+                "<?xml version=\"1.0\"?><!DOCTYPE plist [<!ENTITY test SYSTEM \"file:///not-readable\">]><plist><dict><key>X</key><string>&test;</string></dict></plist>",
+            }
+        )
+        {
             var rejected = false;
-            try { _ = LiveBatterySnapshot.Parse(invalid); }
-            catch (Exception error) when (error is InvalidDataException or System.Xml.XmlException) { rejected = true; }
+            try
+            {
+                _ = LiveBatterySnapshot.Parse(invalid);
+            }
+            catch (Exception error) when (error is InvalidDataException or System.Xml.XmlException)
+            {
+                rejected = true;
+            }
             Check(rejected, "Invalid or oversized plist accepted");
         }
-        var liveFixture = LiveBatterySnapshot.Parse("""
+        var liveFixture = LiveBatterySnapshot.Parse(
+            """
             {"version":1,"values":{"CycleCount":245,"DesignCapacity":4000},
              "revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
              "acquiredAt":"2026-10-07T12:00:00Z"}
-            """);
-        foreach (var unavailable in new[] { "{\"error\":\"battery_unavailable\"}", "{}", "[]",
-            "{\"version\":1,\"values\":[]}", "{\"version\":1}" }) {
+            """
+        );
+        foreach (
+            var unavailable in new[]
+            {
+                "{\"error\":\"battery_unavailable\"}",
+                "{}",
+                "[]",
+                "{\"version\":1,\"values\":[]}",
+                "{\"version\":1}",
+            }
+        )
+        {
             var handled = false;
-            try { _ = LiveBatterySnapshot.Parse(unavailable); }
-            catch (InvalidDataException error) when (error.Message == "battery_unavailable") { handled = true; }
+            try
+            {
+                _ = LiveBatterySnapshot.Parse(unavailable);
+            }
+            catch (InvalidDataException error) when (error.Message == "battery_unavailable")
+            {
+                handled = true;
+            }
             Check(handled, "Unavailable/missing snapshot fields leaked a key lookup error");
         }
         var retryClock = new DateTimeOffset(2026, 10, 11, 9, 0, 0, TimeSpan.FromHours(9));
         var todayRetryName = "Analytics-2026-10-11-090007.000.ips.ca.synced";
         var pastRetryName = "Analytics-2026-10-10-090006.ips.ca.synced";
         var retryState = new CompanionState();
-        var retryPhone = new PairedPhone { Name = "Retry fixture", PhysicalDeviceId = Guid.NewGuid() };
-        var todayRetry = Collector.RecordDownloadFailure(retryState, retryPhone,
-            "/Retired/" + todayRetryName, null, "FILE_OPEN failed with status: 10", retryClock);
-        var pastRetry = Collector.RecordDownloadFailure(retryState, retryPhone,
-            "/Retired/" + pastRetryName, null, "FILE_OPEN failed with status: 10", retryClock);
-        Check(todayRetry == retryClock && pastRetry == retryClock,
-            "Failed reads added another cooldown on top of the automatic timer");
+        var retryPhone = new PairedPhone
+        {
+            Name = "Retry fixture",
+            PhysicalDeviceId = Guid.NewGuid(),
+        };
+        var todayRetry = Collector.RecordDownloadFailure(
+            retryState,
+            retryPhone,
+            "/Retired/" + todayRetryName,
+            null,
+            "FILE_OPEN failed with status: 10",
+            retryClock
+        );
+        var pastRetry = Collector.RecordDownloadFailure(
+            retryState,
+            retryPhone,
+            "/Retired/" + pastRetryName,
+            null,
+            "FILE_OPEN failed with status: 10",
+            retryClock
+        );
+        Check(
+            todayRetry == retryClock && pastRetry == retryClock,
+            "Failed reads added another cooldown on top of the automatic timer"
+        );
         var reloadedRetry = StateStore.Load();
-        Check(reloadedRetry.RecheckAfter.Count == 2 && reloadedRetry.Delivered.Count == 0 &&
-            reloadedRetry.UnclassifiedObservations.Count == 0,
-            "Failed-file backoff was lost across restart or permanently excluded a log");
+        Check(
+            reloadedRetry.RecheckAfter.Count == 2
+                && reloadedRetry.Delivered.Count == 0
+                && reloadedRetry.UnclassifiedObservations.Count == 0,
+            "Failed-file backoff was lost across restart or permanently excluded a log"
+        );
         StateStore.Save(state);
-        var priority = Collector.PrioritizedCandidates(new[] { ("/Retired/" + pastRetryName, (string?)null),
-            ("/Retired/" + todayRetryName, (string?)null) });
-        Check(priority[0].Path.EndsWith(todayRetryName, StringComparison.Ordinal),
-            "Historical file failures precede current-day reports");
-        Console.WriteLine("PASS: unavailable battery reply and persistent daily-priority failed-file backoff");
-        const string details = "[{\"path\":[\"BatteryData\",\"Huge\"],\"kind\":\"number\",\"value\":\"18446744073709551615\"}]";
+        var priority = Collector.PrioritizedCandidates(
+            new[]
+            {
+                ("/Retired/" + pastRetryName, (string?)null),
+                ("/Retired/" + todayRetryName, (string?)null),
+            }
+        );
+        Check(
+            priority[0].Path.EndsWith(todayRetryName, StringComparison.Ordinal),
+            "Historical file failures precede current-day reports"
+        );
+        Console.WriteLine(
+            "PASS: unavailable battery reply and persistent daily-priority failed-file backoff"
+        );
+        const string details =
+            "[{\"path\":[\"BatteryData\",\"Huge\"],\"kind\":\"number\",\"value\":\"18446744073709551615\"}]";
         var detailsHash = Hex(SHA256.HashData(Encoding.UTF8.GetBytes(details)));
         liveFixture = liveFixture with { DetailsJSON = details, DetailsRevision = detailsHash };
-        Check(liveFixture.Fields[0].Value == "18446744073709551615", "Large integer lost precision");
-        try { RawBatteryField.Decode(details + " ", detailsHash); throw new Exception("Tampering accepted"); }
+        Check(
+            liveFixture.Fields[0].Value == "18446744073709551615",
+            "Large integer lost precision"
+        );
+        try
+        {
+            RawBatteryField.Decode(details + " ", detailsHash);
+            throw new Exception("Tampering accepted");
+        }
         catch (InvalidDataException) { }
         server.LiveBattery.Set(second.PhysicalDeviceId, liveFixture);
         var liveNonce = Guid.NewGuid();
-        var liveReply = Open(await SecurePull(liveNonce, liveRevision: ""), secondKey,
-            invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        var liveReply = Open(
+            await SecurePull(liveNonce, liveRevision: ""),
+            secondKey,
+            invitation.HostId,
+            second.PhysicalDeviceId,
+            liveNonce
+        );
         var liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
-        Check(liveReply.Name.Length == 0 && liveJson.GetProperty("type").GetString() == "live-battery" &&
-            liveJson.TryGetProperty("values", out _), "Live battery returned a log or omitted values.");
+        Check(
+            liveReply.Name.Length == 0
+                && liveJson.GetProperty("type").GetString() == "live-battery"
+                && liveJson.TryGetProperty("values", out _),
+            "Live battery returned a log or omitted values."
+        );
         liveNonce = Guid.NewGuid();
-        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision), secondKey,
-            invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveReply = Open(
+            await SecurePull(liveNonce, liveRevision: liveFixture.Revision),
+            secondKey,
+            invitation.HostId,
+            second.PhysicalDeviceId,
+            liveNonce
+        );
         liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
-        Check(!liveJson.TryGetProperty("values", out _) && liveJson.TryGetProperty("acquiredAt", out _),
-            "Unchanged values were resent or acquisition timestamp omitted.");
+        Check(
+            !liveJson.TryGetProperty("values", out _)
+                && liveJson.TryGetProperty("acquiredAt", out _),
+            "Unchanged values were resent or acquisition timestamp omitted."
+        );
         Check(!liveJson.TryGetProperty("detailsJSON", out _), "Legacy client received raw details");
         liveNonce = Guid.NewGuid();
-        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision, detailsRevision: ""),
-            secondKey, invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveReply = Open(
+            await SecurePull(liveNonce, liveRevision: liveFixture.Revision, detailsRevision: ""),
+            secondKey,
+            invitation.HostId,
+            second.PhysicalDeviceId,
+            liveNonce
+        );
         liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
-        Check(liveJson.GetProperty("detailsJSON").GetString() == details && !liveJson.TryGetProperty("values", out _),
-            "Detail changes were coupled to core revision");
+        Check(
+            liveJson.GetProperty("detailsJSON").GetString() == details
+                && !liveJson.TryGetProperty("values", out _),
+            "Detail changes were coupled to core revision"
+        );
         liveNonce = Guid.NewGuid();
-        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision, detailsRevision: detailsHash),
-            secondKey, invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveReply = Open(
+            await SecurePull(
+                liveNonce,
+                liveRevision: liveFixture.Revision,
+                detailsRevision: detailsHash
+            ),
+            secondKey,
+            invitation.HostId,
+            second.PhysicalDeviceId,
+            liveNonce
+        );
         liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
-        Check(!liveJson.TryGetProperty("detailsJSON", out _) && liveJson.GetProperty("detailsRevision").GetString() == detailsHash,
-            "Unchanged details were resent");
+        Check(
+            !liveJson.TryGetProperty("detailsJSON", out _)
+                && liveJson.GetProperty("detailsRevision").GetString() == detailsHash,
+            "Unchanged details were resent"
+        );
         server.LiveBattery.Set(second.PhysicalDeviceId, null);
         liveNonce = Guid.NewGuid();
-        liveReply = Open(await SecurePull(liveNonce, liveRevision: liveFixture.Revision), secondKey,
-            invitation.HostId, second.PhysicalDeviceId, liveNonce);
+        liveReply = Open(
+            await SecurePull(liveNonce, liveRevision: liveFixture.Revision),
+            secondKey,
+            invitation.HostId,
+            second.PhysicalDeviceId,
+            liveNonce
+        );
         liveJson = JsonDocument.Parse(liveReply.Content).RootElement;
-        Check(liveJson.GetProperty("state").GetString() == "stale", "Stale battery was shown as current.");
-        Check(!JsonSerializer.Serialize(state).Contains("DesignCapacity"), "Current values were persisted.");
+        Check(
+            liveJson.GetProperty("state").GetString() == "stale",
+            "Stale battery was shown as current."
+        );
+        Check(
+            !JsonSerializer.Serialize(state).Contains("DesignCapacity"),
+            "Current values were persisted."
+        );
         var hintNonce = Guid.NewGuid();
         _ = await SecurePull(hintNonce, diagnosticHints: "[\"192.168.40.23\"]");
-        Check(DiagnosticRoutes.Candidates(second).First().Address == "192.168.40.23",
-            "Sealed mobile LAN hints were not adopted");
-        Check((await SecurePull(hintNonce, diagnosticHints: "[\"192.168.40.24\"]")).Length == 0 &&
+        Check(
             DiagnosticRoutes.Candidates(second).First().Address == "192.168.40.23",
-            "A replayed request replaced diagnostic endpoints");
+            "Sealed mobile LAN hints were not adopted"
+        );
+        Check(
+            (await SecurePull(hintNonce, diagnosticHints: "[\"192.168.40.24\"]")).Length == 0
+                && DiagnosticRoutes.Candidates(second).First().Address == "192.168.40.23",
+            "A replayed request replaced diagnostic endpoints"
+        );
         var secureNonce = Guid.NewGuid();
-        _ = Open(await SecurePull(secureNonce), secondKey, invitation.HostId,
-            second.PhysicalDeviceId, secureNonce);
-        Check((await SecurePull(secureNonce)).Length == 0,
-            "Sealed transfer replay was accepted.");
-        Check((await SecurePull(Guid.NewGuid(),
-            DateTimeOffset.UtcNow.AddHours(-1).ToUnixTimeSeconds())).Length == 0,
-            "Expired sealed transfer was accepted.");
+        _ = Open(
+            await SecurePull(secureNonce),
+            secondKey,
+            invitation.HostId,
+            second.PhysicalDeviceId,
+            secureNonce
+        );
+        Check((await SecurePull(secureNonce)).Length == 0, "Sealed transfer replay was accepted.");
+        Check(
+            (
+                await SecurePull(
+                    Guid.NewGuid(),
+                    DateTimeOffset.UtcNow.AddHours(-1).ToUnixTimeSeconds()
+                )
+            ).Length == 0,
+            "Expired sealed transfer was accepted."
+        );
         var oldNonce = Guid.NewGuid();
-        Check((await ExchangeAsync(new {
-            version = "2", hostID = Upper(invitation.HostId),
-            physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(oldNonce), ack = "",
-            mac = Hex(Hmac(secondKey,
-                $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(oldNonce)}|"))
-        })).Length == 0 && StateStore.Load().SecureTransferPhones.Contains(second.PhysicalDeviceId) &&
-            StateStore.Load().UsedRequestNonces.ContainsKey(secureNonce),
-            "Secure pairing downgraded after update or state reload.");
+        Check(
+            (
+                await ExchangeAsync(
+                    new
+                    {
+                        version = "2",
+                        hostID = Upper(invitation.HostId),
+                        physicalDeviceID = Upper(second.PhysicalDeviceId),
+                        nonce = Upper(oldNonce),
+                        ack = "",
+                        mac = Hex(
+                            Hmac(
+                                secondKey,
+                                $"v2|{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(oldNonce)}|"
+                            )
+                        ),
+                    }
+                )
+            ).Length == 0
+                && StateStore.Load().SecureTransferPhones.Contains(second.PhysicalDeviceId)
+                && StateStore.Load().UsedRequestNonces.ContainsKey(secureNonce),
+            "Secure pairing downgraded after update or state reload."
+        );
         server.Revoke(state.Phones[0]);
-        Check(state.Phones.Count == 1 && state.Phones[0] == second &&
-            state.RevokedPhones.Count == 1, "Revoking one phone removed another pairing.");
+        Check(
+            state.Phones.Count == 1 && state.Phones[0] == second && state.RevokedPhones.Count == 1,
+            "Revoking one phone removed another pairing."
+        );
         var revokedNonce = Guid.NewGuid();
-        var control = Open(await Pull(revokedNonce), key, invitation.HostId, physical, revokedNonce);
-        Check(control.Name.Length == 0 &&
-            JsonDocument.Parse(control.Content).RootElement.GetProperty("type").GetString() == "unpair",
-            "The revoked phone did not receive an authenticated removal command.");
-        Check((await Pull(revokedNonce)).Length == 0,
-            "A revoked phone replayed a pull nonce.");
+        var control = Open(
+            await Pull(revokedNonce),
+            key,
+            invitation.HostId,
+            physical,
+            revokedNonce
+        );
+        Check(
+            control.Name.Length == 0
+                && JsonDocument.Parse(control.Content).RootElement.GetProperty("type").GetString()
+                    == "unpair",
+            "The revoked phone did not receive an authenticated removal command."
+        );
+        Check((await Pull(revokedNonce)).Length == 0, "A revoked phone replayed a pull nonce.");
         var unpairNonce = Guid.NewGuid();
         var identity = $"{Upper(invitation.HostId)}|{Upper(physical)}|{Upper(unpairNonce)}";
-        var unpairRequest = new { type = "unpair", version = "1",
-            hostID = Upper(invitation.HostId), physicalDeviceID = Upper(physical),
-            nonce = Upper(unpairNonce), proof = Hex(Hmac(key, $"unpair|v1|{identity}")) };
+        var unpairRequest = new
+        {
+            type = "unpair",
+            version = "1",
+            hostID = Upper(invitation.HostId),
+            physicalDeviceID = Upper(physical),
+            nonce = Upper(unpairNonce),
+            proof = Hex(Hmac(key, $"unpair|v1|{identity}")),
+        };
         var unpairReply = JsonDocument.Parse(await ExchangeAsync(unpairRequest)).RootElement;
-        Check(unpairReply.GetProperty("type").GetString() == "unpair-ack" &&
-            unpairReply.GetProperty("proof").GetString() ==
-                Hex(Hmac(key, $"unpair-ack|v1|{identity}")),
-            "The revoked phone could not finish the idempotent handshake.");
-        Check((await ExchangeAsync(new { type = "unpair", version = "1",
-            hostID = Upper(invitation.HostId), physicalDeviceID = Upper(second.PhysicalDeviceId),
-            nonce = Upper(Guid.NewGuid()), proof = new string('0', 64) })).Length == 0 &&
-            state.Phones.Contains(second), "An invalid removal proof revoked another phone.");
+        Check(
+            unpairReply.GetProperty("type").GetString() == "unpair-ack"
+                && unpairReply.GetProperty("proof").GetString()
+                    == Hex(Hmac(key, $"unpair-ack|v1|{identity}")),
+            "The revoked phone could not finish the idempotent handshake."
+        );
+        Check(
+            (
+                await ExchangeAsync(
+                    new
+                    {
+                        type = "unpair",
+                        version = "1",
+                        hostID = Upper(invitation.HostId),
+                        physicalDeviceID = Upper(second.PhysicalDeviceId),
+                        nonce = Upper(Guid.NewGuid()),
+                        proof = new string('0', 64),
+                    }
+                )
+            ).Length == 0
+                && state.Phones.Contains(second),
+            "An invalid removal proof revoked another phone."
+        );
         var secondNonce = Guid.NewGuid();
-        var secondIdentity = $"{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(secondNonce)}";
-        var secondReply = JsonDocument.Parse(await ExchangeAsync(new {
-            type = "unpair", version = "1", hostID = Upper(invitation.HostId),
-            physicalDeviceID = Upper(second.PhysicalDeviceId), nonce = Upper(secondNonce),
-            proof = Hex(Hmac(secondKey, $"unpair|v1|{secondIdentity}"))
-        })).RootElement;
-        Check(secondReply.GetProperty("type").GetString() == "unpair-ack" &&
-            state.Phones.Count == 0 && state.RevokedPhones.Count == 2,
-            "Phone-initiated removal did not persist on Windows.");
-        Console.WriteLine("PASS: v3 identity pairing, sealed transfer, ACK, replay and downgrade rejection");
+        var secondIdentity =
+            $"{Upper(invitation.HostId)}|{Upper(second.PhysicalDeviceId)}|{Upper(secondNonce)}";
+        var secondReply = JsonDocument
+            .Parse(
+                await ExchangeAsync(
+                    new
+                    {
+                        type = "unpair",
+                        version = "1",
+                        hostID = Upper(invitation.HostId),
+                        physicalDeviceID = Upper(second.PhysicalDeviceId),
+                        nonce = Upper(secondNonce),
+                        proof = Hex(Hmac(secondKey, $"unpair|v1|{secondIdentity}")),
+                    }
+                )
+            )
+            .RootElement;
+        Check(
+            secondReply.GetProperty("type").GetString() == "unpair-ack"
+                && state.Phones.Count == 0
+                && state.RevokedPhones.Count == 2,
+            "Phone-initiated removal did not persist on Windows."
+        );
+        Console.WriteLine(
+            "PASS: v3 identity pairing, sealed transfer, ACK, replay and downgrade rejection"
+        );
         var directUdid = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_UDID");
         var directAddress = Environment.GetEnvironmentVariable("MOCHILOG_TEST_DIRECT_ADDRESS");
         if (!string.IsNullOrWhiteSpace(directUdid) && !string.IsNullOrWhiteSpace(directAddress))
         {
-            var probe = new PairedPhone {
-                Udid = directUdid, Name = "Direct diagnostic probe", Model = "iPad",
-                PhysicalDeviceId = Guid.NewGuid(), ManualAddress = directAddress
+            var probe = new PairedPhone
+            {
+                Udid = directUdid,
+                Name = "Direct diagnostic probe",
+                Model = "iPad",
+                PhysicalDeviceId = Guid.NewGuid(),
+                ManualAddress = directAddress,
             };
             var probeState = new CompanionState();
             try
             {
                 var collection = await Collector.CollectAsync(probe, probeState);
-                Check(collection.Failed == 0, "Direct wireless collection failed: " + collection.LastError);
-                Console.WriteLine($"PASS: direct wireless collection, saved={collection.Saved}, skipped={collection.Skipped}");
+                Check(
+                    collection.Failed == 0,
+                    "Direct wireless collection failed: " + collection.LastError
+                );
+                Console.WriteLine(
+                    $"PASS: direct wireless collection, saved={collection.Saved}, skipped={collection.Skipped}"
+                );
             }
             finally
             {
-                if (Directory.Exists(StateStore.Root)) Directory.Delete(StateStore.Root, true);
+                if (Directory.Exists(StateStore.Root))
+                    Directory.Delete(StateStore.Root, true);
             }
         }
     }

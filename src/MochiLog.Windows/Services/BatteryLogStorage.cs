@@ -1,11 +1,19 @@
-using System.Text.Json;
 using System.Globalization;
+using System.Text.Json;
 
 namespace MochiLog_Windows.Services;
 
-public sealed record StoredBatteryLog(string Id, string Path, Guid DeviceId,
-    string DeviceName, string Kind, string? Source, long Size,
-    DateTimeOffset StoredAt, bool Pending)
+public sealed record StoredBatteryLog(
+    string Id,
+    string Path,
+    Guid DeviceId,
+    string DeviceName,
+    string Kind,
+    string? Source,
+    long Size,
+    DateTimeOffset StoredAt,
+    bool Pending
+)
 {
     public string Name => System.IO.Path.GetFileName(Path);
     public string LogDay => Name.Length >= 20 ? Name.Substring(10, 10) : "";
@@ -21,52 +29,79 @@ public sealed class BatteryStorageSettings
 public static class BatteryLogStorage
 {
     public sealed record VerifiedBatteryReceipt(string Kind, string? Source, string Day);
+
     private static readonly object Gate = new();
-    private static string ArchiveRoot => System.IO.Path.Combine(StateStore.Root, "BatteryLogArchive");
-    private static string SettingsFile => System.IO.Path.Combine(StateStore.Root, "battery-storage.json");
-    private static string ReceiptsFile(PairedPhone phone) => System.IO.Path.Combine(StateStore.Root,
-        "verified-receipts-" + phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + ".json");
+    private static string ArchiveRoot =>
+        System.IO.Path.Combine(StateStore.Root, "BatteryLogArchive");
+    private static string SettingsFile =>
+        System.IO.Path.Combine(StateStore.Root, "battery-storage.json");
+
+    private static string ReceiptsFile(PairedPhone phone) =>
+        System.IO.Path.Combine(
+            StateStore.Root,
+            "verified-receipts-" + phone.PhysicalDeviceId.ToString("D").ToUpperInvariant() + ".json"
+        );
 
     private static List<VerifiedBatteryReceipt> Receipts(PairedPhone phone)
     {
-        try { return JsonSerializer.Deserialize<List<VerifiedBatteryReceipt>>(
-            File.ReadAllBytes(ReceiptsFile(phone))) ?? []; }
-        catch (IOException) { return []; }
-        catch (JsonException) { return []; }
+        try
+        {
+            return JsonSerializer.Deserialize<List<VerifiedBatteryReceipt>>(
+                    File.ReadAllBytes(ReceiptsFile(phone))
+                ) ?? [];
+        }
+        catch (IOException)
+        {
+            return [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     private static void RecordReceipt(PairedPhone phone, VerifiedBatteryReceipt receipt)
     {
-        var cutoff = DateOnly.FromDateTime(DateTime.Now.AddDays(-14))
+        var cutoff = DateOnly
+            .FromDateTime(DateTime.Now.AddDays(-14))
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var entries = Receipts(phone).Where(item => string.CompareOrdinal(item.Day, cutoff) >= 0)
+        var entries = Receipts(phone)
+            .Where(item => string.CompareOrdinal(item.Day, cutoff) >= 0)
             .ToList();
-        if (!entries.Contains(receipt)) entries.Add(receipt);
+        if (!entries.Contains(receipt))
+            entries.Add(receipt);
         Directory.CreateDirectory(StateStore.Root);
         var file = ReceiptsFile(phone);
         var temporary = file + ".new";
         File.WriteAllBytes(temporary, JsonSerializer.SerializeToUtf8Bytes(entries));
         File.Move(temporary, file, true);
     }
+
     private static BatteryStorageSettings _settings = LoadSettings();
 
     public static BatteryStorageSettings Settings
     {
-        get { lock (Gate) return new BatteryStorageSettings {
-            KeepAfterDelivery = _settings.KeepAfterDelivery,
-            LimitMB = _settings.LimitMB,
-            RetentionMonths = _settings.RetentionMonths
-        }; }
+        get
+        {
+            lock (Gate)
+                return new BatteryStorageSettings
+                {
+                    KeepAfterDelivery = _settings.KeepAfterDelivery,
+                    LimitMB = _settings.LimitMB,
+                    RetentionMonths = _settings.RetentionMonths,
+                };
+        }
     }
 
     public static void UpdateSettings(bool keep, int limitMB, int retentionMonths)
     {
         lock (Gate)
         {
-            _settings = new BatteryStorageSettings {
+            _settings = new BatteryStorageSettings
+            {
                 KeepAfterDelivery = keep,
                 LimitMB = Math.Clamp(limitMB, 100, 100_000),
-                RetentionMonths = Math.Clamp(retentionMonths, 1, 60)
+                RetentionMonths = Math.Clamp(retentionMonths, 1, 60),
             };
             Directory.CreateDirectory(StateStore.Root);
             var temporary = SettingsFile + ".new";
@@ -78,10 +113,20 @@ public static class BatteryLogStorage
 
     private static BatteryStorageSettings LoadSettings()
     {
-        try { return JsonSerializer.Deserialize<BatteryStorageSettings>(File.ReadAllBytes(SettingsFile))
-            ?? new BatteryStorageSettings(); }
-        catch (IOException) { return new BatteryStorageSettings(); }
-        catch (JsonException) { return new BatteryStorageSettings(); }
+        try
+        {
+            return JsonSerializer.Deserialize<BatteryStorageSettings>(
+                    File.ReadAllBytes(SettingsFile)
+                ) ?? new BatteryStorageSettings();
+        }
+        catch (IOException)
+        {
+            return new BatteryStorageSettings();
+        }
+        catch (JsonException)
+        {
+            return new BatteryStorageSettings();
+        }
     }
 
     public static void ArchiveAcknowledged(string file, PairedPhone phone)
@@ -91,27 +136,48 @@ public static class BatteryLogStorage
             var resendMarker = file + ".force-resend";
             var queue = System.IO.Path.GetFullPath(TransferServer.QueuePath(phone));
             var source = System.IO.Path.GetFullPath(file);
-            if (!source.StartsWith(queue + System.IO.Path.DirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Invalid battery log queue path");
+            if (
+                !source.StartsWith(
+                    queue + System.IO.Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                throw new InvalidDataException("Invalid battery log queue path");
             var relative = System.IO.Path.GetRelativePath(queue, source);
             var parts = relative.Split(System.IO.Path.DirectorySeparatorChar);
-            if (!((parts.Length == 2 && parts[0] == "Host") ||
-                (parts.Length == 3 && parts[0] == "Watch")) ||
-                !parts[^1].StartsWith("Analytics-", StringComparison.Ordinal) ||
-                parts[^1].Length < 20) throw new InvalidDataException("Invalid battery log queue path");
-            RecordReceipt(phone, new VerifiedBatteryReceipt(parts[0],
-                parts.Length == 3 ? parts[1] : null,
-                parts[^1].Substring("Analytics-".Length, 10)));
-            if (!_settings.KeepAfterDelivery) {
+            if (
+                !(
+                    (parts.Length == 2 && parts[0] == "Host")
+                    || (parts.Length == 3 && parts[0] == "Watch")
+                )
+                || !parts[^1].StartsWith("Analytics-", StringComparison.Ordinal)
+                || parts[^1].Length < 20
+            )
+                throw new InvalidDataException("Invalid battery log queue path");
+            RecordReceipt(
+                phone,
+                new VerifiedBatteryReceipt(
+                    parts[0],
+                    parts.Length == 3 ? parts[1] : null,
+                    parts[^1].Substring("Analytics-".Length, 10)
+                )
+            );
+            if (!_settings.KeepAfterDelivery)
+            {
                 File.Delete(file);
                 File.Delete(resendMarker);
                 return;
             }
-            var destination = System.IO.Path.Combine(ArchiveRoot,
-                phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), relative);
+            var destination = System.IO.Path.Combine(
+                ArchiveRoot,
+                phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(),
+                relative
+            );
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(destination)!);
-            if (File.Exists(destination)) File.Delete(source);
-            else {
+            if (File.Exists(destination))
+                File.Delete(source);
+            else
+            {
                 File.Move(source, destination);
                 File.SetLastWriteTimeUtc(destination, DateTime.UtcNow);
             }
@@ -125,20 +191,33 @@ public static class BatteryLogStorage
         lock (Gate)
         {
             var rows = new List<StoredBatteryLog>();
-            var names = phones.GroupBy(phone => phone.PhysicalDeviceId)
+            var names = phones
+                .GroupBy(phone => phone.PhysicalDeviceId)
                 .ToDictionary(group => group.Key, group => group.Last().Name);
             foreach (var phone in phones)
             {
-                Scan(TransferServer.QueuePath(phone), phone.PhysicalDeviceId,
-                    phone.Name, true, rows);
+                Scan(
+                    TransferServer.QueuePath(phone),
+                    phone.PhysicalDeviceId,
+                    phone.Name,
+                    true,
+                    rows
+                );
             }
             if (Directory.Exists(ArchiveRoot))
             {
                 foreach (var folder in Directory.EnumerateDirectories(ArchiveRoot))
                 {
-                    if (!Guid.TryParse(System.IO.Path.GetFileName(folder), out var deviceId)) continue;
-                    Scan(folder, deviceId, names.GetValueOrDefault(deviceId) ??
-                        deviceId.ToString("D").ToUpperInvariant(), false, rows);
+                    if (!Guid.TryParse(System.IO.Path.GetFileName(folder), out var deviceId))
+                        continue;
+                    Scan(
+                        folder,
+                        deviceId,
+                        names.GetValueOrDefault(deviceId)
+                            ?? deviceId.ToString("D").ToUpperInvariant(),
+                        false,
+                        rows
+                    );
                 }
             }
             return rows.OrderByDescending(row => row.StoredAt).ToArray();
@@ -147,72 +226,146 @@ public static class BatteryLogStorage
 
     public static bool HasRequiredDailyLogs(PairedPhone phone, string day)
     {
-        try { return HasRequiredDailyLogs(phone.Model, List([phone]), day, Receipts(phone)); }
-        catch (IOException) { return false; }
+        try
+        {
+            return HasRequiredDailyLogs(phone.Model, List([phone]), day, Receipts(phone));
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
-    public static bool HasRequiredDailyLogs(string model, IReadOnlyList<StoredBatteryLog> rows,
-        string day, IReadOnlyList<VerifiedBatteryReceipt>? receipts = null)
+    public static bool HasRequiredDailyLogs(
+        string model,
+        IReadOnlyList<StoredBatteryLog> rows,
+        string day,
+        IReadOnlyList<VerifiedBatteryReceipt>? receipts = null
+    )
     {
         receipts ??= [];
-        if (!rows.Any(row => row.Kind == "Host" && row.LogDay == day) &&
-            !receipts.Any(row => row.Kind == "Host" && row.Day == day)) return false;
-        if (model.StartsWith("iPad", StringComparison.Ordinal)) return true;
-        if (!model.StartsWith("iPhone", StringComparison.Ordinal) ||
-            !DateOnly.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                DateTimeStyles.None, out var date)) return false;
+        if (
+            !rows.Any(row => row.Kind == "Host" && row.LogDay == day)
+            && !receipts.Any(row => row.Kind == "Host" && row.Day == day)
+        )
+            return false;
+        if (model.StartsWith("iPad", StringComparison.Ordinal))
+            return true;
+        if (
+            !model.StartsWith("iPhone", StringComparison.Ordinal)
+            || !DateOnly.TryParseExact(
+                day,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var date
+            )
+        )
+            return false;
         var oldestDay = date.AddDays(-6).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var expectedWatches = rows.Where(row => row.Kind == "Watch" &&
-            string.CompareOrdinal(row.LogDay, oldestDay) >= 0 &&
-            string.CompareOrdinal(row.LogDay, day) <= 0 && row.Source is not null)
-            .Select(row => row.Source!).Concat(receipts.Where(row => row.Kind == "Watch" &&
-                string.CompareOrdinal(row.Day, oldestDay) >= 0 &&
-                string.CompareOrdinal(row.Day, day) <= 0 && row.Source is not null)
-                .Select(row => row.Source!)).ToHashSet(StringComparer.Ordinal);
-        if (expectedWatches.Count == 0) return false;
-        var todayWatches = rows.Where(row => row.Kind == "Watch" && row.LogDay == day &&
-            row.Source is not null).Select(row => row.Source!).Concat(receipts.Where(row =>
-                row.Kind == "Watch" && row.Day == day && row.Source is not null)
-                .Select(row => row.Source!)).ToHashSet(StringComparer.Ordinal);
+        var expectedWatches = rows.Where(row =>
+                row.Kind == "Watch"
+                && string.CompareOrdinal(row.LogDay, oldestDay) >= 0
+                && string.CompareOrdinal(row.LogDay, day) <= 0
+                && row.Source is not null
+            )
+            .Select(row => row.Source!)
+            .Concat(
+                receipts
+                    .Where(row =>
+                        row.Kind == "Watch"
+                        && string.CompareOrdinal(row.Day, oldestDay) >= 0
+                        && string.CompareOrdinal(row.Day, day) <= 0
+                        && row.Source is not null
+                    )
+                    .Select(row => row.Source!)
+            )
+            .ToHashSet(StringComparer.Ordinal);
+        if (expectedWatches.Count == 0)
+            return false;
+        var todayWatches = rows.Where(row =>
+                row.Kind == "Watch" && row.LogDay == day && row.Source is not null
+            )
+            .Select(row => row.Source!)
+            .Concat(
+                receipts
+                    .Where(row => row.Kind == "Watch" && row.Day == day && row.Source is not null)
+                    .Select(row => row.Source!)
+            )
+            .ToHashSet(StringComparer.Ordinal);
         return expectedWatches.IsSubsetOf(todayWatches);
     }
 
-    private static void Scan(string root, Guid deviceId, string deviceName, bool pending,
-        List<StoredBatteryLog> rows)
+    private static void Scan(
+        string root,
+        Guid deviceId,
+        string deviceName,
+        bool pending,
+        List<StoredBatteryLog> rows
+    )
     {
-        if (!Directory.Exists(root)) return;
-        foreach (var file in Directory.EnumerateFiles(root, "Analytics-*.ips.ca.synced",
-            SearchOption.AllDirectories))
+        if (!Directory.Exists(root))
+            return;
+        foreach (
+            var file in Directory.EnumerateFiles(
+                root,
+                "Analytics-*.ips.ca.synced",
+                SearchOption.AllDirectories
+            )
+        )
         {
-            var parts = System.IO.Path.GetRelativePath(root, file).Split(System.IO.Path.DirectorySeparatorChar);
-            if (parts.Length is not (2 or 3) || parts[0] is not ("Host" or "Watch")) continue;
+            var parts = System
+                .IO.Path.GetRelativePath(root, file)
+                .Split(System.IO.Path.DirectorySeparatorChar);
+            if (parts.Length is not (2 or 3) || parts[0] is not ("Host" or "Watch"))
+                continue;
             var info = new FileInfo(file);
-            rows.Add(new StoredBatteryLog((pending ? "pending/" : "archive/") +
-                deviceId.ToString("D").ToUpperInvariant() + "/" +
-                string.Join('/', parts), file, deviceId, deviceName,
-                parts[0], parts.Length == 3 ? parts[1] : null, info.Length,
-                info.LastWriteTimeUtc, pending));
+            rows.Add(
+                new StoredBatteryLog(
+                    (pending ? "pending/" : "archive/")
+                        + deviceId.ToString("D").ToUpperInvariant()
+                        + "/"
+                        + string.Join('/', parts),
+                    file,
+                    deviceId,
+                    deviceName,
+                    parts[0],
+                    parts.Length == 3 ? parts[1] : null,
+                    info.Length,
+                    info.LastWriteTimeUtc,
+                    pending
+                )
+            );
         }
     }
 
     public static void Delete(IReadOnlyList<StoredBatteryLog> rows)
     {
-        lock (Gate) foreach (var row in rows.Where(row => !row.Pending)) File.Delete(row.Path);
+        lock (Gate)
+            foreach (var row in rows.Where(row => !row.Pending))
+                File.Delete(row.Path);
     }
 
     public static void Export(IReadOnlyList<StoredBatteryLog> rows, string directory)
     {
         foreach (var row in rows)
         {
-            var folder = System.IO.Path.Combine(directory,
-                row.DeviceId.ToString("D").ToUpperInvariant(), row.Kind, row.Source ?? "");
+            var folder = System.IO.Path.Combine(
+                directory,
+                row.DeviceId.ToString("D").ToUpperInvariant(),
+                row.Kind,
+                row.Source ?? ""
+            );
             Directory.CreateDirectory(folder);
             var destination = System.IO.Path.Combine(folder, row.Name);
             File.Copy(row.Path, destination, overwrite: false);
         }
     }
 
-    public static int Requeue(IReadOnlyList<StoredBatteryLog> rows, IReadOnlyList<PairedPhone> phones)
+    public static int Requeue(
+        IReadOnlyList<StoredBatteryLog> rows,
+        IReadOnlyList<PairedPhone> phones
+    )
     {
         lock (Gate)
         {
@@ -220,18 +373,24 @@ public static class BatteryLogStorage
             foreach (var row in rows.Where(row => !row.Pending))
             {
                 var phone = phones.FirstOrDefault(phone => phone.PhysicalDeviceId == row.DeviceId);
-                if (phone is null) continue;
-                var archived = System.IO.Path.Combine(ArchiveRoot,
-                    row.DeviceId.ToString("D").ToUpperInvariant());
+                if (phone is null)
+                    continue;
+                var archived = System.IO.Path.Combine(
+                    ArchiveRoot,
+                    row.DeviceId.ToString("D").ToUpperInvariant()
+                );
                 var relative = System.IO.Path.GetRelativePath(archived, row.Path);
                 var destination = System.IO.Path.Combine(TransferServer.QueuePath(phone), relative);
-                if (File.Exists(destination)) continue;
+                if (File.Exists(destination))
+                    continue;
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(destination)!);
-                try {
+                try
+                {
                     File.Copy(row.Path, destination);
                     File.WriteAllBytes(destination + ".force-resend", []);
                 }
-                catch {
+                catch
+                {
                     File.Delete(destination);
                     throw;
                 }
@@ -241,23 +400,37 @@ public static class BatteryLogStorage
         }
     }
 
-    public static void Prune() { lock (Gate) PruneLocked(); }
+    public static void Prune()
+    {
+        lock (Gate)
+            PruneLocked();
+    }
 
     private static void PruneLocked()
     {
-        if (!Directory.Exists(ArchiveRoot)) return;
+        if (!Directory.Exists(ArchiveRoot))
+            return;
         var cutoff = DateTime.UtcNow.AddMonths(-Math.Clamp(_settings.RetentionMonths, 1, 60));
         var retained = new List<FileInfo>();
-        foreach (var path in Directory.EnumerateFiles(ArchiveRoot,
-            "Analytics-*.ips.ca.synced", SearchOption.AllDirectories))
+        foreach (
+            var path in Directory.EnumerateFiles(
+                ArchiveRoot,
+                "Analytics-*.ips.ca.synced",
+                SearchOption.AllDirectories
+            )
+        )
         {
             var file = new FileInfo(path);
-            if (file.LastWriteTimeUtc < cutoff) file.Delete();
-            else retained.Add(file);
+            if (file.LastWriteTimeUtc < cutoff)
+                file.Delete();
+            else
+                retained.Add(file);
         }
         var total = retained.Sum(file => file.Length);
         var limit = (long)Math.Clamp(_settings.LimitMB, 100, 100_000) * 1_000_000;
-        foreach (var file in retained.OrderBy(file => file.LastWriteTimeUtc).Where(_ => total > limit))
+        foreach (
+            var file in retained.OrderBy(file => file.LastWriteTimeUtc).Where(_ => total > limit)
+        )
         {
             file.Delete();
             total -= file.Length;

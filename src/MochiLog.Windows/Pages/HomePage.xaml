@@ -5,93 +5,195 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+>
     <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}">
-        <StackPanel x:Name="ContentColumn" Style="{StaticResource CompanionPageColumnStyle}"
-                    Width="{Binding ActualWidth, ElementName=ContentScroll}"
-                    AutomationProperties.AutomationId="PageColumn"
-                    SizeChanged="ContentColumnSizeChanged">
+        <StackPanel
+            x:Name="ContentColumn"
+            Style="{StaticResource CompanionPageColumnStyle}"
+            Width="{Binding ActualWidth, ElementName=ContentScroll}"
+            AutomationProperties.AutomationId="PageColumn"
+            SizeChanged="ContentColumnSizeChanged"
+        >
             <StackPanel Spacing="5">
-                <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}"
-                           AutomationProperties.AutomationId="PageHeading" />
+                <TextBlock
+                    Text="MochiLog Windows"
+                    Style="{StaticResource TitleTextBlockStyle}"
+                    AutomationProperties.AutomationId="PageHeading"
+                />
                 <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Opacity="0.68" />
             </StackPanel>
 
-            <InfoBar x:Name="LegacyMobileNotice" IsOpen="False" Severity="Warning"
-                     IsClosable="False">
+            <InfoBar
+                x:Name="LegacyMobileNotice"
+                IsOpen="False"
+                Severity="Warning"
+                IsClosable="False"
+            >
                 <InfoBar.Content>
                     <HyperlinkButton x:Name="LegacyMobileLink" Click="LegacyMobileClicked" />
                 </InfoBar.Content>
             </InfoBar>
 
-            <Border x:Name="FirstConnectionCard" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="24" Padding="32" Visibility="Collapsed">
+            <Border
+                x:Name="FirstConnectionCard"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="24"
+                Padding="32"
+                Visibility="Collapsed"
+            >
                 <Grid ColumnSpacing="24" MinHeight="260">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="FirstIllustrationColumn" Width="250" /></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="FirstIllustrationColumn" Width="250" />
+                    </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Spacing="14" VerticalAlignment="Center">
-                        <Border Width="50" Height="50" CornerRadius="16" HorizontalAlignment="Left"
-                                Background="#194C82F7">
+                        <Border
+                            Width="50"
+                            Height="50"
+                            CornerRadius="16"
+                            HorizontalAlignment="Left"
+                            Background="#194C82F7"
+                        >
                             <FontIcon Glyph="&#xE8EA;" FontSize="25" Foreground="#77B5FF" />
                         </Border>
-                        <TextBlock x:Name="FirstConnectionTitle" FontSize="34" FontWeight="SemiBold"
-                                   HorizontalAlignment="Left"
-                                   TextWrapping="Wrap" />
-                        <TextBlock x:Name="FirstConnectionDescription" FontSize="16"
-                                   TextWrapping="Wrap" Opacity="0.72" MaxWidth="550"
-                                   HorizontalAlignment="Left" />
+                        <TextBlock
+                            x:Name="FirstConnectionTitle"
+                            FontSize="34"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Left"
+                            TextWrapping="Wrap"
+                        />
+                        <TextBlock
+                            x:Name="FirstConnectionDescription"
+                            FontSize="16"
+                            TextWrapping="Wrap"
+                            Opacity="0.72"
+                            MaxWidth="550"
+                            HorizontalAlignment="Left"
+                        />
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon x:Name="FirstConnectionStatusIcon" Glyph="&#xE946;"
-                                      FontSize="17" Foreground="#77B5FF" />
-                            <TextBlock x:Name="FirstConnectionStatus" TextWrapping="Wrap"
-                                       FontSize="14" VerticalAlignment="Center" />
+                            <FontIcon
+                                x:Name="FirstConnectionStatusIcon"
+                                Glyph="&#xE946;"
+                                FontSize="17"
+                                Foreground="#77B5FF"
+                            />
+                            <TextBlock
+                                x:Name="FirstConnectionStatus"
+                                TextWrapping="Wrap"
+                                FontSize="14"
+                                VerticalAlignment="Center"
+                            />
                         </StackPanel>
                     </StackPanel>
-                    <Grid x:Name="FirstConnectionIllustration" Grid.Column="1"
-                          HorizontalAlignment="Center" VerticalAlignment="Center"
-                          Width="176" Height="250">
-                        <Border Width="146" Height="210" CornerRadius="23" VerticalAlignment="Top"
-                                Background="#101526" BorderBrush="#78849B" BorderThickness="3">
+                    <Grid
+                        x:Name="FirstConnectionIllustration"
+                        Grid.Column="1"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Width="176"
+                        Height="250"
+                    >
+                        <Border
+                            Width="146"
+                            Height="210"
+                            CornerRadius="23"
+                            VerticalAlignment="Top"
+                            Background="#101526"
+                            BorderBrush="#78849B"
+                            BorderThickness="3"
+                        >
                             <Grid>
-                                <Border Width="44" Height="7" CornerRadius="4" Background="#2A3040"
-                                        VerticalAlignment="Top" Margin="0,8,0,0" />
-                                <FontIcon Glyph="&#xE8EA;" FontSize="54" Foreground="#77B5FF"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                <Border Width="45" Height="4" CornerRadius="2" Background="#B8C2D7"
-                                        VerticalAlignment="Bottom" Margin="0,0,0,9" />
+                                <Border
+                                    Width="44"
+                                    Height="7"
+                                    CornerRadius="4"
+                                    Background="#2A3040"
+                                    VerticalAlignment="Top"
+                                    Margin="0,8,0,0"
+                                />
+                                <FontIcon
+                                    Glyph="&#xE8EA;"
+                                    FontSize="54"
+                                    Foreground="#77B5FF"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                />
+                                <Border
+                                    Width="45"
+                                    Height="4"
+                                    CornerRadius="2"
+                                    Background="#B8C2D7"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,0,9"
+                                />
                             </Grid>
                         </Border>
-                        <Rectangle Width="7" Height="28" Fill="#B8C2D7"
-                                   HorizontalAlignment="Center" VerticalAlignment="Bottom" />
-                        <Border Width="21" Height="23" CornerRadius="5" Background="#DEE4EE"
-                                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,23" />
+                        <Rectangle
+                            Width="7"
+                            Height="28"
+                            Fill="#B8C2D7"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Bottom"
+                        />
+                        <Border
+                            Width="21"
+                            Height="23"
+                            CornerRadius="5"
+                            Background="#DEE4EE"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,0,23"
+                        />
                     </Grid>
                 </Grid>
             </Border>
 
-            <Border x:Name="StatusCard" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="20" Padding="24">
+            <Border
+                x:Name="StatusCard"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="20"
+                Padding="24"
+            >
                 <Grid x:Name="StatusGrid" ColumnSpacing="20" RowSpacing="18">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Border Width="52" Height="52" CornerRadius="16" Background="#183D8D55">
                         <FontIcon Glyph="&#xE753;" FontSize="24" Foreground="#62D69A" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
-                        <TextBlock x:Name="StatusTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock
+                            x:Name="StatusTitle"
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                        />
                         <TextBlock x:Name="StatusText" TextWrapping="Wrap" FontSize="15" />
                         <TextBlock x:Name="CollectionText" TextWrapping="Wrap" Opacity="0.68" />
                     </StackPanel>
-                    <StackPanel x:Name="StatusActions" Grid.Column="2" Orientation="Horizontal" Spacing="8"
-                                VerticalAlignment="Center">
+                    <StackPanel
+                        x:Name="StatusActions"
+                        Grid.Column="2"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        VerticalAlignment="Center"
+                    >
                         <Button x:Name="RefreshButton" Click="RefreshClicked" />
-                        <Button x:Name="CollectButton" Click="CollectClicked"
-                                Style="{StaticResource AccentButtonStyle}" />
+                        <Button
+                            x:Name="CollectButton"
+                            Click="CollectClicked"
+                            Style="{StaticResource AccentButtonStyle}"
+                        />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -107,36 +209,86 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Border x:Name="PairedCard" Grid.Row="0" Grid.Column="0"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="20" Padding="24">
+                <Border
+                    x:Name="PairedCard"
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    Padding="24"
+                >
                     <StackPanel Spacing="14">
-                        <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        <ListView x:Name="PairedList" MinHeight="110" MaxHeight="220" SelectionMode="Single" />
-                        <Button x:Name="UnpairButton" Click="UnpairClicked" HorizontalAlignment="Left" />
+                        <TextBlock
+                            x:Name="PairedTitle"
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                        />
+                        <ListView
+                            x:Name="PairedList"
+                            MinHeight="110"
+                            MaxHeight="220"
+                            SelectionMode="Single"
+                        />
+                        <Button
+                            x:Name="UnpairButton"
+                            Click="UnpairClicked"
+                            HorizontalAlignment="Left"
+                        />
                         <TextBlock x:Name="ManualAddressHint" TextWrapping="Wrap" Opacity="0.72" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBox x:Name="ManualAddressBox" Width="220" PlaceholderText="192.168.1.20" />
-                            <Button x:Name="SaveManualAddressButton" Click="SaveManualAddressClicked" />
-                            <Button x:Name="ClearManualAddressButton" Click="ClearManualAddressClicked" />
+                            <TextBox
+                                x:Name="ManualAddressBox"
+                                Width="220"
+                                PlaceholderText="192.168.1.20"
+                            />
+                            <Button
+                                x:Name="SaveManualAddressButton"
+                                Click="SaveManualAddressClicked"
+                            />
+                            <Button
+                                x:Name="ClearManualAddressButton"
+                                Click="ClearManualAddressClicked"
+                            />
                         </StackPanel>
                         <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.68" />
                     </StackPanel>
                 </Border>
-                <Border x:Name="DeviceCard" Grid.Row="0" Grid.Column="1"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="20" Padding="24">
+                <Border
+                    x:Name="DeviceCard"
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    Padding="24"
+                >
                     <StackPanel Spacing="18">
                         <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="12" Background="#183D8D55">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border
+                                Grid.Column="0"
+                                Width="40"
+                                Height="40"
+                                CornerRadius="12"
+                                Background="#183D8D55"
+                            >
                                 <FontIcon Glyph="&#xE8EA;" FontSize="20" Foreground="#62D69A" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                <TextBlock x:Name="DeviceHeading" Style="{StaticResource SubtitleTextBlockStyle}" />
-                                <TextBlock x:Name="DeviceSelectionHint" TextWrapping="Wrap" Opacity="0.68" />
+                                <TextBlock
+                                    x:Name="DeviceHeading"
+                                    Style="{StaticResource SubtitleTextBlockStyle}"
+                                />
+                                <TextBlock
+                                    x:Name="DeviceSelectionHint"
+                                    TextWrapping="Wrap"
+                                    Opacity="0.68"
+                                />
                             </StackPanel>
                         </Grid>
                         <RadioButtons x:Name="DeviceList" MaxColumns="1">
@@ -148,117 +300,244 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0" Width="40" Height="40"
-                                                CornerRadius="12" Background="{Binding BadgeBackground}">
-                                            <FontIcon Glyph="&#xE8EA;" FontSize="19"
-                                                      Foreground="{Binding AccentBrush}" />
+                                        <Border
+                                            Grid.Column="0"
+                                            Width="40"
+                                            Height="40"
+                                            CornerRadius="12"
+                                            Background="{Binding BadgeBackground}"
+                                        >
+                                            <FontIcon
+                                                Glyph="&#xE8EA;"
+                                                FontSize="19"
+                                                Foreground="{Binding AccentBrush}"
+                                            />
                                         </Border>
-                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                       FontSize="15" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Model}" Opacity="0.68"
-                                                       FontSize="12" TextTrimming="CharacterEllipsis" />
+                                        <StackPanel
+                                            Grid.Column="1"
+                                            Spacing="2"
+                                            VerticalAlignment="Center"
+                                        >
+                                            <TextBlock
+                                                Text="{Binding Name}"
+                                                FontWeight="SemiBold"
+                                                FontSize="15"
+                                                TextTrimming="CharacterEllipsis"
+                                            />
+                                            <TextBlock
+                                                Text="{Binding Model}"
+                                                Opacity="0.68"
+                                                FontSize="12"
+                                                TextTrimming="CharacterEllipsis"
+                                            />
                                         </StackPanel>
-                                        <Border Grid.Column="2" Background="{Binding BadgeBackground}"
-                                                CornerRadius="9" Padding="9,6" VerticalAlignment="Center">
+                                        <Border
+                                            Grid.Column="2"
+                                            Background="{Binding BadgeBackground}"
+                                            CornerRadius="9"
+                                            Padding="9,6"
+                                            VerticalAlignment="Center"
+                                        >
                                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <FontIcon Glyph="{Binding BadgeGlyph}" FontSize="13"
-                                                          Foreground="{Binding AccentBrush}" />
-                                                <TextBlock Text="{Binding BadgeText}" FontSize="12"
-                                                           Foreground="{Binding AccentBrush}"
-                                                           TextWrapping="Wrap" MaxWidth="150" />
+                                                <FontIcon
+                                                    Glyph="{Binding BadgeGlyph}"
+                                                    FontSize="13"
+                                                    Foreground="{Binding AccentBrush}"
+                                                />
+                                                <TextBlock
+                                                    Text="{Binding BadgeText}"
+                                                    FontSize="12"
+                                                    Foreground="{Binding AccentBrush}"
+                                                    TextWrapping="Wrap"
+                                                    MaxWidth="150"
+                                                />
                                             </StackPanel>
                                         </Border>
                                     </Grid>
                                 </DataTemplate>
                             </RadioButtons.ItemTemplate>
                         </RadioButtons>
-                        <Border x:Name="DeviceEmptyPanel" Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                CornerRadius="14" Padding="20" Visibility="Collapsed">
+                        <Border
+                            x:Name="DeviceEmptyPanel"
+                            Background="{ThemeResource LayerFillColorDefaultBrush}"
+                            CornerRadius="14"
+                            Padding="20"
+                            Visibility="Collapsed"
+                        >
                             <Grid ColumnSpacing="14">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <FontIcon Grid.Column="0" Glyph="&#xE8EA;" FontSize="26" Opacity="0.55" />
-                                <TextBlock x:Name="DeviceEmptyText" Grid.Column="1" TextWrapping="Wrap"
-                                           VerticalAlignment="Center" Opacity="0.72" />
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon
+                                    Grid.Column="0"
+                                    Glyph="&#xE8EA;"
+                                    FontSize="26"
+                                    Opacity="0.55"
+                                />
+                                <TextBlock
+                                    x:Name="DeviceEmptyText"
+                                    Grid.Column="1"
+                                    TextWrapping="Wrap"
+                                    VerticalAlignment="Center"
+                                    Opacity="0.72"
+                                />
                             </Grid>
                         </Border>
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Button x:Name="UsbButton" Click="UsbClicked" />
-                            <ProgressRing x:Name="UsbProgressRing" Width="24" Height="24"
-                                          IsActive="False" Visibility="Collapsed" />
-                            <Button x:Name="RepairUsbButton" Click="RepairUsbClicked"
-                                    Visibility="Collapsed" />
-                            <Button x:Name="PairButton" Click="PairClicked"
-                                    Style="{StaticResource AccentButtonStyle}" />
+                            <ProgressRing
+                                x:Name="UsbProgressRing"
+                                Width="24"
+                                Height="24"
+                                IsActive="False"
+                                Visibility="Collapsed"
+                            />
+                            <Button
+                                x:Name="RepairUsbButton"
+                                Click="RepairUsbClicked"
+                                Visibility="Collapsed"
+                            />
+                            <Button
+                                x:Name="PairButton"
+                                Click="PairClicked"
+                                Style="{StaticResource AccentButtonStyle}"
+                            />
                         </StackPanel>
-                        <InfoBar x:Name="UsbResultBar" IsOpen="False" IsClosable="True"
-                                 Severity="Informational" />
+                        <InfoBar
+                            x:Name="UsbResultBar"
+                            IsOpen="False"
+                            IsClosable="True"
+                            Severity="Informational"
+                        />
                     </StackPanel>
                 </Border>
-                <Border x:Name="GuideCard" Grid.Row="1" Grid.Column="0"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="20" Padding="24">
+                <Border
+                    x:Name="GuideCard"
+                    Grid.Row="1"
+                    Grid.Column="0"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    Padding="24"
+                >
                     <StackPanel Spacing="17">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <Border Width="40" Height="40" CornerRadius="12" Background="#184683DD">
                                 <FontIcon Glyph="&#xE80F;" FontSize="20" Foreground="#87B4FF" />
                             </Border>
-                            <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}"
-                                       VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="SetupTitle"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                VerticalAlignment="Center"
+                            />
                         </StackPanel>
                         <TextBlock x:Name="SetupRequirement" TextWrapping="Wrap" Opacity="0.7" />
-                        <InfoBar x:Name="SoftwareInfoBar" IsOpen="True" IsClosable="False"
-                                 Severity="Informational">
+                        <InfoBar
+                            x:Name="SoftwareInfoBar"
+                            IsOpen="True"
+                            IsClosable="False"
+                            Severity="Informational"
+                        >
                             <InfoBar.Content>
                                 <TextBlock x:Name="SoftwareStatus" TextWrapping="Wrap" />
                             </InfoBar.Content>
                         </InfoBar>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <HyperlinkButton x:Name="AppleDevicesLink"
-                                NavigateUri="https://support.apple.com/guide/devices-windows/mchl5ded2763/windows" />
-                            <HyperlinkButton x:Name="ITunesLink"
-                                NavigateUri="https://www.apple.com/itunes/download/win64" />
+                            <HyperlinkButton
+                                x:Name="AppleDevicesLink"
+                                NavigateUri="https://support.apple.com/guide/devices-windows/mchl5ded2763/windows"
+                            />
+                            <HyperlinkButton
+                                x:Name="ITunesLink"
+                                NavigateUri="https://www.apple.com/itunes/download/win64"
+                            />
                             <Button x:Name="SoftwareRefreshButton" Click="SoftwareRefreshClicked" />
                         </StackPanel>
                         <TextBlock x:Name="ICloudNote" TextWrapping="Wrap" Opacity="0.68" />
                     </StackPanel>
                 </Border>
-                <Border x:Name="StepsCard" Grid.Row="1" Grid.Column="1"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" CornerRadius="20" Padding="24">
+                <Border
+                    x:Name="StepsCard"
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    Padding="24"
+                >
                     <StackPanel Spacing="17">
-                        <TextBlock x:Name="SetupStepsTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock
+                            x:Name="SetupStepsTitle"
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                        />
                         <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="10" Background="#183D8D55">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border
+                                Grid.Column="0"
+                                Width="32"
+                                Height="32"
+                                CornerRadius="10"
+                                Background="#183D8D55"
+                            >
                                 <FontIcon Glyph="&#xE77B;" FontSize="16" Foreground="#62D69A" />
                             </Border>
-                            <TextBlock x:Name="SetupStep1" Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="SetupStep1"
+                                Grid.Column="1"
+                                TextWrapping="Wrap"
+                                VerticalAlignment="Center"
+                            />
                         </Grid>
                         <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="10" Background="#183D8D55">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border
+                                Grid.Column="0"
+                                Width="32"
+                                Height="32"
+                                CornerRadius="10"
+                                Background="#183D8D55"
+                            >
                                 <FontIcon Glyph="&#xE72E;" FontSize="16" Foreground="#62D69A" />
                             </Border>
-                            <TextBlock x:Name="SetupStep2" Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="SetupStep2"
+                                Grid.Column="1"
+                                TextWrapping="Wrap"
+                                VerticalAlignment="Center"
+                            />
                         </Grid>
                         <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="10" Background="#183D8D55">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border
+                                Grid.Column="0"
+                                Width="32"
+                                Height="32"
+                                CornerRadius="10"
+                                Background="#183D8D55"
+                            >
                                 <FontIcon Glyph="&#xE8A1;" FontSize="16" Foreground="#62D69A" />
                             </Border>
-                            <TextBlock x:Name="SetupStep3" Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="SetupStep3"
+                                Grid.Column="1"
+                                TextWrapping="Wrap"
+                                VerticalAlignment="Center"
+                            />
                         </Grid>
                     </StackPanel>
                 </Border>
-
-
-
-
-
-
             </Grid>
         </StackPanel>
     </ScrollViewer>

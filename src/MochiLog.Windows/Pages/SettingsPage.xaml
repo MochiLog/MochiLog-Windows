@@ -1,34 +1,65 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<Page x:Class="MochiLog_Windows.Pages.SettingsPage"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Page
+    x:Class="MochiLog_Windows.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
     <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}">
-        <StackPanel x:Name="ContentColumn" Style="{StaticResource CompanionPageColumnStyle}"
-                    Width="{Binding ActualWidth, ElementName=ContentScroll}"
-                    AutomationProperties.AutomationId="PageColumn">
-            <TextBlock x:Name="PageTitle" Style="{StaticResource TitleTextBlockStyle}"
-                       AutomationProperties.AutomationId="PageHeading" />
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+        <StackPanel
+            x:Name="ContentColumn"
+            Style="{StaticResource CompanionPageColumnStyle}"
+            Width="{Binding ActualWidth, ElementName=ContentScroll}"
+            AutomationProperties.AutomationId="PageColumn"
+        >
+            <TextBlock
+                x:Name="PageTitle"
+                Style="{StaticResource TitleTextBlockStyle}"
+                AutomationProperties.AutomationId="PageHeading"
+            />
+            <Border
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="18"
+                Padding="20"
+            >
                 <StackPanel Spacing="12">
                     <ToggleSwitch x:Name="AutomaticUpdateToggle" />
                     <TextBlock x:Name="AutomaticUpdateNote" TextWrapping="Wrap" Opacity="0.72" />
                     <ToggleSwitch x:Name="StartupToggle" />
                     <ToggleSwitch x:Name="TrayToggle" />
                     <TextBlock x:Name="TrayStatus" TextWrapping="Wrap" Opacity="0.72" />
-                    <ToggleSwitch x:Name="ReleaseUiToggle" AutomationProperties.AutomationId="ReleaseUiToggle" />
+                    <ToggleSwitch
+                        x:Name="ReleaseUiToggle"
+                        AutomationProperties.AutomationId="ReleaseUiToggle"
+                    />
                     <TextBlock x:Name="ReleaseUiNote" TextWrapping="Wrap" Opacity="0.72" />
                 </StackPanel>
             </Border>
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+            <Border
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="18"
+                Padding="20"
+            >
                 <StackPanel Spacing="12">
-                    <TextBlock x:Name="SupportTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock
+                        x:Name="SupportTitle"
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                    />
                     <TextBlock x:Name="SupportIntro" TextWrapping="Wrap" />
-                    <ComboBox x:Name="SupportDevicePicker" MinWidth="260" HorizontalAlignment="Left"
-                              SelectionChanged="SupportDeviceChanged" />
+                    <ComboBox
+                        x:Name="SupportDevicePicker"
+                        MinWidth="260"
+                        HorizontalAlignment="Left"
+                        SelectionChanged="SupportDeviceChanged"
+                    />
                     <TextBox x:Name="NicknameBox" TextChanged="SupportTextChanged" />
                     <TextBox x:Name="EmailBox" TextChanged="SupportTextChanged" />
-                    <TextBox x:Name="MessageBox" TextChanged="SupportTextChanged"
-                             AcceptsReturn="True" TextWrapping="Wrap" Height="100" />
+                    <TextBox
+                        x:Name="MessageBox"
+                        TextChanged="SupportTextChanged"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        Height="100"
+                    />
                     <TextBlock x:Name="IncidentTitle" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <CalendarDatePicker x:Name="IncidentDatePicker" />
@@ -42,43 +73,103 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+            <Border
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="18"
+                Padding="20"
+            >
                 <StackPanel Spacing="12">
-                    <TextBlock x:Name="DebugTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock
+                        x:Name="DebugTitle"
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                    />
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <ComboBox x:Name="DebugDayPicker" MinWidth="150"
-                                  SelectionChanged="DebugDayChanged" />
-                        <ComboBox x:Name="RetentionPicker" MinWidth="130"
-                                  SelectionChanged="RetentionChanged" />
+                        <ComboBox
+                            x:Name="DebugDayPicker"
+                            MinWidth="150"
+                            SelectionChanged="DebugDayChanged"
+                        />
+                        <ComboBox
+                            x:Name="RetentionPicker"
+                            MinWidth="130"
+                            SelectionChanged="RetentionChanged"
+                        />
                         <Button x:Name="DeleteDebugButton" Click="DeleteDebugClicked" />
                     </StackPanel>
-                    <ComboBox x:Name="DebugCategoryPicker" MinWidth="230" HorizontalAlignment="Left"
-                              SelectionChanged="DebugCategoryChanged" />
-                    <ProgressRing x:Name="DebugLoading" IsActive="False" Width="24" Height="24" HorizontalAlignment="Left" />
-                    <ListView x:Name="DebugText" Height="190" SelectionMode="None"
-                              ItemTemplate="{StaticResource DiagnosticLineTemplate}"
-                              ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />
+                    <ComboBox
+                        x:Name="DebugCategoryPicker"
+                        MinWidth="230"
+                        HorizontalAlignment="Left"
+                        SelectionChanged="DebugCategoryChanged"
+                    />
+                    <ProgressRing
+                        x:Name="DebugLoading"
+                        IsActive="False"
+                        Width="24"
+                        Height="24"
+                        HorizontalAlignment="Left"
+                    />
+                    <ListView
+                        x:Name="DebugText"
+                        Height="190"
+                        SelectionMode="None"
+                        ItemTemplate="{StaticResource DiagnosticLineTemplate}"
+                        ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}"
+                    />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="CopyButton" Click="CopyClicked" />
                         <Button x:Name="RefreshDebugButton" Click="RefreshDebugClicked" />
                     </StackPanel>
                 </StackPanel>
             </Border>
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+            <Border
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="18"
+                Padding="20"
+            >
                 <StackPanel Spacing="12">
-                    <TextBlock x:Name="PhoneTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <ComboBox x:Name="PhoneDayPicker" MinWidth="150" HorizontalAlignment="Left"
-                              SelectionChanged="PhoneDayChanged" />
-                    <ComboBox x:Name="PhoneCategoryPicker" MinWidth="230" HorizontalAlignment="Left"
-                              SelectionChanged="DebugCategoryChanged" />
-                    <ProgressRing x:Name="PhoneLoading" IsActive="False" Width="24" Height="24" HorizontalAlignment="Left" />
-                    <ListView x:Name="PhoneText" Height="140" SelectionMode="None"
-                              ItemTemplate="{StaticResource DiagnosticLineTemplate}"
-                              ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}" />
-                    <Button x:Name="CopyPhoneButton" Click="CopyPhoneClicked" HorizontalAlignment="Left" />
+                    <TextBlock
+                        x:Name="PhoneTitle"
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                    />
+                    <ComboBox
+                        x:Name="PhoneDayPicker"
+                        MinWidth="150"
+                        HorizontalAlignment="Left"
+                        SelectionChanged="PhoneDayChanged"
+                    />
+                    <ComboBox
+                        x:Name="PhoneCategoryPicker"
+                        MinWidth="230"
+                        HorizontalAlignment="Left"
+                        SelectionChanged="DebugCategoryChanged"
+                    />
+                    <ProgressRing
+                        x:Name="PhoneLoading"
+                        IsActive="False"
+                        Width="24"
+                        Height="24"
+                        HorizontalAlignment="Left"
+                    />
+                    <ListView
+                        x:Name="PhoneText"
+                        Height="140"
+                        SelectionMode="None"
+                        ItemTemplate="{StaticResource DiagnosticLineTemplate}"
+                        ItemContainerStyle="{StaticResource DiagnosticLineContainerStyle}"
+                    />
+                    <Button
+                        x:Name="CopyPhoneButton"
+                        Click="CopyPhoneClicked"
+                        HorizontalAlignment="Left"
+                    />
                 </StackPanel>
             </Border>
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+            <Border
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="18"
+                Padding="20"
+            >
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="HelpTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
                     <TextBlock x:Name="HelpContent" TextWrapping="Wrap" />

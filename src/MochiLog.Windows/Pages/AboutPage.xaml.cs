@@ -10,8 +10,10 @@ public sealed partial class AboutPage : Page
     public AboutPage()
     {
         InitializeComponent();
-        VersionText.Text = UiText.Format("win_version",
-            typeof(AboutPage).Assembly.GetName().Version?.ToString() ?? "0.1.0");
+        VersionText.Text = UiText.Format(
+            "win_version",
+            typeof(AboutPage).Assembly.GetName().Version?.ToString() ?? "0.1.0"
+        );
         AboutText.Text = UiText.Get("win_note");
         RepositoryButton.Content = UiText.Get("win_repo");
         UpdateButton.Content = UiText.Get("win_update_check");
@@ -21,9 +23,12 @@ public sealed partial class AboutPage : Page
     }
 
     private void RepositoryClicked(object sender, RoutedEventArgs args) =>
-        Process.Start(new ProcessStartInfo("https://github.com/MochiLog/MochiLog-Windows") {
-            UseShellExecute = true
-        });
+        Process.Start(
+            new ProcessStartInfo("https://github.com/MochiLog/MochiLog-Windows")
+            {
+                UseShellExecute = true,
+            }
+        );
 
     private void LicenseClicked(object sender, RoutedEventArgs args) =>
         Frame.Navigate(typeof(LicensesPage));
@@ -31,7 +36,13 @@ public sealed partial class AboutPage : Page
     private async void UpdateClicked(object sender, RoutedEventArgs args)
     {
         UpdateButton.IsEnabled = false;
-        try { await ((App)Application.Current).MainWindow!.CheckForUpdatesAsync(true); }
-        finally { UpdateButton.IsEnabled = true; }
+        try
+        {
+            await ((App)Application.Current).MainWindow!.CheckForUpdatesAsync(true);
+        }
+        finally
+        {
+            UpdateButton.IsEnabled = true;
+        }
     }
 }

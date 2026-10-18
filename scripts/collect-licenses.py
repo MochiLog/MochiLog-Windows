@@ -41,6 +41,7 @@ for package in sorted(importlib.metadata.distributions(), key=lambda p: p.metada
     if found == 0:
         metadata_lines.append("No license text was included in the installed package metadata.")
     (package_directory / "PACKAGE.txt").write_text(
-        "\n".join(metadata_lines) + "\n", encoding="utf-8")
+        "\n".join(metadata_lines) + "\n", encoding="utf-8"
+    )
     manifest.append(f"{name} {version}: {found} license/notice file(s)")
 (destination / "PACKAGES.txt").write_text("\n".join(manifest) + "\n", encoding="utf-8")

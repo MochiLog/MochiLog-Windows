@@ -3,8 +3,11 @@ using Windows.Management.Deployment;
 
 namespace MochiLog_Windows.Services;
 
-public readonly record struct AppleDeviceSoftware(bool AppleDevices, bool ClassicITunes,
-    bool AppleDevicesCheckFailed);
+public readonly record struct AppleDeviceSoftware(
+    bool AppleDevices,
+    bool ClassicITunes,
+    bool AppleDevicesCheckFailed
+);
 
 public static class AppleDeviceSoftwareDetector
 {
@@ -20,7 +23,10 @@ public static class AppleDeviceSoftwareDetector
                 .FindPackagesForUser("", "AppleInc.AppleDevices_nzyj5cx40ttqa")
                 .Any();
         }
-        catch { failed = true; }
+        catch
+        {
+            failed = true;
+        }
         return new AppleDeviceSoftware(devices, HasClassicITunes(), failed);
     }
 
@@ -32,25 +38,39 @@ public static class AppleDeviceSoftwareDetector
             try
             {
                 using var root = RegistryKey.OpenBaseKey(hive, view);
-                using var uninstall = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
-                if (uninstall is null) continue;
+                using var uninstall = root.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+                );
+                if (uninstall is null)
+                    continue;
                 foreach (var name in uninstall.GetSubKeyNames())
                 {
                     using var entry = uninstall.OpenSubKey(name);
                     var title = entry?.GetValue("DisplayName") as string;
                     var publisher = entry?.GetValue("Publisher") as string;
-                    if (title is not null &&
-                        (title.Equals("iTunes", StringComparison.OrdinalIgnoreCase) ||
-                         title.StartsWith("iTunes ", StringComparison.OrdinalIgnoreCase)) &&
-                        publisher?.Contains("Apple", StringComparison.OrdinalIgnoreCase) == true)
+                    if (
+                        title is not null
+                        && (
+                            title.Equals("iTunes", StringComparison.OrdinalIgnoreCase)
+                            || title.StartsWith("iTunes ", StringComparison.OrdinalIgnoreCase)
+                        )
+                        && publisher?.Contains("Apple", StringComparison.OrdinalIgnoreCase) == true
+                    )
                         return true;
                 }
             }
-            catch { /* A damaged uninstall entry must not hide another valid installation. */ }
+            catch
+            { /* A damaged uninstall entry must not hide another valid installation. */
+            }
         }
-        return new[] { Environment.SpecialFolder.ProgramFiles,
-                Environment.SpecialFolder.ProgramFilesX86 }
-            .Select(folder => Path.Combine(Environment.GetFolderPath(folder), "iTunes", "iTunes.exe"))
+        return new[]
+        {
+            Environment.SpecialFolder.ProgramFiles,
+            Environment.SpecialFolder.ProgramFilesX86,
+        }
+            .Select(folder =>
+                Path.Combine(Environment.GetFolderPath(folder), "iTunes", "iTunes.exe")
+            )
             .Any(File.Exists);
     }
 }

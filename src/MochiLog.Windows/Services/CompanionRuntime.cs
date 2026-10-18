@@ -1,8 +1,8 @@
-using System.Text.Json;
+using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
-using System.Globalization;
-using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace MochiLog_Windows.Services;
 
@@ -21,11 +21,14 @@ public sealed class CompanionRuntime : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<string> _events = [];
     private readonly Dictionary<Guid, string> _lastAutomaticDecision = [];
-    private readonly Dictionary<Guid, (string Error, DateTimeOffset First, int Count)>
-        _automaticFailures = [];
+    private readonly Dictionary<
+        Guid,
+        (string Error, DateTimeOffset First, int Count)
+    > _automaticFailures = [];
     private static string EventsFile => Path.Combine(StateStore.Root, "support-events.json");
     private static string ArchiveRoot => Path.Combine(StateStore.Root, "DebugLogs");
-    private static string RetentionFile => Path.Combine(StateStore.Root, "debug-retention-days.txt");
+    private static string RetentionFile =>
+        Path.Combine(StateStore.Root, "debug-retention-days.txt");
     private static string MigrationFile => Path.Combine(StateStore.Root, "debug-archive-migrated");
     public ConcurrentDictionary<Guid, LiveBatterySnapshot> LiveBatterySnapshots { get; } = new();
     public ConcurrentDictionary<Guid, byte> LiveBatteryFailures { get; } = new();
@@ -40,39 +43,54 @@ public sealed class CompanionRuntime : IDisposable
     {
         Collector.Trace = Record;
         State = StateStore.Load();
-        try {
+        try
+        {
             if (File.Exists(EventsFile) && new FileInfo(EventsFile).Length <= 4 * 1024 * 1024)
-                _events.AddRange((JsonSerializer.Deserialize<string[]>(File.ReadAllText(EventsFile)) ?? []).TakeLast(500));
+                _events.AddRange(
+                    (
+                        JsonSerializer.Deserialize<string[]>(File.ReadAllText(EventsFile)) ?? []
+                    ).TakeLast(500)
+                );
         }
         catch (IOException) { }
         catch (JsonException) { }
         MigrateLegacyEvents();
         Server = new TransferServer(State);
         Server.SupportReport = BuildTransferReport;
-        Server.LiveBatteryRequested += (phone, manual) => {
+        Server.LiveBatteryRequested += (phone, manual) =>
+        {
             _batteryInterest[phone.PhysicalDeviceId] = DateTimeOffset.UtcNow;
             _ = RefreshBatteryAsync(phone, manual);
         };
         Server.StatusChanged += message => Record(message);
-        Server.PhoneConfirmed += phone => {
+        Server.PhoneConfirmed += phone =>
+        {
             Record($"{phone.Name}: app pairing confirmed");
             PairingConfirmed?.Invoke(phone);
             _ = CollectAsync(phone, trigger: "app pairing confirmed");
         };
-        Server.PhoneAddressChanged += phone => {
+        Server.PhoneAddressChanged += phone =>
+        {
             Record($"{phone.Name}: authenticated network address updated");
             _ = CollectAsync(phone, trigger: "authenticated address changed");
         };
-        Server.LegacyPhoneDetected += phone => {
-            if (LegacyPhoneIds.TryAdd(phone.PhysicalDeviceId, 0)) {
-                Record($"{phone.Name}: previous mobile transfer protocol; update MochiLog in TestFlight or App Store");
+        Server.LegacyPhoneDetected += phone =>
+        {
+            if (LegacyPhoneIds.TryAdd(phone.PhysicalDeviceId, 0))
+            {
+                Record(
+                    $"{phone.Name}: previous mobile transfer protocol; update MochiLog in TestFlight or App Store"
+                );
                 Changed?.Invoke();
             }
         };
-        Server.SecurePhoneDetected += phone => {
-            if (LegacyPhoneIds.TryRemove(phone.PhysicalDeviceId, out _)) Changed?.Invoke();
+        Server.SecurePhoneDetected += phone =>
+        {
+            if (LegacyPhoneIds.TryRemove(phone.PhysicalDeviceId, out _))
+                Changed?.Invoke();
         };
-        Server.PairingRevoked += () => {
+        Server.PairingRevoked += () =>
+        {
             Record("MochiLog app pairing removed for one device");
             Changed?.Invoke();
         };
@@ -80,12 +98,25 @@ public sealed class CompanionRuntime : IDisposable
 
     public void Start()
     {
-        if (_started) return;
+        if (_started)
+            return;
         _started = true;
-        try { BatteryLogStorage.Prune(); }
-        catch (Exception error) { Record("Battery log archive cleanup failed: " + error.Message); }
-        try { Server.Start(); }
-        catch (Exception error) { Record("Transfer server could not start: " + error.Message); }
+        try
+        {
+            BatteryLogStorage.Prune();
+        }
+        catch (Exception error)
+        {
+            Record("Battery log archive cleanup failed: " + error.Message);
+        }
+        try
+        {
+            Server.Start();
+        }
+        catch (Exception error)
+        {
+            Record("Transfer server could not start: " + error.Message);
+        }
         _ = PeriodicCollectionAsync(_lifetime.Token);
         _ = PeriodicBatteryAsync(_lifetime.Token);
         _ = Task.Run(() => PeriodicDiagnosticsAsync(_lifetime.Token));
@@ -95,59 +126,117 @@ public sealed class CompanionRuntime : IDisposable
     public NativeDiagnostics.Snapshot DiagnosticSnapshot()
     {
         (PairedPhone Phone, CollectionResult? Collection)[] sources;
-        lock (State) {
-            sources = State.Phones.Take(NativeDiagnostics.MaxDevices + 1).Select(phone => {
-                State.LastCollections.TryGetValue(phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var last);
-                return (new PairedPhone { PhysicalDeviceId = phone.PhysicalDeviceId,
-                    Name = phone.Name, Model = phone.Model, ConfirmedAt = phone.ConfirmedAt,
-                    AutomaticPauseUntil = phone.AutomaticPauseUntil,
-                    ManualAddress = phone.ManualAddress, LastKnownAddress = phone.LastKnownAddress }, last);
-            }).ToArray();
+        lock (State)
+        {
+            sources = State
+                .Phones.Take(NativeDiagnostics.MaxDevices + 1)
+                .Select(phone =>
+                {
+                    State.LastCollections.TryGetValue(
+                        phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(),
+                        out var last
+                    );
+                    return (
+                        new PairedPhone
+                        {
+                            PhysicalDeviceId = phone.PhysicalDeviceId,
+                            Name = phone.Name,
+                            Model = phone.Model,
+                            ConfirmedAt = phone.ConfirmedAt,
+                            AutomaticPauseUntil = phone.AutomaticPauseUntil,
+                            ManualAddress = phone.ManualAddress,
+                            LastKnownAddress = phone.LastKnownAddress,
+                        },
+                        last
+                    );
+                })
+                .ToArray();
         }
-        var devices = sources.Select(source => {
-            var phone = source.Phone; var last = source.Collection;
-            return new NativeDiagnostics.Device(phone.PhysicalDeviceId, phone.Name, phone.Model,
-                phone.ConfirmedAt is not null, phone.AutomaticPauseUntil, DiagnosticRoutes.Describe(phone),
-                last is null ? null : new(last.Saved, last.Skipped, last.Failed, last.Deferred,
-                    last.RetryHeld, last.AcquisitionComplete, last.LastError, last.ListingFailures));
-        }).ToArray();
+        var devices = sources
+            .Select(source =>
+            {
+                var phone = source.Phone;
+                var last = source.Collection;
+                return new NativeDiagnostics.Device(
+                    phone.PhysicalDeviceId,
+                    phone.Name,
+                    phone.Model,
+                    phone.ConfirmedAt is not null,
+                    phone.AutomaticPauseUntil,
+                    DiagnosticRoutes.Describe(phone),
+                    last is null
+                        ? null
+                        : new(
+                            last.Saved,
+                            last.Skipped,
+                            last.Failed,
+                            last.Deferred,
+                            last.RetryHeld,
+                            last.AcquisitionComplete,
+                            last.LastError,
+                            last.ListingFailures
+                        )
+                );
+            })
+            .ToArray();
         string[] events;
-        lock (_events) events = _events.ToArray();
-        return NativeDiagnostics.Capture(typeof(CompanionRuntime).Assembly.GetName().Version?.ToString() ?? "unknown",
-            Status, CollectionStatus, devices, events);
+        lock (_events)
+            events = _events.ToArray();
+        return NativeDiagnostics.Capture(
+            typeof(CompanionRuntime).Assembly.GetName().Version?.ToString() ?? "unknown",
+            Status,
+            CollectionStatus,
+            devices,
+            events
+        );
     }
 
     private async Task PeriodicDiagnosticsAsync(CancellationToken token)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
         var sample = 0;
-        try {
-            do {
-                try {
+        try
+        {
+            do
+            {
+                try
+                {
                     var snapshot = DiagnosticSnapshot();
                     _diagnosticSnapshots.Save(snapshot, DebugRetentionDays);
-                    if (sample++ % 5 == 0) {
+                    if (sample++ % 5 == 0)
+                    {
                         var memory = snapshot.Resources;
-                        Record($"Resource snapshot: pid={memory.ProcessId}, privateBytes={memory.PrivateBytes}, workingSetBytes={memory.WorkingSetBytes}, managedBytes={memory.ManagedBytes}, nativeDiagnosticSchema={snapshot.Schema}");
+                        Record(
+                            $"Resource snapshot: pid={memory.ProcessId}, privateBytes={memory.PrivateBytes}, workingSetBytes={memory.WorkingSetBytes}, managedBytes={memory.ManagedBytes}, nativeDiagnosticSchema={snapshot.Schema}"
+                        );
                     }
-                } catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException) {
+                }
+                catch (Exception error)
+                    when (error is IOException or UnauthorizedAccessException or JsonException)
+                {
                     Record("Native diagnostic snapshot failed: " + error.Message);
                 }
             } while (await timer.WaitForNextTickAsync(token));
-        } catch (OperationCanceledException) { }
+        }
+        catch (OperationCanceledException) { }
     }
 
     public void WatchBattery(bool visible)
     {
         Interlocked.Exchange(ref _batteryViewers, visible ? 1 : 0);
-        if (visible) _ = RefreshAllBatteryAsync();
+        if (visible)
+            _ = RefreshAllBatteryAsync();
     }
 
     public async Task RefreshAllBatteryAsync()
     {
         PairedPhone[] phones;
-        lock (State) { phones = State.Phones.ToArray(); }
-        foreach (var phone in phones) await RefreshBatteryAsync(phone, true);
+        lock (State)
+        {
+            phones = State.Phones.ToArray();
+        }
+        foreach (var phone in phones)
+            await RefreshBatteryAsync(phone, true);
     }
 
     public async Task SendBatteryNowAsync()
@@ -159,51 +248,89 @@ public sealed class CompanionRuntime : IDisposable
     public async Task RefreshBatteryAsync(PairedPhone phone, bool manual = false)
     {
         var id = phone.PhysicalDeviceId;
-        if (!manual && _batteryAttempt.TryGetValue(id, out var previous) &&
-            DateTimeOffset.UtcNow - previous < TimeSpan.FromSeconds(LiveBatteryFailures.ContainsKey(id) ? 60 : 15)) return;
-        if (!LiveBatteryBusy.TryAdd(id, 0)) return;
+        if (
+            !manual
+            && _batteryAttempt.TryGetValue(id, out var previous)
+            && DateTimeOffset.UtcNow - previous
+                < TimeSpan.FromSeconds(LiveBatteryFailures.ContainsKey(id) ? 60 : 15)
+        )
+            return;
+        if (!LiveBatteryBusy.TryAdd(id, 0))
+            return;
         var started = System.Diagnostics.Stopwatch.StartNew();
-        Record($"Battery snapshot started; device={id:D}, trigger={(manual ? "manual" : "automatic")}, independentOfLogCollection=true");
-        try {
-            lock (State) { if (!State.Phones.Contains(phone)) return; }
+        Record(
+            $"Battery snapshot started; device={id:D}, trigger={(manual ? "manual" : "automatic")}, independentOfLogCollection=true"
+        );
+        try
+        {
+            lock (State)
+            {
+                if (!State.Phones.Contains(phone))
+                    return;
+            }
             _batteryAttempt[id] = DateTimeOffset.UtcNow;
             Changed?.Invoke();
-            try {
-                var snapshot = await Task.Run(() => Collector.CurrentBatteryAsync(phone, _lifetime.Token));
-                lock (State) {
-                    if (!State.Phones.Contains(phone)) { Server.LiveBattery.Remove(id); return; }
+            try
+            {
+                var snapshot = await Task.Run(() =>
+                    Collector.CurrentBatteryAsync(phone, _lifetime.Token)
+                );
+                lock (State)
+                {
+                    if (!State.Phones.Contains(phone))
+                    {
+                        Server.LiveBattery.Remove(id);
+                        return;
+                    }
                 }
                 LiveBatterySnapshots[id] = snapshot;
                 LiveBatteryFailures.TryRemove(id, out _);
                 Server.LiveBattery.Set(id, snapshot);
-            } catch (Exception error) {
+            }
+            catch (Exception error)
+            {
                 Record($"Battery snapshot failed; device={id:D}, error={error.Message}");
                 LiveBatteryFailures[id] = 0;
                 Server.LiveBattery.Set(id, null);
             }
-        } finally {
+        }
+        finally
+        {
             _batteryAttempt[id] = DateTimeOffset.UtcNow;
             LiveBatteryBusy.TryRemove(id, out _);
-            Record($"Battery snapshot finished; device={id:D}, elapsedMs={started.ElapsedMilliseconds}, failed={LiveBatteryFailures.ContainsKey(id)}");
+            Record(
+                $"Battery snapshot finished; device={id:D}, elapsedMs={started.ElapsedMilliseconds}, failed={LiveBatteryFailures.ContainsKey(id)}"
+            );
             Changed?.Invoke();
         }
     }
 
     private async Task PeriodicBatteryAsync(CancellationToken cancellation)
     {
-        try {
+        try
+        {
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
-            while (await timer.WaitForNextTickAsync(cancellation)) {
+            while (await timer.WaitForNextTickAsync(cancellation))
+            {
                 PairedPhone[] phones;
-                lock (State) { phones = State.Phones.ToArray(); }
-                foreach (var phone in phones) {
-                    if (Volatile.Read(ref _batteryViewers) > 0 ||
-                        (_batteryInterest.TryGetValue(phone.PhysicalDeviceId, out var contact) &&
-                         DateTimeOffset.UtcNow - contact < TimeSpan.FromSeconds(45)))
+                lock (State)
+                {
+                    phones = State.Phones.ToArray();
+                }
+                foreach (var phone in phones)
+                {
+                    if (
+                        Volatile.Read(ref _batteryViewers) > 0
+                        || (
+                            _batteryInterest.TryGetValue(phone.PhysicalDeviceId, out var contact)
+                            && DateTimeOffset.UtcNow - contact < TimeSpan.FromSeconds(45)
+                        )
+                    )
                         await RefreshBatteryAsync(phone);
                 }
             }
-        } catch (OperationCanceledException) { }
+        }
+        catch (OperationCanceledException) { }
     }
 
     public async Task RefreshAsync()
@@ -213,22 +340,30 @@ public sealed class CompanionRuntime : IDisposable
             Status = UiText.Get("win_searching");
             Changed?.Invoke();
             Available = await Task.Run(() => Collector.BrowseAsync(State.Phones, _lifetime.Token));
-            Status = Available.Count == 0 ? UiText.Get("win_none_found") :
-                UiText.Format("win_devices_available", Available.Count);
+            Status =
+                Available.Count == 0
+                    ? UiText.Get("win_none_found")
+                    : UiText.Format("win_devices_available", Available.Count);
         }
-        catch (Exception error) { Status = "Device search: " + error.Message; }
+        catch (Exception error)
+        {
+            Status = "Device search: " + error.Message;
+        }
         Record(Status);
     }
 
-    public async Task<ConnectedDevice> PrepareUsbAsync(string? selectedUdid = null,
-        Action<int, string>? progress = null)
+    public async Task<ConnectedDevice> PrepareUsbAsync(
+        string? selectedUdid = null,
+        Action<int, string>? progress = null
+    )
     {
         Status = UiText.Get("win_usb_wait");
         Changed?.Invoke();
         try
         {
-            var device = await Task.Run(() => Collector.PrepareUsbPairingAsync(
-                selectedUdid, progress, _lifetime.Token));
+            var device = await Task.Run(() =>
+                Collector.PrepareUsbPairingAsync(selectedUdid, progress, _lifetime.Token)
+            );
             Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
             Status = UiText.Format("win_usb_ready", device.Name);
             Record(Status);
@@ -254,7 +389,9 @@ public sealed class CompanionRuntime : IDisposable
     public PairingInvitation BeginPairing(ConnectedDevice device)
     {
         if (!Available.Any(item => item.Udid == device.Udid))
-            throw new InvalidOperationException("Set up USB trust or select a discovered device first.");
+            throw new InvalidOperationException(
+                "Set up USB trust or select a discovered device first."
+            );
         if (string.IsNullOrWhiteSpace(device.Model))
             throw new InvalidOperationException(UiText.Get("win_pair_trust_first"));
         var invitation = Server.BeginPairing(device);
@@ -265,30 +402,47 @@ public sealed class CompanionRuntime : IDisposable
     public void SetManualAddress(PairedPhone phone, string? address)
     {
         address = address?.Trim();
-        if (!string.IsNullOrEmpty(address) &&
-            (!IPAddress.TryParse(address, out var parsed) ||
-             parsed.AddressFamily != AddressFamily.InterNetwork ||
-             IPAddress.IsLoopback(parsed) || parsed.Equals(IPAddress.Any)))
+        if (
+            !string.IsNullOrEmpty(address)
+            && (
+                !IPAddress.TryParse(address, out var parsed)
+                || parsed.AddressFamily != AddressFamily.InterNetwork
+                || IPAddress.IsLoopback(parsed)
+                || parsed.Equals(IPAddress.Any)
+            )
+        )
             throw new ArgumentException("Enter a valid iPhone or iPad IPv4 address.");
-        lock (State) {
+        lock (State)
+        {
             phone.ManualAddress = string.IsNullOrEmpty(address) ? null : address;
             StateStore.Save(State);
         }
-        Record($"{phone.Name}: manual device address {(phone.ManualAddress is null ? "cleared" : "set")}");
+        Record(
+            $"{phone.Name}: manual device address {(phone.ManualAddress is null ? "cleared" : "set")}"
+        );
         if (phone.ManualAddress is not null)
             _ = CollectAsync(phone, trigger: "manual device address set");
     }
 
     private void FinishAutomaticFailures(PairedPhone phone, string outcome)
     {
-        if (!_automaticFailures.Remove(phone.PhysicalDeviceId, out var failure) ||
-            failure.Count <= 1) return;
-        Record($"{phone.Name}: automatic collection {outcome} after {failure.Count} attempts; " +
-            $"first={failure.First.ToLocalTime():O}; last error={failure.Error}");
+        if (
+            !_automaticFailures.Remove(phone.PhysicalDeviceId, out var failure)
+            || failure.Count <= 1
+        )
+            return;
+        Record(
+            $"{phone.Name}: automatic collection {outcome} after {failure.Count} attempts; "
+                + $"first={failure.First.ToLocalTime():O}; last error={failure.Error}"
+        );
     }
 
-    private void RecordCollectionFailure(PairedPhone phone, string trigger,
-        Exception error, bool manual)
+    private void RecordCollectionFailure(
+        PairedPhone phone,
+        string trigger,
+        Exception error,
+        bool manual
+    )
     {
         var message = Collector.StableDiagnostic(error.Message);
         if (manual)
@@ -296,14 +450,18 @@ public sealed class CompanionRuntime : IDisposable
             Record($"{phone.Name}: collection failed; trigger=manual request; error={message}");
             return;
         }
-        if (_automaticFailures.TryGetValue(phone.PhysicalDeviceId, out var previous) &&
-            previous.Error == message)
+        if (
+            _automaticFailures.TryGetValue(phone.PhysicalDeviceId, out var previous)
+            && previous.Error == message
+        )
         {
             var count = previous.Count + 1;
             _automaticFailures[phone.PhysicalDeviceId] = (previous.Error, previous.First, count);
             if (count % 12 == 0)
-                Record($"{phone.Name}: automatic collection still waiting; trigger={trigger}; " +
-                    $"attempts={count}; first={previous.First.ToLocalTime():O}; error={message}");
+                Record(
+                    $"{phone.Name}: automatic collection still waiting; trigger={trigger}; "
+                        + $"attempts={count}; first={previous.First.ToLocalTime():O}; error={message}"
+                );
         }
         else
         {
@@ -313,8 +471,11 @@ public sealed class CompanionRuntime : IDisposable
         }
     }
 
-    public async Task CollectAsync(PairedPhone? selected = null, bool manual = false,
-        string trigger = "5-minute timer")
+    public async Task CollectAsync(
+        PairedPhone? selected = null,
+        bool manual = false,
+        string trigger = "5-minute timer"
+    )
     {
         if (!await _collection.WaitAsync(0))
         {
@@ -324,8 +485,13 @@ public sealed class CompanionRuntime : IDisposable
         try
         {
             PairedPhone[] phones;
-            lock (State) { phones = selected is null ? State.Phones.ToArray() :
-                State.Phones.Contains(selected) ? [selected] : []; }
+            lock (State)
+            {
+                phones =
+                    selected is null ? State.Phones.ToArray()
+                    : State.Phones.Contains(selected) ? [selected]
+                    : [];
+            }
             var now = DateTimeOffset.UtcNow;
             var collectionOpen = now.ToOffset(TimeSpan.FromHours(9)).Hour >= 9;
             foreach (var phone in phones)
@@ -333,14 +499,24 @@ public sealed class CompanionRuntime : IDisposable
                 if (!manual)
                 {
                     var japanNow = now.ToOffset(TimeSpan.FromHours(9));
-                    var nextWindow = new DateTimeOffset(japanNow.Date.AddHours(9)
-                        .AddDays(japanNow.Hour >= 9 ? 1 : 0), TimeSpan.FromHours(9));
+                    var nextWindow = new DateTimeOffset(
+                        japanNow.Date.AddHours(9).AddDays(japanNow.Hour >= 9 ? 1 : 0),
+                        TimeSpan.FromHours(9)
+                    );
                     var resume = !collectionOpen ? nextWindow : phone.AutomaticPauseUntil;
-                    var reason = !collectionOpen ? "before the daily collection window" :
-                        phone.AutomaticPauseUntil > now ?
-                        "mobile app confirmed all required daily logs" : null;
-                    if (reason is null && BatteryLogStorage.HasRequiredDailyLogs(phone,
-                        japanNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))) {
+                    var reason =
+                        !collectionOpen ? "before the daily collection window"
+                        : phone.AutomaticPauseUntil > now
+                            ? "mobile app confirmed all required daily logs"
+                        : null;
+                    if (
+                        reason is null
+                        && BatteryLogStorage.HasRequiredDailyLogs(
+                            phone,
+                            japanNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                        )
+                    )
+                    {
                         reason = "verified current-day host and known Watch logs are stored";
                         resume = nextWindow;
                     }
@@ -348,11 +524,18 @@ public sealed class CompanionRuntime : IDisposable
                     {
                         FinishAutomaticFailures(phone, "paused");
                         var key = $"{reason}|{resume:O}";
-                        if (!_lastAutomaticDecision.TryGetValue(phone.PhysicalDeviceId,
-                            out var previous) || previous != key)
+                        if (
+                            !_lastAutomaticDecision.TryGetValue(
+                                phone.PhysicalDeviceId,
+                                out var previous
+                            )
+                            || previous != key
+                        )
                         {
-                            Record($"{phone.Name}: automatic collection stopped; trigger={reason}; " +
-                                $"resume={resume?.ToLocalTime():O}");
+                            Record(
+                                $"{phone.Name}: automatic collection stopped; trigger={reason}; "
+                                    + $"resume={resume?.ToLocalTime():O}"
+                            );
                             _lastAutomaticDecision[phone.PhysicalDeviceId] = key;
                         }
                         continue;
@@ -361,40 +544,87 @@ public sealed class CompanionRuntime : IDisposable
                         Record($"{phone.Name}: automatic collection resumed; trigger={trigger}");
                 }
                 var attempt = Guid.NewGuid();
-                Record($"{phone.Name}: collection started; attempt={attempt:D}; trigger={(manual ? "manual request" : trigger)}");
+                Record(
+                    $"{phone.Name}: collection started; attempt={attempt:D}; trigger={(manual ? "manual request" : trigger)}"
+                );
                 var started = System.Diagnostics.Stopwatch.StartNew();
                 CollectionStatus = UiText.Format("win_reading", phone.Name);
                 Changed?.Invoke();
                 try
                 {
-                    var result = await Task.Run(() => Collector.CollectAsync(phone, State,
-                        (done, total) => { CollectionStatus = UiText.Format("win_progress", phone.Name, done, total);
-                            Changed?.Invoke(); }, _lifetime.Token));
-                    if (result.AcquisitionComplete) FinishAutomaticFailures(phone, "recovered");
-                    else if (result.Failed > 0 || result.ListingFailures > 0) RecordCollectionFailure(phone, trigger,
-                        new IOException(result.LastError ?? "Battery log download failed"), manual);
-                    CollectionStatus = UiText.Format("win_collection_result", phone.Name,
-                        result.Saved, result.Skipped, result.Failed);
-                    if (result.LastError is not null) CollectionStatus += " " + result.LastError;
-                    if (result.RetryHeld + result.Deferred > 0) CollectionStatus += " " + UiText.Format("win_collection_retry_wait", result.RetryHeld + result.Deferred);
-                    lock (State) {
-                        State.LastCollections[phone.PhysicalDeviceId.ToString("D").ToUpperInvariant()] = result;
+                    var result = await Task.Run(() =>
+                        Collector.CollectAsync(
+                            phone,
+                            State,
+                            (done, total) =>
+                            {
+                                CollectionStatus = UiText.Format(
+                                    "win_progress",
+                                    phone.Name,
+                                    done,
+                                    total
+                                );
+                                Changed?.Invoke();
+                            },
+                            _lifetime.Token
+                        )
+                    );
+                    if (result.AcquisitionComplete)
+                        FinishAutomaticFailures(phone, "recovered");
+                    else if (result.Failed > 0 || result.ListingFailures > 0)
+                        RecordCollectionFailure(
+                            phone,
+                            trigger,
+                            new IOException(result.LastError ?? "Battery log download failed"),
+                            manual
+                        );
+                    CollectionStatus = UiText.Format(
+                        "win_collection_result",
+                        phone.Name,
+                        result.Saved,
+                        result.Skipped,
+                        result.Failed
+                    );
+                    if (result.LastError is not null)
+                        CollectionStatus += " " + result.LastError;
+                    if (result.RetryHeld + result.Deferred > 0)
+                        CollectionStatus +=
+                            " "
+                            + UiText.Format(
+                                "win_collection_retry_wait",
+                                result.RetryHeld + result.Deferred
+                            );
+                    lock (State)
+                    {
+                        State.LastCollections[
+                            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant()
+                        ] = result;
                         StateStore.Save(State);
                     }
                     Record(CollectionStatus);
-                    Record($"{phone.Name}: collection finished; attempt={attempt:D}; saved={result.Saved}, " +
-                        $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, retryHeld={result.RetryHeld}, listingFailures={result.ListingFailures}, acquisitionComplete={result.AcquisitionComplete}, elapsedMs={started.ElapsedMilliseconds}");
+                    Record(
+                        $"{phone.Name}: collection finished; attempt={attempt:D}; saved={result.Saved}, "
+                            + $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, retryHeld={result.RetryHeld}, listingFailures={result.ListingFailures}, acquisitionComplete={result.AcquisitionComplete}, elapsedMs={started.ElapsedMilliseconds}"
+                    );
                 }
-                catch (Exception error) {
-                    Record($"{phone.Name}: collection attempt ended; attempt={attempt:D}; result=failed; elapsedMs={started.ElapsedMilliseconds}");
-                    CollectionStatus = UiText.Format("win_collection_result", phone.Name, 0, 0, 1) +
-                        " " + error.Message;
+                catch (Exception error)
+                {
+                    Record(
+                        $"{phone.Name}: collection attempt ended; attempt={attempt:D}; result=failed; elapsedMs={started.ElapsedMilliseconds}"
+                    );
+                    CollectionStatus =
+                        UiText.Format("win_collection_result", phone.Name, 0, 0, 1)
+                        + " "
+                        + error.Message;
                     Changed?.Invoke();
                     RecordCollectionFailure(phone, trigger, error, manual);
                 }
             }
         }
-        finally { _collection.Release(); }
+        finally
+        {
+            _collection.Release();
+        }
     }
 
     public void Unpair(PairedPhone phone)
@@ -417,17 +647,27 @@ public sealed class CompanionRuntime : IDisposable
 
     public string DebugLog
     {
-        get { lock (_events) return CrashDiagnostics.SummaryText + Environment.NewLine +
-            string.Join(Environment.NewLine, _events); }
+        get
+        {
+            lock (_events)
+                return CrashDiagnostics.SummaryText
+                    + Environment.NewLine
+                    + string.Join(Environment.NewLine, _events);
+        }
     }
 
     public int DebugRetentionDays
     {
         get => int.TryParse(ReadRetention(), out var value) ? Math.Clamp(value, 7, 365) : 30;
-        set {
-            lock (_events) {
+        set
+        {
+            lock (_events)
+            {
                 Directory.CreateDirectory(StateStore.Root);
-                File.WriteAllText(RetentionFile, Math.Clamp(value, 7, 365).ToString(CultureInfo.InvariantCulture));
+                File.WriteAllText(
+                    RetentionFile,
+                    Math.Clamp(value, 7, 365).ToString(CultureInfo.InvariantCulture)
+                );
                 PruneArchive();
                 DebugArchiveSync.PruneAllRemote(value);
                 DebugArchiveSync.RefreshAllSnapshots();
@@ -439,67 +679,118 @@ public sealed class CompanionRuntime : IDisposable
 
     private static string? ReadRetention()
     {
-        try { return File.ReadAllText(RetentionFile); }
-        catch (IOException) { return null; }
-        catch (UnauthorizedAccessException) { return null; }
+        try
+        {
+            return File.ReadAllText(RetentionFile);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     public IReadOnlyList<string> DebugLogDays
     {
-        get { lock (_events) return StoredDays(); }
+        get
+        {
+            lock (_events)
+                return StoredDays();
+        }
     }
 
     public string DebugLogForDay(string? day)
     {
-        if (day is null || !DateOnly.TryParseExact(day, "yyyy-MM-dd",
-            CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return "";
-        lock (_events) {
-            try { return File.ReadAllText(Path.Combine(ArchiveRoot, day + ".log")); }
-            catch (IOException) { return ""; }
-            catch (UnauthorizedAccessException) { return ""; }
+        if (
+            day is null
+            || !DateOnly.TryParseExact(
+                day,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out _
+            )
+        )
+            return "";
+        lock (_events)
+        {
+            try
+            {
+                return File.ReadAllText(Path.Combine(ArchiveRoot, day + ".log"));
+            }
+            catch (IOException)
+            {
+                return "";
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return "";
+            }
         }
     }
 
     public void DeleteDebugLogs()
     {
         DebugArchiveSync.RefreshAllSnapshots();
-        lock (_events) {
-            foreach (var day in StoredDays()) DiagnosticLogArchive.RemoveDay(day, ArchiveRoot);
+        lock (_events)
+        {
+            foreach (var day in StoredDays())
+                DiagnosticLogArchive.RemoveDay(day, ArchiveRoot);
             _events.Clear();
-            if (File.Exists(EventsFile)) File.Delete(EventsFile);
+            if (File.Exists(EventsFile))
+                File.Delete(EventsFile);
             File.WriteAllText(MigrationFile, "1");
             _diagnosticSnapshots.Clear();
         }
         Changed?.Invoke();
     }
 
-    private static string[] StoredDays() => Directory.Exists(ArchiveRoot)
-        ? Directory.EnumerateFiles(ArchiveRoot, "*.log")
-            .Select(Path.GetFileNameWithoutExtension)
-            .OfType<string>()
-            .Where(day => DateOnly.TryParseExact(day, "yyyy-MM-dd",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
-            .OrderByDescending(day => day).ToArray() : [];
+    private static string[] StoredDays() =>
+        Directory.Exists(ArchiveRoot)
+            ? Directory
+                .EnumerateFiles(ArchiveRoot, "*.log")
+                .Select(Path.GetFileNameWithoutExtension)
+                .OfType<string>()
+                .Where(day =>
+                    DateOnly.TryParseExact(
+                        day,
+                        "yyyy-MM-dd",
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.None,
+                        out _
+                    )
+                )
+                .OrderByDescending(day => day)
+                .ToArray()
+            : [];
 
     private static void AppendArchive(string eventText, bool legacy = false) =>
         DiagnosticLogArchive.Append(eventText, ArchiveRoot, legacy: legacy);
 
     private void MigrateLegacyEvents()
     {
-        if (File.Exists(MigrationFile)) return;
-        try {
+        if (File.Exists(MigrationFile))
+            return;
+        try
+        {
             Directory.CreateDirectory(StateStore.Root);
-            foreach (var item in _events) AppendArchive(item, legacy: true);
+            foreach (var item in _events)
+                AppendArchive(item, legacy: true);
             File.WriteAllText(MigrationFile, "1");
             PruneArchive();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        { /* Retry on the next launch. */ }
+        { /* Retry on the next launch. */
+        }
     }
 
     private void PruneArchive()
     {
-        var cutoff = DateTime.Today.AddDays(1 - DebugRetentionDays)
+        var cutoff = DateTime
+            .Today.AddDays(1 - DebugRetentionDays)
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         foreach (var day in StoredDays().Where(day => string.CompareOrdinal(day, cutoff) < 0))
             DiagnosticLogArchive.RemoveDay(day, ArchiveRoot);
@@ -507,66 +798,100 @@ public sealed class CompanionRuntime : IDisposable
 
     public string PhoneDiagnosticsText(PairedPhone? phone)
     {
-        if (phone is not null && DebugArchiveSync.PhoneDays(phone.PhysicalDeviceId)
-            .FirstOrDefault() is { } latest)
+        if (
+            phone is not null
+            && DebugArchiveSync.PhoneDays(phone.PhysicalDeviceId).FirstOrDefault() is { } latest
+        )
             return DebugArchiveSync.PhoneText(phone.PhysicalDeviceId, latest);
         byte[]? report;
-        lock (State) {
-            if (phone is null || !State.PhoneDiagnostics.TryGetValue(
-                phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out report))
+        lock (State)
+        {
+            if (
+                phone is null
+                || !State.PhoneDiagnostics.TryGetValue(
+                    phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(),
+                    out report
+                )
+            )
                 return UiText.Get("win_no_phone_report");
         }
-        try {
+        try
+        {
             using var parsed = JsonDocument.Parse(report);
-            return parsed.RootElement.TryGetProperty("recentEvents", out var events) &&
-                events.ValueKind == JsonValueKind.Array
-                ? string.Join(Environment.NewLine, events.EnumerateArray().Select(e => e.GetString()))
+            return
+                parsed.RootElement.TryGetProperty("recentEvents", out var events)
+                && events.ValueKind == JsonValueKind.Array
+                ? string.Join(
+                    Environment.NewLine,
+                    events.EnumerateArray().Select(e => e.GetString())
+                )
                 : UiText.Get("win_no_phone_report");
         }
-        catch (JsonException) { return UiText.Get("win_no_phone_report"); }
+        catch (JsonException)
+        {
+            return UiText.Get("win_no_phone_report");
+        }
     }
 
-    public IReadOnlyList<string> PhoneDebugDays(PairedPhone? phone) => phone is null
-        ? [] : DebugArchiveSync.PhoneDays(phone.PhysicalDeviceId);
+    public IReadOnlyList<string> PhoneDebugDays(PairedPhone? phone) =>
+        phone is null ? [] : DebugArchiveSync.PhoneDays(phone.PhysicalDeviceId);
 
     public string PhoneDebugForDay(PairedPhone? phone, string? day) =>
-        phone is null || day is null ? "" :
-        DebugArchiveSync.PhoneText(phone.PhysicalDeviceId, day);
+        phone is null || day is null ? "" : DebugArchiveSync.PhoneText(phone.PhysicalDeviceId, day);
 
     private byte[] BuildTransferReport(PairedPhone phone)
     {
         byte[]? phoneReport;
-        lock (State) State.PhoneDiagnostics.TryGetValue(
-            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out phoneReport);
+        lock (State)
+            State.PhoneDiagnostics.TryGetValue(
+                phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(),
+                out phoneReport
+            );
         var events = DebugLog.Split(Environment.NewLine).TakeLast(30).ToList();
-        var report = new Dictionary<string, object?> {
-            ["schema"] = 1, ["platform"] = "Windows",
+        var report = new Dictionary<string, object?>
+        {
+            ["schema"] = 1,
+            ["platform"] = "Windows",
             ["generatedAt"] = DateTimeOffset.Now,
             ["deviceName"] = phone.Name,
             ["osVersion"] = Environment.OSVersion.VersionString,
             ["diagnosticLogFormatVersion"] = DiagnosticLogArchive.FormatVersion,
             ["archiveManifest"] = DebugArchiveSync.LocalManifest(phone.PhysicalDeviceId),
-            ["recentEvents"] = events
+            ["recentEvents"] = events,
         };
-        try {
-            if (DebugArchiveSync.RequestPhoneChunk(phoneReport,
-                phone.PhysicalDeviceId) is { } request)
+        try
+        {
+            if (
+                DebugArchiveSync.RequestPhoneChunk(phoneReport, phone.PhysicalDeviceId) is
+                { } request
+            )
                 report["archiveRequest"] = request;
             if (DebugArchiveSync.ComputerChunk(phoneReport) is { } chunk)
                 report["archiveChunk"] = chunk;
         }
-        catch (Exception error) when (error is IOException or JsonException or
-            UnauthorizedAccessException) {
+        catch (Exception error)
+            when (error is IOException or JsonException or UnauthorizedAccessException)
+        {
             Record("Debug archive report: " + error.Message);
         }
-        while (true) {
+        while (true)
+        {
             var data = JsonSerializer.SerializeToUtf8Bytes(report);
-            if (data.Length <= 16_384) return data;
-            if (events.Count > 0) { events.RemoveAt(0); continue; }
-            if (report.TryGetValue("archiveChunk", out var value) &&
-                value is Dictionary<string, object> chunk &&
-                chunk.TryGetValue("data", out var encoded) && encoded is string text &&
-                Convert.FromBase64String(text) is { Length: > 128 } bytes) {
+            if (data.Length <= 16_384)
+                return data;
+            if (events.Count > 0)
+            {
+                events.RemoveAt(0);
+                continue;
+            }
+            if (
+                report.TryGetValue("archiveChunk", out var value)
+                && value is Dictionary<string, object> chunk
+                && chunk.TryGetValue("data", out var encoded)
+                && encoded is string text
+                && Convert.FromBase64String(text) is { Length: > 128 } bytes
+            )
+            {
                 chunk["data"] = Convert.ToBase64String(bytes.AsSpan(0, bytes.Length / 2));
                 continue;
             }
@@ -578,36 +903,58 @@ public sealed class CompanionRuntime : IDisposable
     public byte[] SupportDiagnosticsData(PairedPhone? phone)
     {
         var id = phone?.PhysicalDeviceId.ToString("D").ToUpperInvariant();
-        var pending = phone is null ? 0 : new[] { "Host", "Watch" }
-            .Sum(kind => Directory.Exists(Path.Combine(TransferServer.QueuePath(phone), kind))
-                ? Directory.EnumerateFiles(Path.Combine(TransferServer.QueuePath(phone), kind),
-                    "Analytics-*.ips.ca.synced", SearchOption.AllDirectories).Count() : 0);
+        var pending = phone is null
+            ? 0
+            : new[] { "Host", "Watch" }.Sum(kind =>
+                Directory.Exists(Path.Combine(TransferServer.QueuePath(phone), kind))
+                    ? Directory
+                        .EnumerateFiles(
+                            Path.Combine(TransferServer.QueuePath(phone), kind),
+                            "Analytics-*.ips.ca.synced",
+                            SearchOption.AllDirectories
+                        )
+                        .Count()
+                    : 0
+            );
         int delivered;
         CollectionResult? lastCollection;
-        lock (State) {
+        lock (State)
+        {
             delivered = id is null ? 0 : State.Delivered.Count(token => token.StartsWith(id + "|"));
-            lastCollection = id is not null && State.LastCollections.TryGetValue(id, out var last) ? last : null;
+            lastCollection =
+                id is not null && State.LastCollections.TryGetValue(id, out var last) ? last : null;
         }
         var snapshot = DiagnosticSnapshot();
-        return JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
-            appVersion = typeof(CompanionRuntime).Assembly.GetName().Version?.ToString(),
-            osVersion = Environment.OSVersion.VersionString,
-            deviceName = phone?.Name, deviceModel = phone?.Model,
-            pairingConfirmed = phone?.ConfirmedAt is not null,
-            pendingFiles = pending, deliveredFiles = delivered,
-            lastCollection,
-            lastCrash = CrashDiagnostics.Latest(),
-            nativeDiagnostics = snapshot,
-            recentEvents = snapshot.RecentEvents.TakeLast(40).ToArray(),
-        }, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.SerializeToUtf8Bytes(
+            new
+            {
+                schema = 1,
+                platform = "Windows",
+                generatedAt = DateTimeOffset.Now,
+                appVersion = typeof(CompanionRuntime).Assembly.GetName().Version?.ToString(),
+                osVersion = Environment.OSVersion.VersionString,
+                deviceName = phone?.Name,
+                deviceModel = phone?.Model,
+                pairingConfirmed = phone?.ConfirmedAt is not null,
+                pendingFiles = pending,
+                deliveredFiles = delivered,
+                lastCollection,
+                lastCrash = CrashDiagnostics.Latest(),
+                nativeDiagnostics = snapshot,
+                recentEvents = snapshot.RecentEvents.TakeLast(40).ToArray(),
+            },
+            new JsonSerializerOptions { WriteIndented = true }
+        );
     }
 
     public byte[]? PhoneSupportDiagnosticsData(PairedPhone? phone) =>
-        phone is not null && State.PhoneDiagnostics.TryGetValue(
-            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(), out var report)
-            ? report : null;
+        phone is not null
+        && State.PhoneDiagnostics.TryGetValue(
+            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant(),
+            out var report
+        )
+            ? report
+            : null;
 
     public void RecordUiLifecycle(string message) => Record("UI memory: " + message);
 
@@ -618,8 +965,10 @@ public sealed class CompanionRuntime : IDisposable
             var detail = message.Replace('\r', ' ').Replace('\n', ' ');
             var eventText = $"{DateTimeOffset.Now:O} | {new string(detail.Take(800).ToArray())}";
             _events.Add(eventText);
-            if (_events.Count > 500) _events.RemoveRange(0, _events.Count - 500);
-            try {
+            if (_events.Count > 500)
+                _events.RemoveRange(0, _events.Count - 500);
+            try
+            {
                 Directory.CreateDirectory(StateStore.Root);
                 var temporary = EventsFile + ".new";
                 File.WriteAllText(temporary, JsonSerializer.Serialize(_events));
@@ -628,7 +977,8 @@ public sealed class CompanionRuntime : IDisposable
                 PruneArchive();
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-            { /* Debug logging must not block transfers. */ }
+            { /* Debug logging must not block transfers. */
+            }
         }
         Changed?.Invoke();
     }

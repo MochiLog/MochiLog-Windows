@@ -13,6 +13,7 @@ public sealed partial class MainShell : UserControl
     public TitleBar TitleBar => AppTitleBar;
     public bool ShowsLiveBattery => NavFrame.Content is LiveBatteryPage;
     public string PageKey { get; private set; } = "home";
+
     public MainShell(MainWindow owner, string page)
     {
         _owner = owner;
@@ -25,27 +26,43 @@ public sealed partial class MainShell : UserControl
         SelectPage(page);
         Loaded += ShellLoaded;
     }
-    private void ShellLoaded(object sender, RoutedEventArgs args) {
+
+    private void ShellLoaded(object sender, RoutedEventArgs args)
+    {
         SelectPage(PageKey);
         _ = _owner.ConfigureAutomaticUpdatesAsync();
     }
+
     public void SelectPage(string page)
     {
-        var selected = page == "settings" ? NavView.SettingsItem :
-            NavView.MenuItems.OfType<NavigationViewItem>().FirstOrDefault(item => item.Tag as string == page);
-        if (selected is not null) NavView.SelectedItem = selected;
+        var selected =
+            page == "settings"
+                ? NavView.SettingsItem
+                : NavView
+                    .MenuItems.OfType<NavigationViewItem>()
+                    .FirstOrDefault(item => item.Tag as string == page);
+        if (selected is not null)
+            NavView.SelectedItem = selected;
         Navigate(page);
     }
+
     private void Navigate(string page)
     {
-        var type = page switch {
-            "settings" => typeof(SettingsPage), "liveBattery" => typeof(LiveBatteryPage),
-            "battery" => typeof(BatteryLogsPage), "about" => typeof(AboutPage), _ => typeof(HomePage)
+        var type = page switch
+        {
+            "settings" => typeof(SettingsPage),
+            "liveBattery" => typeof(LiveBatteryPage),
+            "battery" => typeof(BatteryLogsPage),
+            "about" => typeof(AboutPage),
+            _ => typeof(HomePage),
         };
-        if (NavFrame.CurrentSourcePageType != type) NavFrame.Navigate(type);
+        if (NavFrame.CurrentSourcePageType != type)
+            NavFrame.Navigate(type);
         AppTitleBar.IsBackButtonVisible = NavFrame.CanGoBack;
-        PageKey = page; _owner.RememberPage(page);
+        PageKey = page;
+        _owner.RememberPage(page);
     }
+
     public void Release()
     {
         Loaded -= ShellLoaded;
@@ -53,14 +70,28 @@ public sealed partial class MainShell : UserControl
         AppTitleBar.PaneToggleRequested -= TitleBar_PaneToggleRequested;
         AppTitleBar.BackRequested -= TitleBar_BackRequested;
         NavFrame.Content = null;
-        NavFrame.BackStack.Clear(); NavFrame.ForwardStack.Clear();
+        NavFrame.BackStack.Clear();
+        NavFrame.ForwardStack.Clear();
         Content = null;
     }
-    private void TitleBar_PaneToggleRequested(TitleBar sender, object args) => NavView.IsPaneOpen = !NavView.IsPaneOpen;
-    private void TitleBar_BackRequested(TitleBar sender, object args) { if (NavFrame.CanGoBack) NavFrame.GoBack(); }
-    private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+
+    private void TitleBar_PaneToggleRequested(TitleBar sender, object args) =>
+        NavView.IsPaneOpen = !NavView.IsPaneOpen;
+
+    private void TitleBar_BackRequested(TitleBar sender, object args)
     {
-        if (args.IsSettingsSelected) Navigate("settings");
-        else if (args.SelectedItem is NavigationViewItem item) Navigate(item.Tag as string ?? "home");
+        if (NavFrame.CanGoBack)
+            NavFrame.GoBack();
+    }
+
+    private void NavView_SelectionChanged(
+        NavigationView sender,
+        NavigationViewSelectionChangedEventArgs args
+    )
+    {
+        if (args.IsSettingsSelected)
+            Navigate("settings");
+        else if (args.SelectedItem is NavigationViewItem item)
+            Navigate(item.Tag as string ?? "home");
     }
 }

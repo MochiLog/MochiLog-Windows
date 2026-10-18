@@ -19,14 +19,17 @@ public sealed class PairedPhone
 public sealed class CompanionState
 {
     public Guid HostId { get; set; } = Guid.NewGuid();
+
     // Keep the selected listening port stable across restarts, including on PCs
     // where Windows has reserved the usual port for another service.
     public int? TransferPort { get; set; }
     public List<PairedPhone> Phones { get; set; } = [];
+
     // Revoked keys authenticate a delayed unpair acknowledgement only.
     // These phones are excluded from discovery, collection and transfer.
     public List<PairedPhone> RevokedPhones { get; set; } = [];
     public HashSet<string> Delivered { get; set; } = [];
+
     // Future timestamps protect downloaded-but-unclassified content from repeat
     // downloads. Elapsed timestamps also preserve failed-read order for probes;
     // failed downloads do not add another delay to the outer five-minute timer.
@@ -47,13 +50,20 @@ public sealed class UnclassifiedObservation
 
 public static class StateStore
 {
-    #if MOCHILOG_PROTOCOL_TEST
-    public static string Root { get; } = Path.Combine(Path.GetTempPath(),
-        "MochiLog-Windows-Protocol-Test", Guid.NewGuid().ToString("N"));
-    #else
-    public static string Root { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MochiLog Windows");
-    #endif
+#if MOCHILOG_PROTOCOL_TEST
+    public static string Root { get; } =
+        Path.Combine(
+            Path.GetTempPath(),
+            "MochiLog-Windows-Protocol-Test",
+            Guid.NewGuid().ToString("N")
+        );
+#else
+    public static string Root { get; } =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MochiLog Windows"
+        );
+#endif
     private static string FileName => Path.Combine(Root, "state.bin");
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private static readonly object Gate = new();
@@ -63,16 +73,25 @@ public static class StateStore
         lock (Gate)
         {
             Directory.CreateDirectory(Root);
-            if (!File.Exists(FileName)) return new CompanionState();
+            if (!File.Exists(FileName))
+                return new CompanionState();
             try
             {
                 var encrypted = File.ReadAllBytes(FileName);
-                var plain = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
-                return JsonSerializer.Deserialize<CompanionState>(plain, JsonOptions) ?? new CompanionState();
+                var plain = ProtectedData.Unprotect(
+                    encrypted,
+                    null,
+                    DataProtectionScope.CurrentUser
+                );
+                return JsonSerializer.Deserialize<CompanionState>(plain, JsonOptions)
+                    ?? new CompanionState();
             }
             catch (Exception error)
             {
-                throw new InvalidDataException("The paired-device store cannot be opened; pairing keys were not reset.", error);
+                throw new InvalidDataException(
+                    "The paired-device store cannot be opened; pairing keys were not reset.",
+                    error
+                );
             }
         }
     }

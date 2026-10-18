@@ -11,19 +11,36 @@ public static class DialogCoordinator
     private static ContentDialog? _active;
     private static int _generation;
 
-    public static void HideActive() { _generation++; _active?.Hide(); }
+    public static void HideActive()
+    {
+        _generation++;
+        _active?.Hide();
+    }
 
     public static async Task<ContentDialogResult?> ShowAsync(ContentDialog dialog)
     {
         var generation = _generation;
         await Gate.WaitAsync();
-        try {
-            if (generation != _generation || dialog.XamlRoot?.IsHostVisible != true) return null;
+        try
+        {
+            if (generation != _generation || dialog.XamlRoot?.IsHostVisible != true)
+                return null;
             _active = dialog;
             return await dialog.ShowAsync();
         }
-        catch (COMException) { return null; }
-        catch (InvalidOperationException) { return null; }
-        finally { if (ReferenceEquals(_active, dialog)) _active = null; Gate.Release(); }
+        catch (COMException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        finally
+        {
+            if (ReferenceEquals(_active, dialog))
+                _active = null;
+            Gate.Release();
+        }
     }
 }

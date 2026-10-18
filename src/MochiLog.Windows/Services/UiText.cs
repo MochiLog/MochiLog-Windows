@@ -21,33 +21,49 @@ public static class UiText
             var culture = CultureInfo.CurrentUICulture;
             if (culture.TwoLetterISOLanguageName == "zh")
             {
-                var traditional = culture.Name.Contains("Hant", StringComparison.OrdinalIgnoreCase) ||
-                    culture.Name.EndsWith("-TW", StringComparison.OrdinalIgnoreCase) ||
-                    culture.Name.EndsWith("-HK", StringComparison.OrdinalIgnoreCase) ||
-                    culture.Name.EndsWith("-MO", StringComparison.OrdinalIgnoreCase);
+                var traditional =
+                    culture.Name.Contains("Hant", StringComparison.OrdinalIgnoreCase)
+                    || culture.Name.EndsWith("-TW", StringComparison.OrdinalIgnoreCase)
+                    || culture.Name.EndsWith("-HK", StringComparison.OrdinalIgnoreCase)
+                    || culture.Name.EndsWith("-MO", StringComparison.OrdinalIgnoreCase);
                 return traditional ? "zh-Hant" : "zh-Hans";
             }
             return culture.TwoLetterISOLanguageName is "ja" or "de" or "es" or "fr" or "ko"
-                ? culture.TwoLetterISOLanguageName : "en";
+                ? culture.TwoLetterISOLanguageName
+                : "en";
         }
     }
 
     public static string Get(string key)
     {
         var language = Language;
-        if (Windows is not null && Windows.RootElement.TryGetProperty(language, out var group) &&
-            group.TryGetProperty(key, out var value)) return value.GetString() ?? key;
-        if (Shared is not null && Shared.RootElement.GetProperty("strings").TryGetProperty(key, out var item) &&
-            item.TryGetProperty("localizations", out var localizations))
+        if (
+            Windows is not null
+            && Windows.RootElement.TryGetProperty(language, out var group)
+            && group.TryGetProperty(key, out var value)
+        )
+            return value.GetString() ?? key;
+        if (
+            Shared is not null
+            && Shared.RootElement.GetProperty("strings").TryGetProperty(key, out var item)
+            && item.TryGetProperty("localizations", out var localizations)
+        )
         {
             if (!localizations.TryGetProperty(language, out var localized))
                 localizations.TryGetProperty("en", out localized);
-            if (localized.ValueKind == JsonValueKind.Object &&
-                localized.TryGetProperty("stringUnit", out var unit) &&
-                unit.TryGetProperty("value", out var text)) return text.GetString() ?? key;
+            if (
+                localized.ValueKind == JsonValueKind.Object
+                && localized.TryGetProperty("stringUnit", out var unit)
+                && unit.TryGetProperty("value", out var text)
+            )
+                return text.GetString() ?? key;
         }
-        if (Windows is not null && Windows.RootElement.TryGetProperty("en", out var english) &&
-            english.TryGetProperty(key, out var fallback)) return fallback.GetString() ?? key;
+        if (
+            Windows is not null
+            && Windows.RootElement.TryGetProperty("en", out var english)
+            && english.TryGetProperty(key, out var fallback)
+        )
+            return fallback.GetString() ?? key;
         return key;
     }
 

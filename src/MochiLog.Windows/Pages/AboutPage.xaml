@@ -1,22 +1,52 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<Page x:Class="MochiLog_Windows.Pages.AboutPage"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Page
+    x:Class="MochiLog_Windows.Pages.AboutPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
     <ScrollViewer x:Name="ContentScroll" Style="{StaticResource CompanionPageScrollStyle}">
-        <StackPanel x:Name="ContentColumn" Style="{StaticResource CompanionPageColumnStyle}"
-                    Width="{Binding ActualWidth, ElementName=ContentScroll}"
-                    AutomationProperties.AutomationId="PageColumn">
-            <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}"
-                       AutomationProperties.AutomationId="PageHeading" />
+        <StackPanel
+            x:Name="ContentColumn"
+            Style="{StaticResource CompanionPageColumnStyle}"
+            Width="{Binding ActualWidth, ElementName=ContentScroll}"
+            AutomationProperties.AutomationId="PageColumn"
+        >
+            <TextBlock
+                Text="MochiLog Windows"
+                Style="{StaticResource TitleTextBlockStyle}"
+                AutomationProperties.AutomationId="PageHeading"
+            />
             <TextBlock x:Name="VersionText" Opacity="0.72" />
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+            <Border
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="18"
+                Padding="20"
+            >
                 <StackPanel Spacing="12">
                     <TextBlock x:Name="AboutText" TextWrapping="Wrap" />
-                    <Button x:Name="RepositoryButton" Click="RepositoryClicked" HorizontalAlignment="Left" />
-                    <Button x:Name="UpdateButton" Click="UpdateClicked" HorizontalAlignment="Left" />
-                    <Button x:Name="LicenseButton" Click="LicenseClicked" HorizontalAlignment="Left" />
-                    <HyperlinkButton x:Name="PrivacyLink" NavigateUri="https://mochilog.ryuya-dev.net/privacy" />
-                    <HyperlinkButton x:Name="TermsLink" NavigateUri="https://mochilog.ryuya-dev.net/terms" />
+                    <Button
+                        x:Name="RepositoryButton"
+                        Click="RepositoryClicked"
+                        HorizontalAlignment="Left"
+                    />
+                    <Button
+                        x:Name="UpdateButton"
+                        Click="UpdateClicked"
+                        HorizontalAlignment="Left"
+                    />
+                    <Button
+                        x:Name="LicenseButton"
+                        Click="LicenseClicked"
+                        HorizontalAlignment="Left"
+                    />
+                    <HyperlinkButton
+                        x:Name="PrivacyLink"
+                        NavigateUri="https://mochilog.ryuya-dev.net/privacy"
+                    />
+                    <HyperlinkButton
+                        x:Name="TermsLink"
+                        NavigateUri="https://mochilog.ryuya-dev.net/terms"
+                    />
                 </StackPanel>
             </Border>
         </StackPanel>

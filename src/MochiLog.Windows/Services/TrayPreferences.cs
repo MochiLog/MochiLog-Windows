@@ -16,7 +16,8 @@ public static class TrayPreferences
         }
         set
         {
-            using var key = Registry.CurrentUser.CreateSubKey(Path, writable: true)
+            using var key =
+                Registry.CurrentUser.CreateSubKey(Path, writable: true)
                 ?? throw new IOException("The taskbar tray setting is unavailable.");
             key.SetValue(Name, value ? 1 : 0, RegistryValueKind.DWord);
         }

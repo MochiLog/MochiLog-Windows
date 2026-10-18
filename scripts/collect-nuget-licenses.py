@@ -19,14 +19,26 @@ data = json.loads(assets.read_text(encoding="utf-8"))
 packages_root = Path(os.environ.get("NUGET_PACKAGES", Path.home() / ".nuget/packages"))
 rows = ["Resolved NuGet packages used to build MochiLog Windows", ""]
 upstream_licenses = {
-    "Common.Logging": ("Apache-2.0", "Common.Logging-LICENSE.txt",
-                       "https://github.com/net-commons/common-logging/blob/master/license.txt"),
-    "Common.Logging.Core": ("Apache-2.0", "Common.Logging-LICENSE.txt",
-                            "https://github.com/net-commons/common-logging/blob/master/license.txt"),
-    "Makaretu.Dns": ("MIT", "Makaretu.Dns-LICENSE.txt",
-                     "https://github.com/richardschneider/net-dns/blob/master/LICENSE"),
-    "Makaretu.Dns.Multicast": ("MIT", "Makaretu.Dns.Multicast-LICENSE.txt",
-                               "https://github.com/richardschneider/net-mdns/blob/master/LICENSE"),
+    "Common.Logging": (
+        "Apache-2.0",
+        "Common.Logging-LICENSE.txt",
+        "https://github.com/net-commons/common-logging/blob/master/license.txt",
+    ),
+    "Common.Logging.Core": (
+        "Apache-2.0",
+        "Common.Logging-LICENSE.txt",
+        "https://github.com/net-commons/common-logging/blob/master/license.txt",
+    ),
+    "Makaretu.Dns": (
+        "MIT",
+        "Makaretu.Dns-LICENSE.txt",
+        "https://github.com/richardschneider/net-dns/blob/master/LICENSE",
+    ),
+    "Makaretu.Dns.Multicast": (
+        "MIT",
+        "Makaretu.Dns.Multicast-LICENSE.txt",
+        "https://github.com/richardschneider/net-mdns/blob/master/LICENSE",
+    ),
 }
 
 for identifier, details in sorted(data["libraries"].items(), key=lambda item: item[0].lower()):
@@ -58,8 +70,12 @@ for identifier, details in sorted(data["libraries"].items(), key=lambda item: it
         if not source.is_file():
             raise FileNotFoundError(source)
         shutil.copy2(source, section / "LICENSE.txt")
-    lines = [f"Package: {name}", f"Version: {version}",
-             f"License: {expression or license_url}", f"Project: {project_url}"]
+    lines = [
+        f"Package: {name}",
+        f"Version: {version}",
+        f"License: {expression or license_url}",
+        f"Project: {project_url}",
+    ]
     if license_url:
         lines.append(f"License URL: {license_url}")
     notice_count = 0

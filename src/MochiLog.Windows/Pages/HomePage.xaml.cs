@@ -22,16 +22,26 @@ public sealed class DeviceListRow
     {
         Name = device.Name;
         Model = string.IsNullOrWhiteSpace(device.Model)
-            ? UiText.Get("win_model_unknown") : device.Model;
+            ? UiText.Get("win_model_unknown")
+            : device.Model;
         var needsTrust = device.UsbConnected && !device.UsbTrusted;
-        BadgeText = UiText.Get(needsTrust ? "win_badge_trust_needed" :
-            device.UsbConnected ? "win_badge_trusted" : "win_badge_wireless");
-        BadgeGlyph = needsTrust ? "\uE7BA" : device.UsbConnected ? "\uE73E" : "\uE701";
-        var color = needsTrust ? Microsoft.UI.Colors.Orange :
-            device.UsbConnected ? Microsoft.UI.Colors.LimeGreen : Microsoft.UI.Colors.DodgerBlue;
+        BadgeText = UiText.Get(
+            needsTrust ? "win_badge_trust_needed"
+            : device.UsbConnected ? "win_badge_trusted"
+            : "win_badge_wireless"
+        );
+        BadgeGlyph =
+            needsTrust ? "\uE7BA"
+            : device.UsbConnected ? "\uE73E"
+            : "\uE701";
+        var color =
+            needsTrust ? Microsoft.UI.Colors.Orange
+            : device.UsbConnected ? Microsoft.UI.Colors.LimeGreen
+            : Microsoft.UI.Colors.DodgerBlue;
         AccentBrush = new SolidColorBrush(color);
         BadgeBackground = new SolidColorBrush(color) { Opacity = 0.14 };
-        Key = $"{device.Udid}|{device.Name}|{device.Model}|{device.UsbConnected}|{device.UsbTrusted}";
+        Key =
+            $"{device.Udid}|{device.Name}|{device.Model}|{device.UsbConnected}|{device.UsbTrusted}";
     }
 }
 
@@ -69,9 +79,9 @@ public sealed partial class HomePage : Page
         DeviceHeading.Text = UiText.Get("win_found");
         DeviceSelectionHint.Text = UiText.Get("win_select_device_hint");
         DeviceEmptyText.Text = UiText.Get("win_none_found");
-        DeviceList.SelectionChanged += (_, _) => {
-            if (DeviceList.SelectedIndex is >= 0 and var index &&
-                index < _runtime.Available.Count)
+        DeviceList.SelectionChanged += (_, _) =>
+        {
+            if (DeviceList.SelectedIndex is >= 0 and var index && index < _runtime.Available.Count)
                 _selectedUdid = _runtime.Available[index].Udid;
             PairButton.IsEnabled = SelectedDevice() is not null || _usbDevice is not null;
         };
@@ -82,36 +92,52 @@ public sealed partial class HomePage : Page
         ManualAddressHint.Text = UiText.Get("win_manual_device_ip");
         SaveManualAddressButton.Content = UiText.Get("win_save_ip");
         ClearManualAddressButton.Content = UiText.Get("win_clear_ip");
-        PairedList.SelectionChanged += (_, _) => {
-            if (PairedList.SelectedIndex is >= 0 and var index &&
-                index < _runtime.State.Phones.Count)
+        PairedList.SelectionChanged += (_, _) =>
+        {
+            if (
+                PairedList.SelectedIndex is >= 0 and var index
+                && index < _runtime.State.Phones.Count
+            )
                 ManualAddressBox.Text = _runtime.State.Phones[index].ManualAddress ?? "";
-            UnpairButton.IsEnabled = PairedList.SelectedIndex >= 0 &&
-                PairedList.SelectedIndex < _runtime.State.Phones.Count;
+            UnpairButton.IsEnabled =
+                PairedList.SelectedIndex >= 0
+                && PairedList.SelectedIndex < _runtime.State.Phones.Count;
         };
-        Loaded += (_, _) => { _runtime.Changed += RuntimeChanged; Render(); _ = CheckAppleSoftwareAsync(); };
-        Unloaded += (_, _) => { _runtime.Changed -= RuntimeChanged; };
+        Loaded += (_, _) =>
+        {
+            _runtime.Changed += RuntimeChanged;
+            Render();
+            _ = CheckAppleSoftwareAsync();
+        };
+        Unloaded += (_, _) =>
+        {
+            _runtime.Changed -= RuntimeChanged;
+        };
     }
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(Render);
 
     private async void LegacyMobileClicked(object sender, RoutedEventArgs args) =>
         await Windows.System.Launcher.LaunchUriAsync(
-            new Uri("https://apps.apple.com/app/mochilog/id6756904240"));
+            new Uri("https://apps.apple.com/app/mochilog/id6756904240")
+        );
 
     private void ContentColumnSizeChanged(object sender, SizeChangedEventArgs args)
     {
         // Measure the styled column after its padding and maximum width are applied.
         // This also runs after the initial layout, not just after window resizes.
-        var usable = Math.Max(0, args.NewSize.Width -
-            ContentColumn.Padding.Left - ContentColumn.Padding.Right);
+        var usable = Math.Max(
+            0,
+            args.NewSize.Width - ContentColumn.Padding.Left - ContentColumn.Padding.Right
+        );
         DashboardGrid.Width = usable;
         StatusCard.Width = usable;
         FirstConnectionCard.Width = usable;
         var showIllustration = usable >= 640;
         FirstIllustrationColumn.Width = new GridLength(showIllustration ? 250 : 0);
         FirstConnectionIllustration.Visibility = showIllustration
-            ? Visibility.Visible : Visibility.Collapsed;
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         var wide = usable >= 900;
         var left = wide ? Math.Round((usable - 20) * 0.53) : usable;
@@ -141,21 +167,26 @@ public sealed partial class HomePage : Page
         try
         {
             var installed = await Task.Run(AppleDeviceSoftwareDetector.Detect);
-            SoftwareStatus.Text = UiText.Get(installed switch
-            {
-                { AppleDevices: true, ClassicITunes: true } => "win_software_both",
-                { AppleDevices: true } => "win_software_apple_devices",
-                { ClassicITunes: true } => "win_software_itunes",
-                { AppleDevicesCheckFailed: true } => "win_software_unknown",
-                _ => "win_software_missing"
-            });
+            SoftwareStatus.Text = UiText.Get(
+                installed switch
+                {
+                    { AppleDevices: true, ClassicITunes: true } => "win_software_both",
+                    { AppleDevices: true } => "win_software_apple_devices",
+                    { ClassicITunes: true } => "win_software_itunes",
+                    { AppleDevicesCheckFailed: true } => "win_software_unknown",
+                    _ => "win_software_missing",
+                }
+            );
             var needed = !installed.AppleDevices && !installed.ClassicITunes;
             SoftwareInfoBar.Severity = needed ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
             AppleDevicesLink.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
             ITunesLink.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
             ICloudNote.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
         }
-        finally { SoftwareRefreshButton.IsEnabled = true; }
+        finally
+        {
+            SoftwareRefreshButton.IsEnabled = true;
+        }
     }
 
     private async void SoftwareRefreshClicked(object sender, RoutedEventArgs args) =>
@@ -164,69 +195,103 @@ public sealed partial class HomePage : Page
     private void Render()
     {
         LegacyMobileNotice.IsOpen = _runtime.LegacyPhoneIds.Count > 0;
-        FirstConnectionCard.Visibility = _runtime.State.Phones.Count == 0
-            ? Visibility.Visible : Visibility.Collapsed;
+        FirstConnectionCard.Visibility =
+            _runtime.State.Phones.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         var usbDevices = _runtime.Available.Where(device => device.UsbConnected).ToArray();
-        var introStatusKey = usbDevices.Any(device => !device.UsbTrusted)
-            ? "win_intro_trust" : usbDevices.Length > 0
-                ? "win_intro_connected" : _runtime.Available.Count > 0
-                    ? "win_intro_wireless" : "win_intro_waiting";
+        var introStatusKey =
+            usbDevices.Any(device => !device.UsbTrusted) ? "win_intro_trust"
+            : usbDevices.Length > 0 ? "win_intro_connected"
+            : _runtime.Available.Count > 0 ? "win_intro_wireless"
+            : "win_intro_waiting";
         FirstConnectionStatus.Text = UiText.Get(introStatusKey);
-        FirstConnectionStatusIcon.Glyph = introStatusKey == "win_intro_waiting"
-            ? "\uE946" : introStatusKey == "win_intro_trust" ? "\uE7BA" : "\uE73E";
+        FirstConnectionStatusIcon.Glyph =
+            introStatusKey == "win_intro_waiting" ? "\uE946"
+            : introStatusKey == "win_intro_trust" ? "\uE7BA"
+            : "\uE73E";
         StatusText.Text = _runtime.Status;
         CollectionText.Text = _runtime.CollectionStatus;
         var available = _runtime.Available.Select(device => new DeviceListRow(device)).ToArray();
         DeviceList.Visibility = available.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        DeviceEmptyPanel.Visibility = available.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        if (DeviceList.ItemsSource is not DeviceListRow[] currentAvailable ||
-            !currentAvailable.Select(row => row.Key).SequenceEqual(available.Select(row => row.Key)))
+        DeviceEmptyPanel.Visibility =
+            available.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (
+            DeviceList.ItemsSource is not DeviceListRow[] currentAvailable
+            || !currentAvailable
+                .Select(row => row.Key)
+                .SequenceEqual(available.Select(row => row.Key))
+        )
         {
             DeviceList.ItemsSource = available;
-            if (available.Length == 1) _selectedUdid = _runtime.Available[0].Udid;
-            var selected = _runtime.Available.ToList().FindIndex(device => device.Udid == _selectedUdid);
-            if (selected >= 0) DeviceList.SelectedIndex = selected;
+            if (available.Length == 1)
+                _selectedUdid = _runtime.Available[0].Udid;
+            var selected = _runtime
+                .Available.ToList()
+                .FindIndex(device => device.Udid == _selectedUdid);
+            if (selected >= 0)
+                DeviceList.SelectedIndex = selected;
         }
         var pairedSelected = PairedList.SelectedIndex;
-        var paired = _runtime.State.Phones.Select(phone =>
-            $"{phone.Name} · {phone.Model} · " +
-            (phone.ConfirmedAt is null ? UiText.Get("win_waiting_app") :
-                UiText.Get("win_connected"))).ToArray();
-        if (PairedList.ItemsSource is not string[] currentPaired ||
-            !currentPaired.SequenceEqual(paired))
+        var paired = _runtime
+            .State.Phones.Select(phone =>
+                $"{phone.Name} · {phone.Model} · "
+                + (
+                    phone.ConfirmedAt is null
+                        ? UiText.Get("win_waiting_app")
+                        : UiText.Get("win_connected")
+                )
+            )
+            .ToArray();
+        if (
+            PairedList.ItemsSource is not string[] currentPaired
+            || !currentPaired.SequenceEqual(paired)
+        )
         {
             PairedList.ItemsSource = paired;
             if (pairedSelected >= 0 && pairedSelected < paired.Length)
                 PairedList.SelectedIndex = pairedSelected;
         }
         CollectButton.IsEnabled = _runtime.State.Phones.Count > 0;
-        PairButton.IsEnabled = _runtime.Available.Any(device => device.Udid == _selectedUdid) ||
-            _usbDevice is not null;
-        UnpairButton.IsEnabled = PairedList.SelectedIndex >= 0 &&
-            PairedList.SelectedIndex < _runtime.State.Phones.Count;
+        PairButton.IsEnabled =
+            _runtime.Available.Any(device => device.Udid == _selectedUdid)
+            || _usbDevice is not null;
+        UnpairButton.IsEnabled =
+            PairedList.SelectedIndex >= 0 && PairedList.SelectedIndex < _runtime.State.Phones.Count;
     }
 
     private async void RefreshClicked(object sender, RoutedEventArgs args) =>
         await _runtime.RefreshAsync();
+
     private async void CollectClicked(object sender, RoutedEventArgs args) =>
         await _runtime.CollectAsync(manual: true);
 
     private async void UnpairClicked(object sender, RoutedEventArgs args)
     {
         var index = PairedList.SelectedIndex;
-        if (index < 0 || index >= _runtime.State.Phones.Count) return;
+        if (index < 0 || index >= _runtime.State.Phones.Count)
+            return;
         var phone = _runtime.State.Phones[index];
-        var answer = await DialogCoordinator.ShowAsync(new ContentDialog {
-            XamlRoot = XamlRoot,
-            Title = UiText.Format("win_unpair_title", phone.Name),
-            Content = UiText.Get("win_unpair_detail"),
-            PrimaryButtonText = UiText.Get("win_unpair_button"),
-            CloseButtonText = UiText.Get("win_close"),
-            DefaultButton = ContentDialogButton.Close
-        });
-        if (answer != ContentDialogResult.Primary) return;
-        try { _runtime.Unpair(phone); Render(); }
-        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
+        var answer = await DialogCoordinator.ShowAsync(
+            new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = UiText.Format("win_unpair_title", phone.Name),
+                Content = UiText.Get("win_unpair_detail"),
+                PrimaryButtonText = UiText.Get("win_unpair_button"),
+                CloseButtonText = UiText.Get("win_close"),
+                DefaultButton = ContentDialogButton.Close,
+            }
+        );
+        if (answer != ContentDialogResult.Primary)
+            return;
+        try
+        {
+            _runtime.Unpair(phone);
+            Render();
+        }
+        catch (Exception error)
+        {
+            await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message);
+        }
     }
 
     private async void UsbClicked(object sender, RoutedEventArgs args) =>
@@ -237,7 +302,8 @@ public sealed partial class HomePage : Page
 
     private async Task RunUsbSetupAsync(bool repair)
     {
-        if (!UsbButton.IsEnabled) return;
+        if (!UsbButton.IsEnabled)
+            return;
         UsbButton.IsEnabled = false;
         RepairUsbButton.IsEnabled = false;
         UsbResultBar.Title = UiText.Get("win_usb_done");
@@ -253,9 +319,14 @@ public sealed partial class HomePage : Page
                 UsbResultBar.Message = UiText.Get("win_usb_repairing");
                 await Task.Run(() => AppleUsbRecovery.RepairAsync(CancellationToken.None));
             }
-            _usbDevice = await _runtime.PrepareUsbAsync(SelectedDevice()?.Udid,
-                (step, message) => DispatcherQueue.TryEnqueue(() =>
-                    UsbResultBar.Message = $"{step}/4 · {message} {UiText.Get("win_usb_wait_note")}"));
+            _usbDevice = await _runtime.PrepareUsbAsync(
+                SelectedDevice()?.Udid,
+                (step, message) =>
+                    DispatcherQueue.TryEnqueue(() =>
+                        UsbResultBar.Message =
+                            $"{step}/4 · {message} {UiText.Get("win_usb_wait_note")}"
+                    )
+            );
             RepairUsbButton.Visibility = Visibility.Collapsed;
             UsbResultBar.Message = UiText.Get("win_usb_done_detail");
             UsbResultBar.Severity = InfoBarSeverity.Success;
@@ -265,8 +336,10 @@ public sealed partial class HomePage : Page
             UsbResultBar.Title = UiText.Get("win_setup_failed");
             UsbResultBar.Message = error.Message;
             UsbResultBar.Severity = InfoBarSeverity.Error;
-            RepairUsbButton.Visibility = error is AppleUsbBridgeUnavailableException
-                ? Visibility.Visible : Visibility.Collapsed;
+            RepairUsbButton.Visibility =
+                error is AppleUsbBridgeUnavailableException
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
         }
         finally
         {
@@ -277,13 +350,17 @@ public sealed partial class HomePage : Page
         }
     }
 
-    private ConnectedDevice? SelectedDevice() => _runtime.Available.FirstOrDefault(device =>
-        device.Udid == _selectedUdid);
+    private ConnectedDevice? SelectedDevice() =>
+        _runtime.Available.FirstOrDefault(device => device.Udid == _selectedUdid);
 
     private async void PairClicked(object sender, RoutedEventArgs args)
     {
         var device = SelectedDevice() ?? _usbDevice;
-        if (device is null) { await ShowMessageAsync(UiText.Get("win_select"), UiText.Get("win_select_pair")); return; }
+        if (device is null)
+        {
+            await ShowMessageAsync(UiText.Get("win_select"), UiText.Get("win_select_pair"));
+            return;
+        }
         PairButton.IsEnabled = false;
         try
         {
@@ -293,7 +370,10 @@ public sealed partial class HomePage : Page
                 _usbDevice = device;
             }
             var invite = _runtime.BeginPairing(device);
-            using var qrData = QRCodeGenerator.GenerateQrCode(invite.Url, QRCodeGenerator.ECCLevel.Q);
+            using var qrData = QRCodeGenerator.GenerateQrCode(
+                invite.Url,
+                QRCodeGenerator.ECCLevel.Q
+            );
             var png = new PngByteQRCode(qrData).GetGraphic(7);
             using var memory = new InMemoryRandomAccessStream();
             using (var writer = new DataWriter(memory))
@@ -306,18 +386,36 @@ public sealed partial class HomePage : Page
             var image = new BitmapImage();
             await image.SetSourceAsync(memory);
             var detail = new StackPanel { Spacing = 12 };
-            detail.Children.Add(new TextBlock { Text = UiText.Get("win_qr_instruction"), TextWrapping = TextWrapping.Wrap });
-            detail.Children.Add(new Image { Source = image, Width = 280, Height = 280 });
-            detail.Children.Add(new TextBlock { Text = UiText.Format("win_code", invite.Code), FontSize = 24 });
+            detail.Children.Add(
+                new TextBlock
+                {
+                    Text = UiText.Get("win_qr_instruction"),
+                    TextWrapping = TextWrapping.Wrap,
+                }
+            );
+            detail.Children.Add(
+                new Image
+                {
+                    Source = image,
+                    Width = 280,
+                    Height = 280,
+                }
+            );
+            detail.Children.Add(
+                new TextBlock { Text = UiText.Format("win_code", invite.Code), FontSize = 24 }
+            );
             var dialog = new ContentDialog
             {
-                XamlRoot = XamlRoot, Title = UiText.Format("win_pair_title", device.Name),
-                Content = detail, CloseButtonText = UiText.Get("win_close")
+                XamlRoot = XamlRoot,
+                Title = UiText.Format("win_pair_title", device.Name),
+                Content = detail,
+                CloseButtonText = UiText.Get("win_close"),
             };
             var confirmedHandled = false;
             void OnConfirmed(PairedPhone phone)
             {
-                if (phone.Udid != device.Udid || confirmedHandled) return;
+                if (phone.Udid != device.Udid || confirmedHandled)
+                    return;
                 confirmedHandled = true;
                 DispatcherQueue.TryEnqueue(() =>
                 {
@@ -332,22 +430,40 @@ public sealed partial class HomePage : Page
             }
             _runtime.PairingConfirmed += OnConfirmed;
             ContentDialogResult? presented;
-            try { presented = await DialogCoordinator.ShowAsync(dialog); }
-            finally { _runtime.PairingConfirmed -= OnConfirmed; }
+            try
+            {
+                presented = await DialogCoordinator.ShowAsync(dialog);
+            }
+            finally
+            {
+                _runtime.PairingConfirmed -= OnConfirmed;
+            }
             if (presented is null)
                 ShowInlineError(UiText.Get("win_pair_failed"), UiText.Get("win_setup_failed"));
         }
-        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_pair_failed"), error.Message); }
-        finally { PairButton.IsEnabled = true; }
+        catch (Exception error)
+        {
+            await ShowMessageAsync(UiText.Get("win_pair_failed"), error.Message);
+        }
+        finally
+        {
+            PairButton.IsEnabled = true;
+        }
     }
 
     private async Task ShowMessageAsync(string title, string message)
     {
-        var presented = await DialogCoordinator.ShowAsync(new ContentDialog {
-            XamlRoot = XamlRoot, Title = title, Content = message,
-            CloseButtonText = UiText.Get("win_close")
-        });
-        if (presented is null) ShowInlineError(title, message);
+        var presented = await DialogCoordinator.ShowAsync(
+            new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = title,
+                Content = message,
+                CloseButtonText = UiText.Get("win_close"),
+            }
+        );
+        if (presented is null)
+            ShowInlineError(title, message);
     }
 
     private void ShowInlineError(string title, string message)
@@ -361,15 +477,23 @@ public sealed partial class HomePage : Page
     private void SaveManualAddressClicked(object sender, RoutedEventArgs args)
     {
         var index = PairedList.SelectedIndex;
-        if (index < 0 || index >= _runtime.State.Phones.Count) return;
-        try { _runtime.SetManualAddress(_runtime.State.Phones[index], ManualAddressBox.Text); }
-        catch (Exception error) { _ = ShowMessageAsync(UiText.Get("win_manual_device_ip"), error.Message); }
+        if (index < 0 || index >= _runtime.State.Phones.Count)
+            return;
+        try
+        {
+            _runtime.SetManualAddress(_runtime.State.Phones[index], ManualAddressBox.Text);
+        }
+        catch (Exception error)
+        {
+            _ = ShowMessageAsync(UiText.Get("win_manual_device_ip"), error.Message);
+        }
     }
 
     private void ClearManualAddressClicked(object sender, RoutedEventArgs args)
     {
         var index = PairedList.SelectedIndex;
-        if (index < 0 || index >= _runtime.State.Phones.Count) return;
+        if (index < 0 || index >= _runtime.State.Phones.Count)
+            return;
         _runtime.SetManualAddress(_runtime.State.Phones[index], null);
         ManualAddressBox.Text = "";
     }
