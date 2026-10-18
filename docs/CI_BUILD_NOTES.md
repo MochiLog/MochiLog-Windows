@@ -31,3 +31,7 @@ measure the first build rather than a warm-cache build. `compiler-resources.json
 `collector-build-metrics.json` accompany successful compilation reports. All maintained
 device-library modules, optimization settings, offline checks and installer verification
 remain enabled. Compare measured times only after the new run completes successfully.
+
+The 0.1.33 cold workflow subsequently passed in 1h04m25s, compared with the previous
+1h55m42s workflow. The exact installer was verified and installed on the physical PC,
+then published as an alpha. See the [measurements, limits and distribution record](BETA_0.1.33_DISTRIBUTION.md).
