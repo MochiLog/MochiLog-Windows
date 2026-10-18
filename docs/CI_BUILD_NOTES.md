@@ -15,3 +15,19 @@ The [October 17 run](https://github.com/MochiLog/MochiLog-Windows/actions/runs/3
 These changes fix the observed cache update problem and expose compiler progress; they do not prove a particular speedup. Check the next run's clcache hit/miss summary before attributing another long build to a compiler hang. A cold build still compiles the full maintained device library.
 
 Reference: [GitHub cache matching and immutable entries](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
+
+## Cold builds and formatted-source release, October 19
+
+The 0.1.33 installer incorporates the formatted source from commit a12ff7b. It uses the
+same resource-selection script as the Mac companion: count actual CPUs, reserve 2 GiB,
+budget 1.5 GiB per compiler, and cap concurrency at eight. Standard 4-CPU/16-GiB Windows
+runners select four jobs instead of the former fixed two. Unknown hardware keeps one
+job, and runners below 6 GiB keep reduced-memory mode. Local defaults remain one job
+and reduced-memory mode; no additional application runtime dependency is introduced.
+
+The workflow's `cold_compile` input skips Actions compiler-cache restore/save and tells
+Nuitka to disable all its caches. The initial 0.1.33 verification run uses this option to
+measure the first build rather than a warm-cache build. `compiler-resources.json` and
+`collector-build-metrics.json` accompany successful compilation reports. All maintained
+device-library modules, optimization settings, offline checks and installer verification
+remain enabled. Compare measured times only after the new run completes successfully.
