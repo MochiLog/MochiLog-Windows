@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      cold_compile:
+        description: Measure a full build with Nuitka caches disabled
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,9 +25,11 @@ jobs:
     timeout-minutes: 180
     env:
       NUITKA_CACHE_DIR: ${{ github.workspace }}/Build/CompilerCache
+      MOCHILOG_COLLECTOR_COLD_BUILD: ${{ inputs.cold_compile && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
+        if: ${{ !inputs.cold_compile }}
         with:
           path: Build/CompilerCache
           # Cache entries are immutable. Save the refreshed compiler outputs on
@@ -37,6 +44,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Select compiler parallelism from runner resources
+        run: python scripts/compiler-resources.py --github-env
       - name: Verify lossless Python transport
         run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Verify encrypted transfer protocol
@@ -46,7 +55,7 @@ jobs:
       - name: Build self-contained installer
         shell: pwsh
         run: |
-          ./scripts/build-installer.ps1 -Python python -CompilerJobs 2 `
+          ./scripts/build-installer.ps1 -Python python -CompilerJobs $env:MOCHILOG_COMPILER_JOBS `
             -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
       - name: Verify install, uninstall and runtime without Python
         shell: pwsh
@@ -63,6 +72,9 @@ jobs:
         if: always()
         with:
           name: Collector-compilation-report
-          path: Build/Nuitka/compilation-report.xml
+          path: |
+            Build/Nuitka/compilation-report.xml
+            Build/compiler-resources.json
+            Build/collector-build-metrics.json
           if-no-files-found: ignore
           retention-days: 14
