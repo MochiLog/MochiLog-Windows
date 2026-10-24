@@ -293,24 +293,14 @@ public static class DebugArchiveSync
         var directory = RemoteRoot(deviceId);
         Directory.CreateDirectory(directory);
         var file = Path.Combine(directory, day + ".log");
-        using (
-            var stream = new FileStream(
-                file,
-                FileMode.OpenOrCreate,
-                FileAccess.ReadWrite,
-                FileShare.Read
-            )
-        )
+        var appended = DiagnosticArchiveChunk.Append(file, offset, data);
+        if (appended <= 0)
         {
-            if (stream.Length != offset)
-            {
+            if (appended < 0)
                 trace?.Invoke(
-                    $"Debug archive sync: phone chunk skipped; device={deviceId:D}, day={day}, offset={offset}, stored={stream.Length}; expected offset required"
+                    $"Debug archive sync: phone chunk rejected; device={deviceId:D}, day={day}, offset={offset}; conflicting bytes or missing earlier data"
                 );
-                return;
-            }
-            stream.Seek(0, SeekOrigin.End);
-            stream.Write(data);
+            return;
         }
         var total = offset + data.Length;
         long? expected =

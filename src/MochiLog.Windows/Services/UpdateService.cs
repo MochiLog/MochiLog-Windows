@@ -20,7 +20,8 @@ public static class UpdateService
 {
     private const string ReleasesApi =
         "https://api.github.com/repos/MochiLog/MochiLog-Windows/releases?per_page=20";
-    private const string InstallerName = "MochiLog-Windows-Alpha-Setup.exe";
+    private const string InstallerName = "MochiLog-Windows-Setup.exe";
+    private const string LegacyInstallerName = "MochiLog-Windows-Alpha-Setup.exe";
     private static readonly HttpClient Client = CreateClient();
 
     public static Version InstalledVersion =>
@@ -61,7 +62,10 @@ public static class UpdateService
             foreach (var asset in release.GetProperty("assets").EnumerateArray())
             {
                 if (
-                    asset.GetProperty("name").GetString() != InstallerName
+                    (
+                        asset.GetProperty("name").GetString() != InstallerName
+                        && asset.GetProperty("name").GetString() != LegacyInstallerName
+                    )
                     || asset.GetProperty("state").GetString() != "uploaded"
                 )
                     continue;

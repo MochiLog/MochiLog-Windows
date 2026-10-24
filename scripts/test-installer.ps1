@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot ".."))
-$setup = (Resolve-Path Build\MochiLog-Windows-Alpha-Setup.exe).Path
+$setup = (Resolve-Path Build\MochiLog-Windows-Setup.exe).Path
 $registry = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall"
 
 function Find-MochiLogInstallation {

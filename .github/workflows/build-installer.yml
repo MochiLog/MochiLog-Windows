@@ -1,4 +1,4 @@
-name: Build Windows alpha installer
+name: Build Windows installer
 
 on:
   push:
@@ -64,8 +64,8 @@ jobs:
           python scripts/test-compiled-collector.py "$env:LOCALAPPDATA\Programs\MochiLog Windows\Collector\pymobiledevice3.exe"
       - uses: actions/upload-artifact@v4
         with:
-          name: MochiLog-Windows-Alpha-Setup
-          path: Build/MochiLog-Windows-Alpha-Setup.exe
+          name: MochiLog-Windows-Setup
+          path: Build/MochiLog-Windows-Setup.exe
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@v4

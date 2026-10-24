@@ -1,5 +1,9 @@
 # MochiLog Windows
 
+1.0.0は初の正式版です。[更新内容](docs/RELEASE_NOTES_1.0.0.md)をご確認ください。スマホ版4.0.0のApp Store公開はAppleの審査後です。既存の4.0.0 TestFlightも利用できます。
+
+1.0.0 is the first stable release. See the [release notes](docs/RELEASE_NOTES_1.0.0.md). Mobile 4.0.0 reaches the App Store after Apple review; existing 4.0.0 TestFlight builds remain compatible.
+
 MochiLog Windows は、iPhone・iPad のバッテリー解析ログを PC で収集し、端末で MochiLog を開いたときに暗号化して渡すアルファ版アプリです。Apple Watch のログがペアリング先の iPhone に保存されていれば、それも対象です。解析と記録は端末側で行います。PC 連携を設定しなくても、スマホ版の手動読み込みは使えます。
 
 Windows 11 と iOS/iPadOS 27 向けです。[GitHub Releases](https://github.com/MochiLog/MochiLog-Windows/releases)からインストーラーを入手してください。Python や .NET を別途入れる必要はありません。**初回の USB 信頼設定には、Apple Devices または Apple 公式サイト配布のクラシック版 iTunes が必要**です。どちらか一方を用意してください。現在のアルファ版インストーラーはコード署名されていません。
@@ -32,6 +36,6 @@ Devices paired with the same computer can receive each other’s logs when both 
 
 Automatic update checks are off by default and can be enabled in the initial prompt or settings. Current battery values can also be shared between devices with confirmed iCloud sync on the same Apple Account. Experimental on-device collection in the mobile app is independently configurable and off by default. See the [guide and requirements](https://github.com/MochiLog/MochiLog/blob/experiment/mac-log-transfer/docs/automatic-log-collection.md).
 
-スマホ版[TestFlight 4.0.0（1044）](https://testflight.apple.com/join/vnHYsRgN)では、[idevice_pairからのペアリングファイル直接インストール](https://github.com/MochiLog/MochiLog#400ベータの対応)にも対応しています。MochiLog対応版のツールが必要です。公式ツールへのアプリ登録は[PR #84](https://github.com/jkcoxson/idevice_pair/pull/84)で提案中です。PC連携は引き続きiOS/iPadOS 27以降が対象で、端末内取得は17以降、端末内の初回ペアリングは27以降・Developer Mode必須です。アプリ内の開始前の案内で、設定経路・再起動・再起動後の承認を確認してください。
+スマホ版[TestFlight 4.0.0](https://testflight.apple.com/join/vnHYsRgN)では、[idevice_pairからのペアリングファイル直接インストール](https://github.com/MochiLog/MochiLog#400ベータの対応)にも対応しています。MochiLog対応版のツールが必要です。公式ツールへのアプリ登録は[PR #84](https://github.com/jkcoxson/idevice_pair/pull/84)で提案中です。PC連携は引き続きiOS/iPadOS 27以降が対象で、端末内取得は17以降、端末内の初回ペアリングは27以降・Developer Mode必須です。アプリ内の開始前の案内で、設定経路・再起動・再起動後の承認を確認してください。
 
-Mobile TestFlight beta 4.0.0 (1044) supports direct pairing-file installation from a MochiLog-compatible idevice_pair build. Official tool registration is proposed in [PR #84](https://github.com/jkcoxson/idevice_pair/pull/84). PC transfer still targets iOS/iPadOS 27+; on-device collection targets 17+, with device-only initial pairing requiring 27+ and Developer Mode. Follow the in-app prerequisite card for settings, restart and approval after restart. See the [mobile beta announcement](https://github.com/MochiLog/MochiLog#400ベータの対応).
+Mobile 4.0.0 supports direct pairing-file installation from a MochiLog-compatible idevice_pair build. Official tool registration is proposed in [PR #84](https://github.com/jkcoxson/idevice_pair/pull/84). PC transfer still targets iOS/iPadOS 27+; on-device collection targets 17+, with device-only initial pairing requiring 27+ and Developer Mode. Follow the in-app prerequisite card for settings, restart and approval after restart. See the [mobile beta announcement](https://github.com/MochiLog/MochiLog#400ベータの対応).

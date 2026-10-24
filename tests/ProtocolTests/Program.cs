@@ -374,6 +374,28 @@ static class Program
         Directory.Delete(TransferServer.QueuePath(peers[1]), true);
     }
 
+    private static void CheckArchiveRetries()
+    {
+        var file = Path.Combine(StateStore.Root, "archive-retry-test.log");
+        File.Delete(file);
+        int Append(string text, long offset) =>
+            DiagnosticArchiveChunk.Append(file, offset, Encoding.UTF8.GetBytes(text));
+        Check(Append("abc", 2) == -1 && !File.Exists(file), "A chunk gap created a file.");
+        Check(Append("abcdef", 0) == 6, "First archive chunk failed.");
+        Check(Append("abcdef", 0) == 0, "Identical retry was appended.");
+        Check(Append("cdefgh", 2) == 2, "Matching overlap did not resume.");
+        Check(Append("cd", 2) == 0, "Already saved prefix was appended.");
+        Check(Append("xxxx", 4) == -1, "Conflicting bytes were accepted.");
+        Check(Append("j", 9) == -1 && Append("x", -1) == -1, "Gap or negative offset accepted.");
+        Check(Append("xx", 63_999_999) == -1, "Day size limit was exceeded.");
+        Check(
+            DiagnosticArchiveChunk.Append(file, 8, new byte[8193]) == -1,
+            "Oversized chunk accepted."
+        );
+        Check(File.ReadAllText(file) == "abcdefgh", "Saved diagnostics were corrupted.");
+        File.Delete(file);
+    }
+
     private static void CheckArchiveExchange()
     {
         var deviceId = Guid.NewGuid();
@@ -426,8 +448,8 @@ static class Program
         );
         Check(
             progress.Any(message => message.Contains("phone chunk stored"))
-                && progress.Any(message => message.Contains("phone chunk skipped")),
-            "Stored and rejected diagnostic chunks have no progress audit."
+                && !progress.Any(message => message.Contains("phone chunk rejected")),
+            "Identical retries were marked as errors or stored chunks have no progress audit."
         );
         var bounded = JsonSerializer.SerializeToUtf8Bytes(
             new
@@ -977,6 +999,7 @@ static class Program
         await GuardedProcessTests.Run();
         await CheckSlowTransfer();
         await CheckCloudSharing();
+        CheckArchiveRetries();
         CheckArchiveExchange();
         CheckBatteryLogStorage();
         CheckDailyCollectionCoverage();

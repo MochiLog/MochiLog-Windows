@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.33",
+    [string]$Version = "1.0.0",
     [string]$Python = "python",
     [ValidateRange(1, 32)][int]$CompilerJobs = 1,
     [string]$InnoCompiler = "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
@@ -26,4 +26,4 @@ if ($LASTEXITCODE -ne 0) { throw "NuGet license collection failed." }
 if (-not (Test-Path $InnoCompiler)) { throw "Inno Setup 6 compiler not found: $InnoCompiler" }
 & $InnoCompiler "/DAppVersion=$Version" installer.iss
 if ($LASTEXITCODE -ne 0) { throw "Installer build failed." }
-Write-Output (Resolve-Path Build\MochiLog-Windows-Alpha-Setup.exe).Path
+Write-Output (Resolve-Path Build\MochiLog-Windows-Setup.exe).Path

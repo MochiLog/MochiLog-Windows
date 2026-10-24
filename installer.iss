@@ -1,6 +1,6 @@
 #define AppName "MochiLog Windows"
 #ifndef AppVersion
-  #define AppVersion "0.1.33"
+  #define AppVersion "1.0.0"
 #endif
 #define AppPublisher "MochiLog"
 #define AppExe "MochiLog.Windows.exe"
@@ -18,7 +18,7 @@ DefaultGroupName=MochiLog Windows
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
 OutputDir=Build
-OutputBaseFilename=MochiLog-Windows-Alpha-Setup
+OutputBaseFilename=MochiLog-Windows-Setup
 SetupIconFile=src\MochiLog.Windows\Assets\AppIcon.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
