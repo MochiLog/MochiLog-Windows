@@ -1,5 +1,7 @@
 # MochiLog Windows — Developer notes
 
+ルートREADMEは利用者向けの機能・導入・使い方を案内します。ビルド、署名、CI、プロトコル、内部構成、検証や作業履歴はこの文書またはdocs/の専用文書に記載します。READMEには開発者向け文書への入口だけを置きます。
+
 User-facing setup and troubleshooting steps are in the [Japanese and English user guide](USER_GUIDE.md).
 
 WinUI 3 companion app for MochiLog's optional iOS/iPadOS 27 wireless analytics transfer. This repository is an alpha under active development.
