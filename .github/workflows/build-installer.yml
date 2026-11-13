@@ -50,6 +50,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Verify encrypted transfer protocol
         run: dotnet run --project tests/ProtocolTests/ProtocolTests.csproj -c Release
+      - name: Verify complete support export
+        run: dotnet run --project tests/SupportExportTests/SupportExportTests.csproj -c Release
       - name: Install installer compiler
         run: choco install innosetup --yes --no-progress
       - name: Build self-contained installer

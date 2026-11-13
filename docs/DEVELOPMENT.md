@@ -52,3 +52,7 @@ Full-field verification: six Python tests, core/full-detail compatibility, chang
 ## コンパイルされた端末通信ヘルパー
 
 ローカルとCIで同じNuitkaビルドを使います。前提条件、実行コマンド、ランタイム依存の切り分けは[COMPILED_COLLECTOR.md](COMPILED_COLLECTOR.md)を参照してください。
+
+## Pairing diagnostics and support exports (2026-11-13)
+
+See [the implementation and verification notes](PAIRING_DIAGNOSTICS_2026-11-13.md) for persistent handshake auditing, split-file support exports, compatibility and Windows verification.

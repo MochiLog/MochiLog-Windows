@@ -30,6 +30,7 @@ internal sealed class PairingSession
     public Guid PhysicalDeviceId { get; set; }
     public int Attempts { get; set; }
     public bool Confirmed { get; set; }
+    public int AuditEvents { get; set; }
 }
 
 public sealed class TransferServer : IDisposable
@@ -60,6 +61,7 @@ public sealed class TransferServer : IDisposable
     public LiveBatteryCache LiveBattery { get; } = new();
     public event Action<PairedPhone, bool>? LiveBatteryRequested;
     public Func<PairedPhone, byte[]>? SupportReport { get; set; }
+    public Action<string>? Audit { get; set; }
 
     public TransferServer(CompanionState state, int? preferredPort = null)
     {
@@ -247,6 +249,9 @@ public sealed class TransferServer : IDisposable
                 PrivateKey = privateKey,
             };
         }
+        Audit?.Invoke(
+            $"PC pairing: QR invitation created; session={Upper(sessionId)}, lanRoutes={addresses.Length}, tailnet={tailnet is not null}"
+        );
         return invitation;
     }
 
@@ -388,22 +393,39 @@ public sealed class TransferServer : IDisposable
         }
     }
 
+    private void AuditPairing(PairingSession session, string result)
+    {
+        if (session.AuditEvents++ >= 32)
+            return;
+        Audit?.Invoke(
+            $"PC pairing: server session={Upper(session.Invitation.SessionId)}, result={result}"
+        );
+    }
+
     private byte[]? Pair(JsonElement request, string? peer = null)
     {
-        if (
-            !Guid.TryParse(Get(request, "sessionID"), out var sessionId)
-            || !Guid.TryParse(Get(request, "physicalDeviceID"), out var physicalId)
-            || physicalId == Guid.Empty
-            || !TryBase64(Get(request, "clientPublicKey"), 32, out var clientPublic)
-        )
+        if (!Guid.TryParse(Get(request, "sessionID"), out var sessionId))
             return null;
         lock (_gate)
         {
             var session = _session;
+            if (session is null || session.Invitation.SessionId != sessionId)
+                return null;
             if (
-                session is null
-                || session.ExpiresAt < DateTimeOffset.UtcNow
-                || session.Invitation.SessionId != sessionId
+                !Guid.TryParse(Get(request, "physicalDeviceID"), out var physicalId)
+                || physicalId == Guid.Empty
+            )
+            {
+                AuditPairing(session, "invalid-device-identity");
+                return null;
+            }
+            if (!TryBase64(Get(request, "clientPublicKey"), 32, out var clientPublic))
+            {
+                AuditPairing(session, "invalid-client-public-key");
+                return null;
+            }
+            if (
+                session.ExpiresAt < DateTimeOffset.UtcNow
                 || Get(request, "version") != "3"
                 || _state.Phones.Any(phone =>
                     phone.Udid == session.Device.Udid && phone.PhysicalDeviceId != physicalId
@@ -412,15 +434,34 @@ public sealed class TransferServer : IDisposable
                 || session.PublicKey is not null
                     && !CryptographicOperations.FixedTimeEquals(session.PublicKey, clientPublic)
             )
+            {
+                var reason =
+                    session.ExpiresAt < DateTimeOffset.UtcNow ? "session-expired"
+                    : Get(request, "version") != "3" ? "unsupported-protocol"
+                    : session.PublicKey is not null
+                    && !CryptographicOperations.FixedTimeEquals(session.PublicKey, clientPublic)
+                        ? "client-public-key-changed"
+                    : "device-identity-conflict";
+                AuditPairing(session, reason);
                 return null;
+            }
             if (session.Secret is null)
             {
                 var shared = new byte[32];
-                session.PrivateKey.GenerateSecret(
-                    new X25519PublicKeyParameters(clientPublic, 0),
-                    shared,
-                    0
-                );
+                try
+                {
+                    session.PrivateKey.GenerateSecret(
+                        new X25519PublicKeyParameters(clientPublic, 0),
+                        shared,
+                        0
+                    );
+                }
+                catch (Exception error)
+                    when (error is ArgumentException or InvalidOperationException)
+                {
+                    AuditPairing(session, "key-agreement-failed");
+                    return null;
+                }
                 session.Secret = Hkdf(
                     shared,
                     Encoding.UTF8.GetBytes(Upper(sessionId)),
@@ -434,6 +475,7 @@ public sealed class TransferServer : IDisposable
             }
             if (Get(request, "type") == "pair-init")
             {
+                AuditPairing(session, "challenge-created");
                 return JsonSerializer.SerializeToUtf8Bytes(
                     new
                     {
@@ -456,6 +498,7 @@ public sealed class TransferServer : IDisposable
             )
             {
                 session.Attempts++;
+                AuditPairing(session, "confirmation-rejected");
                 return null;
             }
             if (!session.Confirmed)
@@ -480,9 +523,18 @@ public sealed class TransferServer : IDisposable
                     );
                     _state.Phones.Add(phone);
                     _state.SecureTransferPhones.Remove(phone.PhysicalDeviceId);
-                    StateStore.Save(_state);
+                    try
+                    {
+                        StateStore.Save(_state);
+                    }
+                    catch
+                    {
+                        AuditPairing(session, "save-credentials-failed");
+                        throw;
+                    }
                 }
                 session.Confirmed = true;
+                AuditPairing(session, "confirmed-credentials-saved");
                 PhoneConfirmed?.Invoke(phone);
             }
             return JsonSerializer.SerializeToUtf8Bytes(

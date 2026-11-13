@@ -1027,6 +1027,8 @@ static class Program
         }
         var state = new CompanionState();
         using var server = new TransferServer(state);
+        var pairingAudit = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        server.Audit = pairingAudit.Enqueue;
         var preflightEvents = new List<string>();
         var idleEvents = new List<string>();
         server.StatusChanged += message =>
@@ -1105,6 +1107,19 @@ static class Program
         Check(
             state.Phones.Count == 1 && state.Phones[0].PhysicalDeviceId == physical,
             "Windows changed the mobile device's physical ID."
+        );
+        var audit = string.Join("\n", pairingAudit);
+        Check(
+            audit.Contains("challenge-created")
+                && audit.Contains("confirmation-rejected")
+                && audit.Contains("confirmed-credentials-saved"),
+            "Pairing errors/results were not audited."
+        );
+        Check(
+            !audit.Contains(invitation.Code)
+                && !audit.Contains(Convert.ToBase64String(key))
+                && !audit.Contains(confirm["confirmationMAC"]),
+            "Pairing audit leaked authentication material."
         );
         var encryptedState = File.ReadAllBytes(Path.Combine(StateStore.Root, "state.bin"));
         Check(

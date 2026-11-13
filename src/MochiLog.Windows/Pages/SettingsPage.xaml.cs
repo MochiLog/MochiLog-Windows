@@ -393,44 +393,64 @@ public sealed partial class SettingsPage : Page
 
     private async Task<(string Computer, string? Phone, string[] Logs)> ExportReportAsync()
     {
+        var selected = SelectedPhone();
+        var incident = IncidentDateTime;
+        var computerData = await Task.Run(() => _runtime.SupportDiagnosticsData(selected));
+        var phoneData = _runtime.PhoneSupportDiagnosticsData(selected);
         var directory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "Downloads"
+            "Downloads",
+            "MochiLog-support-"
+                + DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss")
+                + "-"
+                + Guid.NewGuid().ToString("N")[..8]
         );
-        Directory.CreateDirectory(directory);
-        var stamp = DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss");
-        var computer = Path.Combine(directory, $"MochiLog-Windows-support-{stamp}.json");
-        var selected = SelectedPhone();
-        await File.WriteAllBytesAsync(
-            computer,
-            await Task.Run(() => _runtime.SupportDiagnosticsData(selected))
+        var sources = new List<SupportLogExport.Source>
+        {
+            new("mochilog-windows", Path.Combine(StateStore.Root, "DebugLogs")),
+        };
+        if (selected is not null)
+            sources.Add(
+                new(
+                    "mochilog-iphone",
+                    Path.Combine(
+                        StateStore.Root,
+                        "PhoneDebugLogs",
+                        selected.PhysicalDeviceId.ToString("D").ToUpperInvariant()
+                    )
+                )
+            );
+        var diagnostics = new List<SupportLogExport.Diagnostic>
+        {
+            new("mochilog-windows-diagnostics.json", computerData),
+        };
+        if (phoneData is not null)
+            diagnostics.Add(new("mochilog-iphone-diagnostics.json", phoneData));
+        var days = Enumerable
+            .Range(0, 3)
+            .Select(offset =>
+                incident.AddDays(-offset).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            )
+            .ToArray();
+        var files = await Task.Run(() =>
+            SupportLogExport.Prepare(
+                sources,
+                days,
+                diagnostics,
+                directory,
+                phoneData is null
+                    ?
+                    [
+                        "iphone: no selected app-paired device or remote diagnostics not yet received",
+                    ]
+                    : []
+            )
         );
-        string? phone = null;
-        if (_runtime.PhoneSupportDiagnosticsData(SelectedPhone()) is { } report)
-        {
-            phone = Path.Combine(directory, $"MochiLog-iPhone-support-{stamp}.json");
-            await File.WriteAllBytesAsync(phone, report);
-        }
-        var logs = new List<string>();
-        for (var offset = -2; offset <= 0; offset++)
-        {
-            var day = IncidentDateTime
-                .AddDays(offset)
-                .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-            var path = Path.Combine(directory, $"MochiLog-Windows-debug-{day}-{stamp}.log");
-            await File.WriteAllTextAsync(path, _runtime.DebugLogForDay(day));
-            logs.Add(path);
-            if (SelectedPhone() is { } selectedPhone)
-            {
-                var phonePath = Path.Combine(directory, $"MochiLog-iPhone-debug-{day}-{stamp}.log");
-                await File.WriteAllTextAsync(
-                    phonePath,
-                    _runtime.PhoneDebugForDay(selectedPhone, day)
-                );
-                logs.Add(phonePath);
-            }
-        }
-        return (computer, phone, logs.ToArray());
+        var computer = Path.Combine(directory, "mochilog-windows-diagnostics.json");
+        var phone = phoneData is null
+            ? null
+            : Path.Combine(directory, "mochilog-iphone-diagnostics.json");
+        return (computer, phone, files.Where(file => file != computer && file != phone).ToArray());
     }
 
     private async void ExportClicked(object sender, RoutedEventArgs args)

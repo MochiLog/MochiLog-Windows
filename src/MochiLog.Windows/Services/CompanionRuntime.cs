@@ -57,6 +57,7 @@ public sealed class CompanionRuntime : IDisposable
         MigrateLegacyEvents();
         Server = new TransferServer(State);
         Server.SupportReport = BuildTransferReport;
+        Server.Audit = Record;
         Server.LiveBatteryRequested += (phone, manual) =>
         {
             _batteryInterest[phone.PhysicalDeviceId] = DateTimeOffset.UtcNow;
