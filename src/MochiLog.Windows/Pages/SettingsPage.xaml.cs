@@ -391,7 +391,7 @@ public sealed partial class SettingsPage : Page
     private DateTime IncidentDateTime =>
         (IncidentDatePicker.Date ?? DateTimeOffset.Now).Date.Add(IncidentTimePicker.Time);
 
-    private async Task<(string Computer, string? Phone, string[] Logs)> ExportReportAsync()
+    private async Task<string> ExportReportAsync()
     {
         var selected = SelectedPhone();
         var incident = IncidentDateTime;
@@ -446,11 +446,7 @@ public sealed partial class SettingsPage : Page
                     : []
             )
         );
-        var computer = Path.Combine(directory, "mochilog-windows-diagnostics.json");
-        var phone = phoneData is null
-            ? null
-            : Path.Combine(directory, "mochilog-iphone-diagnostics.json");
-        return (computer, phone, files.Where(file => file != computer && file != phone).ToArray());
+        return await Task.Run(() => SupportArchive.Create(files, directory));
     }
 
     private async void ExportClicked(object sender, RoutedEventArgs args)
@@ -459,7 +455,7 @@ public sealed partial class SettingsPage : Page
         {
             var files = await ExportReportAsync();
             Process.Start(
-                new ProcessStartInfo("explorer.exe", $"/select,\"{files.Computer}\"")
+                new ProcessStartInfo("explorer.exe", $"/select,\"{files}\"")
                 {
                     UseShellExecute = true,
                 }
@@ -487,11 +483,7 @@ public sealed partial class SettingsPage : Page
             {
                 var message = new EmailMessage { Subject = subject, Body = body };
                 message.To.Add(new EmailRecipient("support@mochilog.ryuya-dev.net"));
-                foreach (
-                    var file in new[] { files.Computer, files.Phone }
-                        .OfType<string>()
-                        .Concat(files.Logs)
-                )
+                foreach (var file in new[] { files })
                 {
                     var storage = await StorageFile.GetFileFromPathAsync(file);
                     message.Attachments.Add(
@@ -507,10 +499,10 @@ public sealed partial class SettingsPage : Page
             {
                 var url =
                     $"mailto:support@mochilog.ryuya-dev.net?subject={Uri.EscapeDataString(subject)}"
-                    + $"&body={Uri.EscapeDataString(body + "\r\n\r\n" + UiText.Get("win_mail_body") + "\r\n" + string.Join("\r\n", new[] { files.Computer, files.Phone }.OfType<string>().Concat(files.Logs)))}";
+                    + $"&body={Uri.EscapeDataString(body + "\r\n\r\n" + UiText.Get("win_mail_body") + "\r\n" + files)}";
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                 Process.Start(
-                    new ProcessStartInfo("explorer.exe", $"/select,\"{files.Computer}\"")
+                    new ProcessStartInfo("explorer.exe", $"/select,\"{files}\"")
                     {
                         UseShellExecute = true,
                     }

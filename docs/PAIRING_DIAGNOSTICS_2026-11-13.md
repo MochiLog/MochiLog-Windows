@@ -21,3 +21,9 @@ On the physical Windows host, using an isolated source snapshot and temporary sy
 - `dotnet build src/MochiLog.Windows/MochiLog.Windows.csproj -c Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64`: full native WinUI Release build.
 
 CI runs the export test alongside the protocol suite. Temporary verification processes have explicit deadlines, file-output limits, resource checks and exit cleanup. No production pairing, USB driver, installer or running app is replaced by these tests. They do not send email or establish actual provider delivery behavior.
+
+## ZIP follow-up
+
+Mail/export now prepares one mochilog-support.zip containing the bounded snapshots and manifest. Windows uses System.IO.Compression with 64 KiB buffers, a 16 MiB/100-entry archive input limit and partial-output cleanup. No live directory is recursively archived. The existing mailto fallback points to that one ZIP for manual attachment when EmailManager composition is unavailable. Tests reopen the archive and compare every uncompressed entry to its source bytes; the physical Windows host passes this suite, protocol tests and the Release build.
+
+Wireless80211 addresses are prioritized before limiting the QR's direct-address hints, matching the Mac Wi-Fi priority improvement. Mobile's exact-host Bonjour fallback and validated route selection work with either PC platform; the wire protocol, PIN/proof checks and saved pairings are unchanged. The detailed timeout-path audit lives in the mobile repository at docs/PAIRING_TIMEOUT_AUDIT_2026-11-13.md. No installer or GitHub Release has been published by these checks.

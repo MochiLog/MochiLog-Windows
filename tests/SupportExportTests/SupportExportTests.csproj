@@ -8,5 +8,6 @@
   <ItemGroup>
     <Compile Include="../../src/MochiLog.Windows/Services/DiagnosticLogArchive.cs" Link="DiagnosticLogArchive.cs" />
     <Compile Include="../../src/MochiLog.Windows/Services/SupportLogExport.cs" Link="SupportLogExport.cs" />
+    <Compile Include="../../src/MochiLog.Windows/Services/SupportArchive.cs" Link="SupportArchive.cs" />
   </ItemGroup>
 </Project>

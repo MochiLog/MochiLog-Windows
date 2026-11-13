@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text;
 using MochiLog_Windows.Services;
 
@@ -49,6 +50,32 @@ try
         manifest.Contains("missing") && manifest.Contains("computer: app pairing not completed"),
         "Missing source not reported"
     );
+    var zipPath = SupportArchive.Create(files, output);
+    using (var zip = ZipFile.OpenRead(zipPath))
+    {
+        Check(zip.Entries.Count == files.Length, "ZIP lost prepared attachments");
+        foreach (var file in files)
+        {
+            var entry = zip.GetEntry(Path.GetFileName(file));
+            Check(entry is not null, "ZIP entry missing");
+            using var input = entry!.Open();
+            using var bytes = new MemoryStream();
+            input.CopyTo(bytes);
+            Check(bytes.ToArray().SequenceEqual(File.ReadAllBytes(file)), "ZIP content changed");
+        }
+        Check(zip.GetEntry("mochilog-support-manifest.json") is not null, "ZIP manifest missing");
+    }
+    var rejected = Path.Combine(root, "rejected");
+    Directory.CreateDirectory(rejected);
+    try
+    {
+        SupportArchive.Create(files, rejected, maximumBytes: 1);
+        throw new Exception("Oversized archive accepted");
+    }
+    catch (InvalidDataException)
+    {
+        Check(!File.Exists(Path.Combine(rejected, "mochilog-support.zip")), "Partial ZIP retained");
+    }
     var bounded = Path.Combine(root, "bounded");
     SupportLogExport.Prepare(sources, [day], [], bounded, maximumBytes: 1);
     Check(

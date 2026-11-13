@@ -1426,6 +1426,9 @@ public sealed class TransferServer : IDisposable
         NetworkInterface
             .GetAllNetworkInterfaces()
             .Where(nic => nic.OperationalStatus == OperationalStatus.Up)
+            .OrderByDescending(nic =>
+                nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211
+            )
             .SelectMany(nic => nic.GetIPProperties().UnicastAddresses)
             .Where(address => address.Address.AddressFamily == AddressFamily.InterNetwork)
             .Select(address => address.Address.ToString());
