@@ -423,9 +423,31 @@ public sealed partial class SettingsPage : Page
         var diagnostics = new List<SupportLogExport.Diagnostic>
         {
             new("mochilog-windows-diagnostics.json", computerData),
+            new(
+                "mochilog-windows-settings.json",
+                SupportSettingsSnapshot.Formatted(await Task.Run(_runtime.SettingsSnapshot))
+            ),
         };
+        var unavailable = new List<string>();
         if (phoneData is not null)
+        {
             diagnostics.Add(new("mochilog-iphone-diagnostics.json", phoneData));
+            if (SupportSettingsSnapshot.Extract(phoneData) is { } settings)
+                diagnostics.Add(
+                    new(
+                        "mochilog-iphone-settings.json",
+                        SupportSettingsSnapshot.Formatted(settings)
+                    )
+                );
+            else
+                unavailable.Add(
+                    "iphone: settings snapshot not received, omitted or from an older app"
+                );
+        }
+        else
+            unavailable.Add(
+                "iphone: no selected app-paired device or remote diagnostics not yet received"
+            );
         var days = Enumerable
             .Range(0, 3)
             .Select(offset =>
@@ -433,18 +455,7 @@ public sealed partial class SettingsPage : Page
             )
             .ToArray();
         var files = await Task.Run(() =>
-            SupportLogExport.Prepare(
-                sources,
-                days,
-                diagnostics,
-                directory,
-                phoneData is null
-                    ?
-                    [
-                        "iphone: no selected app-paired device or remote diagnostics not yet received",
-                    ]
-                    : []
-            )
+            SupportLogExport.Prepare(sources, days, diagnostics, directory, unavailable.ToArray())
         );
         return await Task.Run(() => SupportArchive.Create(files, directory));
     }

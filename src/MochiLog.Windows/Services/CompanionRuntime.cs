@@ -860,6 +860,8 @@ public sealed class CompanionRuntime : IDisposable
             ["archiveManifest"] = DebugArchiveSync.LocalManifest(phone.PhysicalDeviceId),
             ["recentEvents"] = events,
         };
+        using var settings = JsonDocument.Parse(SettingsSnapshot());
+        report["settingsSnapshot"] = settings.RootElement;
         try
         {
             if (
@@ -897,8 +899,17 @@ public sealed class CompanionRuntime : IDisposable
                 continue;
             }
             report.Remove("archiveChunk");
+            report.Remove("settingsSnapshot");
             return JsonSerializer.SerializeToUtf8Bytes(report);
         }
+    }
+
+    public byte[] SettingsSnapshot()
+    {
+        int count;
+        lock (State)
+            count = State.Phones.Count;
+        return SupportSettingsSnapshot.Capture(count, DebugRetentionDays, Server.ListeningPort);
     }
 
     public byte[] SupportDiagnosticsData(PairedPhone? phone)

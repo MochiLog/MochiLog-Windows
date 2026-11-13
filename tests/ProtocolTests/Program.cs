@@ -992,6 +992,7 @@ static class Program
             await ServeLiveSimulator();
             return;
         }
+        SupportSettingsTests.Run();
         CheckCurrentDiagnostics();
         CheckDiagnosticRoutes();
         await CollectionRegressionTests.Run();
