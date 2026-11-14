@@ -6,90 +6,193 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-    <ScrollViewer>
-        <StackPanel MaxWidth="920" Padding="28" Spacing="22">
+    <ScrollViewer x:Name="ContentScroll" SizeChanged="ContentViewportSizeChanged"
+                  HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="ContentColumn" MaxWidth="1500" HorizontalAlignment="Left"
+                    Padding="36,32,36,48" Spacing="24">
             <StackPanel Spacing="5">
                 <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}" />
-                <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Opacity="0.72" />
+                <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Opacity="0.68" />
             </StackPanel>
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
-                <StackPanel Spacing="14">
-                    <TextBlock x:Name="StatusTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
-                    <TextBlock x:Name="CollectionText" TextWrapping="Wrap" Opacity="0.72" />
-                    <StackPanel Orientation="Horizontal" Spacing="10">
+
+            <Border x:Name="StatusCard" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="20" Padding="24">
+                <Grid x:Name="StatusGrid" ColumnSpacing="20" RowSpacing="18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Border Width="52" Height="52" CornerRadius="16" Background="#183D8D55">
+                        <FontIcon Glyph="&#xE753;" FontSize="24" Foreground="#62D69A" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock x:Name="StatusTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock x:Name="StatusText" TextWrapping="Wrap" FontSize="15" />
+                        <TextBlock x:Name="CollectionText" TextWrapping="Wrap" Opacity="0.68" />
+                    </StackPanel>
+                    <StackPanel x:Name="StatusActions" Grid.Column="2" Orientation="Horizontal" Spacing="8"
+                                VerticalAlignment="Center">
                         <Button x:Name="RefreshButton" Click="RefreshClicked" />
-                        <Button x:Name="CollectButton" Click="CollectClicked" />
+                        <Button x:Name="CollectButton" Click="CollectClicked"
+                                Style="{StaticResource AccentButtonStyle}" />
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
-                <StackPanel Spacing="14">
-                    <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <TextBlock x:Name="SetupRequirement" TextWrapping="Wrap" />
-                    <TextBlock x:Name="SoftwareStatus" TextWrapping="Wrap" FontWeight="SemiBold" />
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <HyperlinkButton x:Name="AppleDevicesLink" NavigateUri="https://support.apple.com/guide/devices-windows/mchl5ded2763/windows" />
-                        <HyperlinkButton x:Name="ITunesLink" NavigateUri="https://www.apple.com/itunes/download/win64" />
-                        <Button x:Name="SoftwareRefreshButton" Click="SoftwareRefreshClicked" />
-                    </StackPanel>
-                    <TextBlock x:Name="ICloudNote" TextWrapping="Wrap" Opacity="0.72" />
-                    <TextBlock x:Name="SetupStep1" TextWrapping="Wrap" />
-                    <TextBlock x:Name="SetupStep2" TextWrapping="Wrap" />
-                    <TextBlock x:Name="SetupStep3" TextWrapping="Wrap" />
-                    <TextBlock x:Name="DeviceSelectionHint" TextWrapping="Wrap" Opacity="0.72" />
-                    <RadioButtons x:Name="DeviceList" MaxColumns="1">
-                        <RadioButtons.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnSpacing="12" Padding="4,7">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Width="36" Height="36"
-                                            CornerRadius="10" Background="{Binding BadgeBackground}">
-                                        <FontIcon Glyph="&#xE8EA;" FontSize="19"
-                                                  Foreground="{Binding AccentBrush}" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Model}" Opacity="0.68"
-                                                   FontSize="12" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                    <Border Grid.Column="2" Background="{Binding BadgeBackground}"
-                                            CornerRadius="9" Padding="8,5" VerticalAlignment="Center">
-                                        <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <FontIcon Glyph="{Binding BadgeGlyph}" FontSize="13"
+
+            <Grid x:Name="DashboardGrid" ColumnSpacing="20" RowSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="MainColumn" Width="*" />
+                    <ColumnDefinition x:Name="SideColumn" Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel x:Name="LeftColumn" Grid.Row="0" Grid.Column="0" Spacing="20">
+                <Border x:Name="DeviceCard"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="20" Padding="24">
+                    <StackPanel Spacing="18">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="12" Background="#183D8D55">
+                                <FontIcon Glyph="&#xE8EA;" FontSize="20" Foreground="#62D69A" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock x:Name="DeviceHeading" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                <TextBlock x:Name="DeviceSelectionHint" TextWrapping="Wrap" Opacity="0.68" />
+                            </StackPanel>
+                        </Grid>
+                        <RadioButtons x:Name="DeviceList" MaxColumns="1">
+                            <RadioButtons.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnSpacing="12" Padding="4,9">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="40" Height="40"
+                                                CornerRadius="12" Background="{Binding BadgeBackground}">
+                                            <FontIcon Glyph="&#xE8EA;" FontSize="19"
                                                       Foreground="{Binding AccentBrush}" />
-                                            <TextBlock Text="{Binding BadgeText}" FontSize="12"
-                                                       Foreground="{Binding AccentBrush}"
-                                                       TextWrapping="Wrap" MaxWidth="150" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                       FontSize="15" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Model}" Opacity="0.68"
+                                                       FontSize="12" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </RadioButtons.ItemTemplate>
-                    </RadioButtons>
-                    <Button x:Name="UsbButton" Click="UsbClicked" HorizontalAlignment="Left" />
-                    <Button x:Name="PairButton" Click="PairClicked" />
-                </StackPanel>
-            </Border>
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
-                <StackPanel Spacing="10">
-                    <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <ListView x:Name="PairedList" Height="130" SelectionMode="Single" />
-                    <Button x:Name="UnpairButton" Click="UnpairClicked" />
-                    <TextBlock x:Name="ManualAddressHint" TextWrapping="Wrap" Opacity="0.72" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBox x:Name="ManualAddressBox" Width="220" PlaceholderText="192.168.1.20" />
-                        <Button x:Name="SaveManualAddressButton" Click="SaveManualAddressClicked" />
-                        <Button x:Name="ClearManualAddressButton" Click="ClearManualAddressClicked" />
+                                        <Border Grid.Column="2" Background="{Binding BadgeBackground}"
+                                                CornerRadius="9" Padding="9,6" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="{Binding BadgeGlyph}" FontSize="13"
+                                                          Foreground="{Binding AccentBrush}" />
+                                                <TextBlock Text="{Binding BadgeText}" FontSize="12"
+                                                           Foreground="{Binding AccentBrush}"
+                                                           TextWrapping="Wrap" MaxWidth="150" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </RadioButtons.ItemTemplate>
+                        </RadioButtons>
+                        <Border x:Name="DeviceEmptyPanel" Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                CornerRadius="14" Padding="20" Visibility="Collapsed">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <FontIcon Grid.Column="0" Glyph="&#xE8EA;" FontSize="26" Opacity="0.55" />
+                                <TextBlock x:Name="DeviceEmptyText" Grid.Column="1" TextWrapping="Wrap"
+                                           VerticalAlignment="Center" Opacity="0.72" />
+                            </Grid>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button x:Name="UsbButton" Click="UsbClicked" />
+                            <Button x:Name="PairButton" Click="PairClicked"
+                                    Style="{StaticResource AccentButtonStyle}" />
+                        </StackPanel>
+                        <InfoBar x:Name="UsbResultBar" IsOpen="False" IsClosable="True"
+                                 Severity="Informational" />
                     </StackPanel>
-                    <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.72" />
+                </Border>
+
+                <Border x:Name="PairedCard"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="20" Padding="24">
+                    <StackPanel Spacing="14">
+                        <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ListView x:Name="PairedList" MinHeight="110" MaxHeight="220" SelectionMode="Single" />
+                        <Button x:Name="UnpairButton" Click="UnpairClicked" HorizontalAlignment="Left" />
+                        <TextBlock x:Name="ManualAddressHint" TextWrapping="Wrap" Opacity="0.72" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="ManualAddressBox" Width="220" PlaceholderText="192.168.1.20" />
+                            <Button x:Name="SaveManualAddressButton" Click="SaveManualAddressClicked" />
+                            <Button x:Name="ClearManualAddressButton" Click="ClearManualAddressClicked" />
+                        </StackPanel>
+                        <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.68" />
+                    </StackPanel>
+                </Border>
                 </StackPanel>
-            </Border>
+
+                <Border x:Name="GuideCard" Grid.Row="0" Grid.Column="1"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="20" Padding="24">
+                    <StackPanel Spacing="17">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="40" Height="40" CornerRadius="12" Background="#184683DD">
+                                <FontIcon Glyph="&#xE80F;" FontSize="20" Foreground="#87B4FF" />
+                            </Border>
+                            <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock x:Name="SetupRequirement" TextWrapping="Wrap" Opacity="0.7" />
+                        <InfoBar x:Name="SoftwareInfoBar" IsOpen="True" IsClosable="False"
+                                 Severity="Informational">
+                            <InfoBar.Content>
+                                <TextBlock x:Name="SoftwareStatus" TextWrapping="Wrap" />
+                            </InfoBar.Content>
+                        </InfoBar>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <HyperlinkButton x:Name="AppleDevicesLink"
+                                NavigateUri="https://support.apple.com/guide/devices-windows/mchl5ded2763/windows" />
+                            <HyperlinkButton x:Name="ITunesLink"
+                                NavigateUri="https://www.apple.com/itunes/download/win64" />
+                            <Button x:Name="SoftwareRefreshButton" Click="SoftwareRefreshClicked" />
+                        </StackPanel>
+                        <TextBlock x:Name="ICloudNote" TextWrapping="Wrap" Opacity="0.68" />
+                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="10" Background="#183D8D55">
+                                <FontIcon Glyph="&#xE77B;" FontSize="16" Foreground="#62D69A" />
+                            </Border>
+                            <TextBlock x:Name="SetupStep1" Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </Grid>
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="10" Background="#183D8D55">
+                                <FontIcon Glyph="&#xE72E;" FontSize="16" Foreground="#62D69A" />
+                            </Border>
+                            <TextBlock x:Name="SetupStep2" Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </Grid>
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="10" Background="#183D8D55">
+                                <FontIcon Glyph="&#xE8A1;" FontSize="16" Foreground="#62D69A" />
+                            </Border>
+                            <TextBlock x:Name="SetupStep3" Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+            </Grid>
         </StackPanel>
     </ScrollViewer>
 </Page>

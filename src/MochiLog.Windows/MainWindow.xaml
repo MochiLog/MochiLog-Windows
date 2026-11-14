@@ -34,6 +34,10 @@
             x:Name="NavView"
             Grid.Row="1"
             IsBackButtonVisible="Collapsed"
+            IsPaneOpen="False"
+            PaneDisplayMode="LeftCompact"
+            CompactPaneLength="64"
+            OpenPaneLength="220"
             IsPaneToggleButtonVisible="False"
             SelectionChanged="NavView_SelectionChanged">
             <NavigationView.MenuItems>

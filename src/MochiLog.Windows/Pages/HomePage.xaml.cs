@@ -59,12 +59,14 @@ public sealed partial class HomePage : Page
         SetupStep2.Text = UiText.Get("win_step_2");
         SetupStep3.Text = UiText.Get("win_step_3");
         UsbButton.Content = UiText.Get("win_usb");
-        DeviceList.Header = UiText.Get("win_found");
+        DeviceHeading.Text = UiText.Get("win_found");
         DeviceSelectionHint.Text = UiText.Get("win_select_device_hint");
+        DeviceEmptyText.Text = UiText.Get("win_none_found");
         DeviceList.SelectionChanged += (_, _) => {
             if (DeviceList.SelectedIndex is >= 0 and var index &&
                 index < _runtime.Available.Count)
                 _selectedUdid = _runtime.Available[index].Udid;
+            PairButton.IsEnabled = SelectedDevice() is not null || _usbDevice is not null;
         };
         PairButton.Content = UiText.Get("win_pair");
         PairedTitle.Text = UiText.Get("win_paired");
@@ -86,6 +88,30 @@ public sealed partial class HomePage : Page
 
     private void RuntimeChanged() => DispatcherQueue.TryEnqueue(Render);
 
+    private void ContentViewportSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        var viewport = (Application.Current as MochiLog_Windows.App)?.MainWindow?.ContentViewportWidth
+            ?? args.NewSize.Width;
+        ContentColumn.Width = Math.Min(1500, Math.Max(480, viewport - 32));
+        var usable = ContentColumn.Width - 72;
+        DashboardGrid.Width = usable;
+        StatusCard.Width = usable;
+
+        var wide = usable >= 760;
+        var left = wide ? Math.Round((usable - 20) * 0.57) : usable;
+        var right = wide ? usable - 20 - left : 0;
+        MainColumn.Width = new GridLength(left);
+        SideColumn.Width = new GridLength(right);
+        LeftColumn.Width = left;
+        DeviceCard.Width = left;
+        GuideCard.Width = wide ? right : usable;
+        PairedCard.Width = left;
+        Grid.SetColumn(GuideCard, wide ? 1 : 0);
+        Grid.SetRow(GuideCard, wide ? 0 : 1);
+        Grid.SetColumn(StatusActions, wide ? 2 : 1);
+        Grid.SetRow(StatusActions, wide ? 0 : 1);
+    }
+
     private async Task CheckAppleSoftwareAsync()
     {
         SoftwareRefreshButton.IsEnabled = false;
@@ -102,6 +128,7 @@ public sealed partial class HomePage : Page
                 _ => "win_software_missing"
             });
             var needed = !installed.AppleDevices && !installed.ClassicITunes;
+            SoftwareInfoBar.Severity = needed ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
             AppleDevicesLink.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
             ITunesLink.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
             ICloudNote.Visibility = needed ? Visibility.Visible : Visibility.Collapsed;
@@ -117,10 +144,13 @@ public sealed partial class HomePage : Page
         StatusText.Text = _runtime.Status;
         CollectionText.Text = _runtime.CollectionStatus;
         var available = _runtime.Available.Select(device => new DeviceListRow(device)).ToArray();
+        DeviceList.Visibility = available.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        DeviceEmptyPanel.Visibility = available.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (DeviceList.ItemsSource is not DeviceListRow[] currentAvailable ||
             !currentAvailable.Select(row => row.Key).SequenceEqual(available.Select(row => row.Key)))
         {
             DeviceList.ItemsSource = available;
+            if (available.Length == 1) _selectedUdid = _runtime.Available[0].Udid;
             var selected = _runtime.Available.ToList().FindIndex(device => device.Udid == _selectedUdid);
             if (selected >= 0) DeviceList.SelectedIndex = selected;
         }
@@ -137,6 +167,8 @@ public sealed partial class HomePage : Page
                 PairedList.SelectedIndex = pairedSelected;
         }
         CollectButton.IsEnabled = _runtime.State.Phones.Count > 0;
+        PairButton.IsEnabled = _runtime.Available.Any(device => device.Udid == _selectedUdid) ||
+            _usbDevice is not null;
         UnpairButton.IsEnabled = PairedList.SelectedIndex >= 0 &&
             PairedList.SelectedIndex < _runtime.State.Phones.Count;
     }
@@ -151,14 +183,14 @@ public sealed partial class HomePage : Page
         var index = PairedList.SelectedIndex;
         if (index < 0 || index >= _runtime.State.Phones.Count) return;
         var phone = _runtime.State.Phones[index];
-        var answer = await new ContentDialog {
+        var answer = await DialogCoordinator.ShowAsync(new ContentDialog {
             XamlRoot = XamlRoot,
             Title = UiText.Format("win_unpair_title", phone.Name),
             Content = UiText.Get("win_unpair_detail"),
             PrimaryButtonText = UiText.Get("win_unpair_button"),
             CloseButtonText = UiText.Get("win_close"),
             DefaultButton = ContentDialogButton.Close
-        }.ShowAsync();
+        });
         if (answer != ContentDialogResult.Primary) return;
         try { _runtime.Unpair(phone); Render(); }
         catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
@@ -166,12 +198,25 @@ public sealed partial class HomePage : Page
 
     private async void UsbClicked(object sender, RoutedEventArgs args)
     {
+        if (!UsbButton.IsEnabled) return;
+        UsbButton.IsEnabled = false;
+        UsbResultBar.Title = UiText.Get("win_usb_done");
+        UsbResultBar.Message = UiText.Get("win_usb_wait");
+        UsbResultBar.Severity = InfoBarSeverity.Informational;
+        UsbResultBar.IsOpen = true;
         try
         {
             _usbDevice = await _runtime.PrepareUsbAsync(SelectedDevice()?.Udid);
-            await ShowMessageAsync(UiText.Get("win_usb_done"), UiText.Get("win_usb_done_detail"));
+            UsbResultBar.Message = UiText.Get("win_usb_done_detail");
+            UsbResultBar.Severity = InfoBarSeverity.Success;
         }
-        catch (Exception error) { await ShowMessageAsync(UiText.Get("win_setup_failed"), error.Message); }
+        catch (Exception error)
+        {
+            UsbResultBar.Title = UiText.Get("win_setup_failed");
+            UsbResultBar.Message = error.Message;
+            UsbResultBar.Severity = InfoBarSeverity.Error;
+        }
+        finally { UsbButton.IsEnabled = true; }
     }
 
     private ConnectedDevice? SelectedDevice() => _runtime.Available.FirstOrDefault(device =>
@@ -206,19 +251,34 @@ public sealed partial class HomePage : Page
             detail.Children.Add(new TextBlock { Text = UiText.Get("win_qr_instruction"), TextWrapping = TextWrapping.Wrap });
             detail.Children.Add(new Image { Source = image, Width = 280, Height = 280 });
             detail.Children.Add(new TextBlock { Text = UiText.Format("win_code", invite.Code), FontSize = 24 });
-            await new ContentDialog
+            var presented = await DialogCoordinator.ShowAsync(new ContentDialog
             {
                 XamlRoot = XamlRoot, Title = UiText.Format("win_pair_title", device.Name),
                 Content = detail, CloseButtonText = UiText.Get("win_close")
-            }.ShowAsync();
+            });
+            if (presented is null)
+                ShowInlineError(UiText.Get("win_pair_failed"), UiText.Get("win_setup_failed"));
         }
         catch (Exception error) { await ShowMessageAsync(UiText.Get("win_pair_failed"), error.Message); }
         finally { PairButton.IsEnabled = true; }
     }
 
-    private async Task ShowMessageAsync(string title, string message) =>
-        await new ContentDialog { XamlRoot = XamlRoot, Title = title,
-            Content = message, CloseButtonText = UiText.Get("win_close") }.ShowAsync();
+    private async Task ShowMessageAsync(string title, string message)
+    {
+        var presented = await DialogCoordinator.ShowAsync(new ContentDialog {
+            XamlRoot = XamlRoot, Title = title, Content = message,
+            CloseButtonText = UiText.Get("win_close")
+        });
+        if (presented is null) ShowInlineError(title, message);
+    }
+
+    private void ShowInlineError(string title, string message)
+    {
+        UsbResultBar.Title = title;
+        UsbResultBar.Message = message;
+        UsbResultBar.Severity = InfoBarSeverity.Error;
+        UsbResultBar.IsOpen = true;
+    }
 
     private void SaveManualAddressClicked(object sender, RoutedEventArgs args)
     {
