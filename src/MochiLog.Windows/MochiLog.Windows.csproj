@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
     <RootNamespace>MochiLog_Windows</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -13,6 +13,7 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <EnableWinAppRunSupport>false</EnableWinAppRunSupport>
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
@@ -58,11 +59,11 @@
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.7.0" />
-    <PackageReference Include="QRCoder" Version="1.8.0" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.1" />
+    <PackageReference Include="QRCoder" Version="1.8.1" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
   </ItemGroup>
 
   <!--

@@ -54,7 +54,13 @@ def main():
         info = json.loads(result.stdout)
         assert info["compiler"] == "nuitka", info
         assert all(info["compiledModules"].values()), info
-        assert info["pymobiledevice3"] == "11.19.1", info
+        requirements = Path(__file__).resolve().parents[1] / "requirements-build.txt"
+        expected_version = next(
+            line.split("==", 1)[1].strip()
+            for line in requirements.read_text(encoding="utf-8").splitlines()
+            if line.startswith("pymobiledevice3==")
+        )
+        assert info["pymobiledevice3"] == expected_version, info
         for command in (
             [],
             ["battery-snapshot"],
