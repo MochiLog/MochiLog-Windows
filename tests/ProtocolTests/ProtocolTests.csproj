@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);MOCHILOG_PROTOCOL_TEST</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="Fixtures\battery-registry.xml" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
+    <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.1" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\CloudLogSharing.cs" Link="CloudLogSharing.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\CompanionState.cs" Link="CompanionState.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\TransferServer.cs" Link="TransferServer.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\BatteryLogStorage.cs" Link="BatteryLogStorage.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\DebugArchiveSync.cs" Link="DebugArchiveSync.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\LiveBattery.cs" Link="LiveBattery.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\Collector.cs" Link="Collector.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\AppleUsbRecovery.cs" Link="AppleUsbRecovery.cs" />
+    <Compile Include="..\..\src\MochiLog.Windows\Services\UiText.cs" Link="UiText.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,168 @@
+using System.Text.Json;
+
+namespace MochiLog_Windows.Services;
+
+public sealed class CompanionRuntime : IDisposable
+{
+    public static CompanionRuntime Shared { get; } = new();
+    public CompanionState State { get; }
+    public TransferServer Server { get; }
+    public IReadOnlyList<ConnectedDevice> Available { get; private set; } = [];
+    public string Status { get; private set; } = UiText.Get("win_searching");
+    public string CollectionStatus { get; private set; } = "";
+    public event Action? Changed;
+    private readonly SemaphoreSlim _collection = new(1, 1);
+    private readonly CancellationTokenSource _lifetime = new();
+    private readonly List<string> _events = [];
+    private bool _started;
+
+    private CompanionRuntime()
+    {
+        State = StateStore.Load();
+        Server = new TransferServer(State);
+        Server.SupportReport = phone => JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
+            deviceName = phone.Name, osVersion = Environment.OSVersion.VersionString,
+            recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(30).ToArray()
+        });
+        Server.StatusChanged += message => Record(message);
+        Server.PhoneConfirmed += phone => Record($"{phone.Name}: app pairing confirmed");
+    }
+
+    public void Start()
+    {
+        if (_started) return;
+        _started = true;
+        try { Server.Start(); }
+        catch (Exception error) { Record("Transfer server could not start: " + error.Message); }
+        _ = PeriodicCollectionAsync(_lifetime.Token);
+        _ = RefreshAsync();
+    }
+
+    public async Task RefreshAsync()
+    {
+        try
+        {
+            Status = UiText.Get("win_searching");
+            Changed?.Invoke();
+            Available = await Collector.BrowseAsync(State.Phones, _lifetime.Token);
+            Status = Available.Count == 0 ? UiText.Get("win_none_found") :
+                UiText.Format("win_devices_available", Available.Count);
+        }
+        catch (Exception error) { Status = "Device search: " + error.Message; }
+        Record(Status);
+    }
+
+    public async Task<ConnectedDevice> PrepareUsbAsync()
+    {
+        Status = UiText.Get("win_usb_wait");
+        Changed?.Invoke();
+        var device = await Collector.PrepareUsbPairingAsync(_lifetime.Token);
+        Status = UiText.Format("win_usb_ready", device.Name);
+        Record(Status);
+        return device;
+    }
+
+    public async Task VerifyWirelessAsync(ConnectedDevice device)
+    {
+        Status = UiText.Format("win_checking", device.Name);
+        Changed?.Invoke();
+        await Collector.VerifyWirelessAsync(device.Udid, _lifetime.Token);
+        Status = UiText.Format("win_wireless_ready", device.Name);
+        Available = Available.Where(item => item.Udid != device.Udid).Append(device).ToArray();
+        Record(Status);
+    }
+
+    public PairingInvitation BeginPairing(ConnectedDevice device)
+    {
+        if (!Available.Any(item => item.Udid == device.Udid))
+            throw new InvalidOperationException("Verify this device's wireless connection first.");
+        var invitation = Server.BeginPairing(device);
+        Record($"{device.Name}: pairing QR generated (expires after 3 minutes)");
+        return invitation;
+    }
+
+    public async Task CollectAsync(PairedPhone? selected = null)
+    {
+        if (!await _collection.WaitAsync(0)) return;
+        try
+        {
+            PairedPhone[] phones;
+            lock (State) { phones = selected is null ? State.Phones.ToArray() : [selected]; }
+            foreach (var phone in phones)
+            {
+                CollectionStatus = UiText.Format("win_reading", phone.Name);
+                Changed?.Invoke();
+                try
+                {
+                    var result = await Collector.CollectAsync(phone, State,
+                        (done, total) => { CollectionStatus = UiText.Format("win_progress", phone.Name, done, total);
+                            Changed?.Invoke(); }, _lifetime.Token);
+                    CollectionStatus = UiText.Format("win_collection_result", phone.Name,
+                        result.Saved, result.Skipped, result.Failed);
+                    if (result.LastError is not null) CollectionStatus += " " + result.LastError;
+                    Record(CollectionStatus);
+                }
+                catch (Exception error) { Record($"{phone.Name}: {error.Message}"); }
+            }
+        }
+        finally { _collection.Release(); }
+    }
+
+    private async Task PeriodicCollectionAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token)) await CollectAsync();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    public string DebugLog
+    {
+        get { lock (_events) return string.Join(Environment.NewLine, _events); }
+    }
+
+    public string LatestPhoneDiagnosticsText => State.PhoneDiagnostics.Values.LastOrDefault() is { } report
+        ? System.Text.Encoding.UTF8.GetString(report) : UiText.Get("win_no_phone_report");
+
+    public byte[] SupportDiagnosticsData()
+    {
+        JsonElement? latestPhone = null;
+        if (State.PhoneDiagnostics.Values.LastOrDefault() is { } report)
+        {
+            try { latestPhone = JsonSerializer.Deserialize<JsonElement>(report); }
+            catch (JsonException) { /* Invalid reports are omitted from support exports. */ }
+        }
+        return JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            schema = 1, platform = "Windows", generatedAt = DateTimeOffset.Now,
+            appVersion = typeof(CompanionRuntime).Assembly.GetName().Version?.ToString(),
+            osVersion = Environment.OSVersion.VersionString,
+            pairedDevices = State.Phones.Select(phone => new {
+                phone.Name, phone.Model, phone.ConfirmedAt
+            }).ToArray(),
+            recentEvents = DebugLog.Split(Environment.NewLine).TakeLast(40).ToArray(),
+            mobileDiagnostics = latestPhone
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private void Record(string message)
+    {
+        lock (_events)
+        {
+            _events.Add($"{DateTimeOffset.Now:O} | {message.Replace('\n', ' ')}");
+            if (_events.Count > 100) _events.RemoveRange(0, _events.Count - 100);
+        }
+        Changed?.Invoke();
+    }
+
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        Server.Dispose();
+        _lifetime.Dispose();
+    }
+}

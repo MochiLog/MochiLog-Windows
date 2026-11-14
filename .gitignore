@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+**/AppPackages/
+/Build/
+artifacts/
+*.user
+*.pfx
+*.cer
+*.key
+*.log

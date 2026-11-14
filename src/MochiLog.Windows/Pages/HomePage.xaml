@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="MochiLog_Windows.Pages.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <ScrollViewer>
+        <StackPanel MaxWidth="920" Padding="28" Spacing="22">
+            <StackPanel Spacing="5">
+                <TextBlock Text="MochiLog Windows" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Opacity="0.72" />
+            </StackPanel>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <StackPanel Spacing="14">
+                    <TextBlock x:Name="StatusTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
+                    <TextBlock x:Name="CollectionText" TextWrapping="Wrap" Opacity="0.72" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="RefreshButton" Click="RefreshClicked" />
+                        <Button x:Name="CollectButton" Click="CollectClicked" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <StackPanel Spacing="14">
+                    <TextBlock x:Name="SetupTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <TextBlock x:Name="SetupStep1" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SetupStep2" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SetupStep3" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="UsbButton" Click="UsbClicked" />
+                        <Button x:Name="VerifyButton" Click="VerifyClicked" />
+                    </StackPanel>
+                    <ListView x:Name="DeviceList" Height="160" SelectionMode="Single" />
+                    <Button x:Name="PairButton" Click="PairClicked" />
+                </StackPanel>
+            </Border>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="18" Padding="20">
+                <StackPanel Spacing="10">
+                    <TextBlock x:Name="PairedTitle" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ListView x:Name="PairedList" Height="130" SelectionMode="None" />
+                    <TextBlock x:Name="ProcessingNote" TextWrapping="Wrap" Opacity="0.72" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
