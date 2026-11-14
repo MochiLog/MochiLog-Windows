@@ -1,3 +1,4 @@
+pip==26.3
 pymobiledevice3==11.55.0
 nuitka==4.3.5
 ordered-set==4.1.0
