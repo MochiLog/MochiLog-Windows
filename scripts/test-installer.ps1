@@ -4,6 +4,8 @@ $setup = (Resolve-Path Build\MochiLog-Windows-Setup.exe).Path
 $registry = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall"
 
 function Find-MochiLogInstallation {
+    # Fresh CI user profiles need not have any per-user uninstall entries yet.
+    if (-not (Test-Path -LiteralPath $registry)) { return }
     Get-ChildItem $registry | ForEach-Object { Get-ItemProperty $_.PSPath } |
         Where-Object { $_.DisplayName -eq "MochiLog Windows" }
 }
