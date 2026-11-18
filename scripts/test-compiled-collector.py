@@ -61,6 +61,7 @@ def main():
             if line.startswith("pymobiledevice3==")
         )
         assert info["pymobiledevice3"] == expected_version, info
+        assert "direct-provider-contract" in info["offlineChecks"], info
         for command in (
             [],
             ["battery-snapshot"],
