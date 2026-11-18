@@ -1,5 +1,7 @@
 # Runtime diagnostics
 
+Before a PC release, check the latest stable pymobiledevice3 on official PyPI. When updating, refresh the pin in both PC repositories, review API and CLI changes, and run the Python bridge, native protocol and isolated compiled-collector checks (including the direct-provider contract and actual command argument shapes). Record the checked version and results in developer documentation. Users must not need an external Python installation.
+
 Use the app's native diagnostic snapshots or the existing support export when investigating Windows runtime behavior. Read [docs/NATIVE_DIAGNOSTICS.md](docs/NATIVE_DIAGNOSTICS.md) first. Fetch the generated JSON file directly over SFTP/SCP; do not recreate diagnostic reports in a remote shell.
 
 Do not pipe Get-Content output into ConvertTo-Json or place those values in a deeply serialized PowerShell object. Windows PowerShell 5.1 adds provider metadata to strings, and this caused an investigation process to grow beyond 100 GiB.
