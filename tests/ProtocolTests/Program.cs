@@ -1047,6 +1047,17 @@ static class Program
             throw new Exception("An untrusted device produced a pairing QR.");
         }
         catch (InvalidOperationException) { }
+        using (var malformed = new TcpClient())
+        {
+            await malformed.ConnectAsync(IPAddress.Loopback, _serverPort);
+            var stream = malformed.GetStream();
+            await stream.WriteAsync(Encoding.UTF8.GetBytes("{]\n"));
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            Check(await stream.ReadAsync(new byte[1], deadline.Token) == 0,
+                "Malformed request did not close cleanly");
+        }
+        Check(pairingAudit.Any(message => message.StartsWith("Transfer failed: phase=request, type=Json")
+            && message.Contains("code=0x")), "Transfer rejection lost its phase and error code");
         var device = new ConnectedDevice("test-iphone", "Protocol iPhone", "iPhone18,3");
         var invitation = server.BeginPairing(device);
         var qr = new Uri(invitation.Url);

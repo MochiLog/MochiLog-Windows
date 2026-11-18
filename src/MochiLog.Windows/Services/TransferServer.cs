@@ -292,6 +292,7 @@ public sealed class TransferServer : IDisposable
             using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(lifetime))
             {
                 timeout.CancelAfter(TimeSpan.FromSeconds(25));
+                var phase = "request";
                 try
                 {
                     var stream = client.GetStream();
@@ -319,6 +320,7 @@ public sealed class TransferServer : IDisposable
                         && type.GetString() is "pair-init" or "pair-confirm"
                     )
                     {
+                        phase = "pairing";
                         var response = Pair(root, peer);
                         if (response is not null)
                         {
@@ -329,6 +331,7 @@ public sealed class TransferServer : IDisposable
                     }
                     if (type.ValueKind == JsonValueKind.String && type.GetString() == "unpair")
                     {
+                        phase = "revocation";
                         var response = RevokeFromPhone(root);
                         if (response is not null)
                         {
@@ -338,6 +341,7 @@ public sealed class TransferServer : IDisposable
                         return;
                     }
                     var preparedAt = System.Diagnostics.Stopwatch.StartNew();
+                    phase = "prepare";
                     var packet = Pull(root, peer);
                     if (packet is not null)
                     {
@@ -351,6 +355,7 @@ public sealed class TransferServer : IDisposable
                         {
                             // Request deadline ends here; the body has its own rolling idle deadline.
                             timeout.CancelAfter(Timeout.InfiniteTimeSpan);
+                            phase = "write";
                             await TransferWriteLoop.WriteAsync(
                                 stream,
                                 packet,
@@ -379,10 +384,16 @@ public sealed class TransferServer : IDisposable
                 }
                 catch (OperationCanceledException)
                 {
+                    Audit?.Invoke(
+                        $"Transfer stopped: phase={phase}, reason={(lifetime.IsCancellationRequested ? "server-shutdown" : "idle-or-request-timeout")}"
+                    );
                     StatusChanged?.Invoke("Transfer timed out.");
                 }
                 catch (Exception error)
                 {
+                    Audit?.Invoke(
+                        $"Transfer failed: phase={phase}, type={error.GetType().Name}, code=0x{error.HResult:X8}"
+                    );
                     StatusChanged?.Invoke("Transfer rejected: " + error.Message);
                 }
             }
