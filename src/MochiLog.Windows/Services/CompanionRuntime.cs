@@ -595,18 +595,19 @@ public sealed class CompanionRuntime : IDisposable
                                 "win_collection_retry_wait",
                                 result.RetryHeld + result.Deferred
                             );
-                    lock (State)
-                    {
-                        State.LastCollections[
-                            phone.PhysicalDeviceId.ToString("D").ToUpperInvariant()
-                        ] = result;
-                        StateStore.Save(State);
-                    }
+                    StateStore.SaveCollection(State, phone.PhysicalDeviceId, result);
                     Record(CollectionStatus);
                     Record(
                         $"{phone.Name}: collection finished; attempt={attempt:D}; saved={result.Saved}, "
                             + $"excluded={result.Skipped}, deferred={result.Deferred}, failed={result.Failed}, retryHeld={result.RetryHeld}, listingFailures={result.ListingFailures}, acquisitionComplete={result.AcquisitionComplete}, elapsedMs={started.ElapsedMilliseconds}"
                     );
+                }
+                catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+                {
+                    Record(
+                        $"{phone.Name}: collection cancelled during app shutdown; attempt={attempt:D}"
+                    );
+                    break;
                 }
                 catch (Exception error)
                 {
@@ -617,6 +618,21 @@ public sealed class CompanionRuntime : IDisposable
                         UiText.Format("win_collection_result", phone.Name, 0, 0, 1)
                         + " "
                         + error.Message;
+                    try
+                    {
+                        StateStore.SaveCollection(
+                            State,
+                            phone.PhysicalDeviceId,
+                            new CollectionResult(0, 0, 1, error.Message)
+                        );
+                    }
+                    catch (Exception storageError)
+                    {
+                        Record(
+                            "Collection failure diagnostics could not be saved: "
+                                + storageError.Message
+                        );
+                    }
                     Changed?.Invoke();
                     RecordCollectionFailure(phone, trigger, error, manual);
                 }

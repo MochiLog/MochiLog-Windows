@@ -96,6 +96,15 @@ public static class StateStore
         }
     }
 
+    public static void SaveCollection(CompanionState state, Guid deviceId, CollectionResult result)
+    {
+        lock (state)
+        {
+            state.LastCollections[deviceId.ToString("D").ToUpperInvariant()] = result;
+            Save(state);
+        }
+    }
+
     public static void Save(CompanionState state)
     {
         lock (state)

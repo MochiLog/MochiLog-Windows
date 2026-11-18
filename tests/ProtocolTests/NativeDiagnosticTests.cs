@@ -12,6 +12,30 @@ static class NativeDiagnosticTests
 
     public static void Run()
     {
+        // A failed attempt must replace stale success for this device only,
+        // including after restart; keys, other devices and receipts survive.
+        var state = new CompanionState();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var paired = new PairedPhone { PhysicalDeviceId = first, Secret = new byte[32] };
+        state.Phones.Add(paired);
+        state.Delivered.Add("synthetic-receipt");
+        StateStore.SaveCollection(state, first, new(2, 0, 0, null));
+        StateStore.SaveCollection(state, second, new(1, 0, 0, null));
+        StateStore.SaveCollection(state, first, new(0, 0, 1, "synthetic unavailable device"));
+        var reopened = StateStore.Load();
+        var failed = reopened.LastCollections[first.ToString("D").ToUpperInvariant()];
+        var other = reopened.LastCollections[second.ToString("D").ToUpperInvariant()];
+        Check(
+            failed.Failed == 1 && !failed.AcquisitionComplete && other.Saved == 1,
+            "Failed collection retained stale success or changed a different device"
+        );
+        Check(
+            reopened.Phones.Single().PhysicalDeviceId == first
+                && reopened.Phones[0].Secret.SequenceEqual(paired.Secret)
+                && reopened.Delivered.Contains("synthetic-receipt"),
+            "Collection result persistence damaged pairing or receipts"
+        );
         var root = Path.Combine(StateStore.Root, "native-diagnostic-test");
         Directory.CreateDirectory(root);
         var routes = new DiagnosticRoutes.Report(
