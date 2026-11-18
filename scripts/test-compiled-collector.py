@@ -54,10 +54,11 @@ def main():
         info = json.loads(result.stdout)
         assert info["compiler"] == "nuitka", info
         assert all(info["compiledModules"].values()), info
-        requirements = Path(__file__).resolve().parents[1] / "requirements-build.txt"
         expected_version = next(
             line.split("==", 1)[1].strip()
-            for line in requirements.read_text(encoding="utf-8").splitlines()
+            for line in (Path(__file__).resolve().parents[1] / "requirements-build.txt")
+            .read_text()
+            .splitlines()
             if line.startswith("pymobiledevice3==")
         )
         assert info["pymobiledevice3"] == expected_version, info
@@ -70,6 +71,25 @@ def main():
             ["lockdown"],
             ["remote"],
             ["crash"],
+            ["crash", "ls", "/", "--depth", "1", "--native", "--udid", "fixture-device"],
+            ["crash", "ls", "/Retired", "--depth", "1", "--mobdev2", "--udid", "fixture-device"],
+            [
+                "crash",
+                "pull",
+                str(folder),
+                "/Retired/Analytics-fixture.ips.ca.synced",
+                "--native",
+                "--udid",
+                "fixture-device",
+            ],
+            ["usbmux", "list", "--network", "--simple"],
+            ["usbmux", "list", "--usb", "--simple"],
+            ["remote", "browse", "--native", "--timeout", "1"],
+            ["bonjour", "mobdev2", "--timeout", "1"],
+            ["lockdown", "info", "--mobdev2", "--udid", "fixture-device"],
+            ["lockdown", "pair", "--udid", "fixture-device"],
+            ["lockdown", "wifi-connections", "on", "--udid", "fixture-device"],
+            ["lockdown", "remotepairing", "--pair", "--udid", "fixture-device"],
         ):
             subprocess.run(
                 [str(executable), *command, "--help"],

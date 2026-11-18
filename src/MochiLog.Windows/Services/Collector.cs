@@ -433,7 +433,7 @@ public static partial class Collector
     )
     {
         var listing = await RunAsync(
-            ["crash", "ls", "--mobdev2", "--udid", udid, "--remote-file", "/", "--depth", "1"],
+            ["crash", "ls", "--mobdev2", "--udid", udid, "/", "--depth", "1"],
             TimeSpan.FromSeconds(45),
             cancellation
         );
@@ -456,7 +456,7 @@ public static partial class Collector
         try
         {
             var listing = await run(
-                ["crash", "ls", .. network, "--remote-file", "/", "--depth", "1"],
+                ["crash", "ls", .. network, "/", "--depth", "1"],
                 TimeSpan.FromSeconds(45),
                 cancellation
             );
@@ -475,7 +475,7 @@ public static partial class Collector
         if (!OperatingSystem.IsWindows())
         {
             var root = await run(
-                ["crash", "ls", .. native, "--remote-file", "/", "--depth", "1"],
+                ["crash", "ls", .. native, "/", "--depth", "1"],
                 TimeSpan.FromSeconds(45),
                 cancellation
             );
@@ -502,7 +502,7 @@ public static partial class Collector
         {
             var usb = new[] { "--udid", udid };
             var root = await run(
-                ["crash", "ls", .. usb, "--remote-file", "/", "--depth", "1"],
+                ["crash", "ls", .. usb, "/", "--depth", "1"],
                 TimeSpan.FromSeconds(45),
                 cancellation
             );
@@ -931,7 +931,7 @@ public static partial class Collector
                 var listing =
                     cachedListing
                     ?? await run(
-                        ["crash", "ls", .. connection, "--remote-file", path, "--depth", "1"],
+                        ["crash", "ls", .. connection, path, "--depth", "1"],
                         TimeSpan.FromSeconds(90),
                         cancellation
                     );
@@ -1061,7 +1061,7 @@ public static partial class Collector
             {
                 Directory.CreateDirectory(staging);
                 await run(
-                    ["crash", "pull", staging, "--remote-file", item.Path, .. connection],
+                    ["crash", "pull", staging, item.Path, .. connection],
                     TimeSpan.FromMinutes(3),
                     cancellation
                 );

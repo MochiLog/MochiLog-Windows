@@ -10,6 +10,12 @@ static class CollectionRegressionTests
             throw new Exception(reason);
     }
 
+    private static string CrashPath(string[] args)
+    {
+        Check(!args.Contains("--remote-file"), "Obsolete crash CLI option was used");
+        return args[1] == "ls" ? args[Array.IndexOf(args, "--depth") - 1] : args[3];
+    }
+
     public static async Task Run()
     {
         var oldResult = JsonSerializer.Deserialize<CollectionResult>(
@@ -205,7 +211,7 @@ static class CollectionRegressionTests
         )
         {
             var args = arguments.ToArray();
-            var path = Flag(args, "--remote-file");
+            var path = CrashPath(args);
             if (args[1] == "ls")
                 return Task.FromResult(
                     path switch
@@ -291,7 +297,7 @@ static class CollectionRegressionTests
         )
         {
             var args = arguments.ToArray();
-            var path = Flag(args, "--remote-file");
+            var path = CrashPath(args);
             if (args[1] == "ls")
             {
                 if (path == "/")
